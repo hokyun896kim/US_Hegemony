@@ -47,6 +47,40 @@ h1{font-size:clamp(24px,5.6vw,42px);font-weight:800;line-height:1.05;margin:8px 
 .foot{margin-top:24px;padding:15px 17px;background:var(--panel);border:1px solid var(--line);border-radius:13px;font-size:11px;color:var(--mut);line-height:1.85}.foot b{color:var(--gold2)}
 .hide{display:none}.hint{font-size:10.5px;color:var(--mut);margin:-4px 0 14px;padding-left:0;line-height:1.6}.hint b{color:var(--gold2)}
 .cap{font-size:9px;color:var(--mut)}
+/* ===== 워치리스트 / 포트폴리오 모니터 ===== */
+.wl-intro{font-size:11px;color:var(--mut);margin:0 0 14px;line-height:1.6}
+.wl-intro b{color:var(--gold2)}
+.wl-add{display:flex;gap:8px;margin-bottom:16px}
+.wl-add input{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:10px 12px;color:var(--txt);font-family:inherit;font-size:13px;outline:none;text-transform:uppercase}
+.wl-add input:focus{border-color:var(--gold)}
+.wl-add button{background:var(--gold);color:#0a0e17;border:none;font-family:inherit;font-weight:800;font-size:13px;padding:10px 18px;border-radius:9px;cursor:pointer}
+.wl-empty{text-align:center;padding:30px 20px;color:var(--mut);font-size:12px;line-height:1.7}
+.wl-card{background:linear-gradient(100deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:13px;padding:13px 14px;margin-bottom:9px;position:relative}
+.wl-card.green{border-left:3px solid var(--grn)}
+.wl-card.yellow{border-left:3px solid var(--gold)}
+.wl-card.red{border-left:3px solid var(--red)}
+.wl-card.gray{border-left:3px solid var(--mut)}
+.wl-r1{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+.wl-light{font-size:17px}
+.wl-tk{font-size:15px;font-weight:800;color:var(--txt)}
+.wl-nm{font-size:10px;color:var(--mut)}
+.wl-status{font-size:11px;font-weight:800;margin-left:auto;padding:3px 10px;border-radius:7px}
+.wl-status.green{background:#16261d;color:var(--grn)}
+.wl-status.yellow{background:#2a2410;color:var(--gold2)}
+.wl-status.red{background:#2a1414;color:var(--red)}
+.wl-status.gray{background:#1a2030;color:var(--mut)}
+.wl-del{position:absolute;top:11px;right:11px;background:none;border:none;color:var(--mut);cursor:pointer;font-size:15px;line-height:1}
+.wl-del:hover{color:var(--red)}
+.wl-metrics{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.wl-m{font-size:10px;color:#c2cbdb;background:var(--bg);border:1px solid var(--line);padding:3px 8px;border-radius:6px;font-variant-numeric:tabular-nums}
+.wl-m b{color:var(--gold2)}.wl-m.g b{color:var(--grn)}.wl-m.r b{color:var(--red)}
+.wl-earn{font-size:11px;color:var(--gold2);background:#1a2438;border:1px solid #2a3552;border-radius:7px;padding:4px 10px;display:inline-flex;align-items:center;gap:6px;margin-top:2px}
+.wl-earn.soon{background:#2a2410;border-color:#4a4220;color:#f0d27a;font-weight:700}
+.wl-msg{font-size:10.5px;color:var(--mut);margin-top:7px;line-height:1.5}
+.wl-msg b{color:var(--gold2)}
+.wl-cal-head{font-size:11px;letter-spacing:.12em;color:var(--mut);text-transform:uppercase;margin:20px 0 10px;display:flex;align-items:center;gap:10px}
+.wl-cal-head::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+
 .top5{margin:18px 0 6px;padding:0}
 .top5-head{font-size:12px;letter-spacing:.14em;color:var(--gold);text-transform:uppercase;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:8px}
 .top5-sub{font-size:11px;color:var(--mut);margin:0 0 12px;line-height:1.5}
@@ -189,11 +223,13 @@ h1{font-size:clamp(24px,5.6vw,42px);font-weight:800;line-height:1.05;margin:8px 
 <button data-v="flat">📊 세부산업 랭킹<i class="help-i" onclick="event.stopPropagation();tip(&quot;flat&quot;)">i</i></button>
 <button data-v="signal">🎯 1층+2층 시그널<i class="help-i" onclick="event.stopPropagation();tip(&quot;signal&quot;)">i</i></button>
 <button data-v="accel">🚀 헤게모니 가속<i class="help-i" onclick="event.stopPropagation();tip(&quot;accel&quot;)">i</i></button>
+<button data-v="watch">📌 내 워치리스트<i class="help-i" onclick="event.stopPropagation();tip(&quot;watch&quot;)">i</i></button>
 </div>
 <input class="search" id="q" placeholder="검색: 반도체, 방산, NVDA …">
 <div id="treeView"><div class="lbl">대섹터 헤게모니 (연간 기준)</div><div id="secList"></div></div>
 <div id="flatView" class="hide"><div class="lbl">세부산업 전체</div><div id="subList"></div></div>
 <div id="signalView" class="hide"><div class="lbl">1층 통과 + 2층 시그널</div><div class="hint">GO=펀더+상대강도 동반강세 · 관망=펀더 좋고 상대강도 약함 · 매복=시장 미반영 잠복 · 과열주의=상대강도 과도+갭위험.</div><div id="sigList" style="overflow-x:auto"></div></div>
+<div id="watchView" class="hide"><div class="lbl">내 워치리스트 · 피크아웃 모니터 + 실적 캘린더</div><div id="watchBody"></div></div>
 <div id="accelView" class="hide"><div class="lbl">헤게모니 가속 — 분기TTM이 연간보다 개선된 순</div><div class="hint">가속(+) = 최근 분기 흐름이 연간 평균보다 강해짐 = <b>레버리지가 막 붙는 국면</b>. 단 전년 이익이 0 근처면 비율이 폭발하니 ±150p 초과는 기저효과로 보고 회색 처리. 펀더(분기 스프레드 양수)와 함께 보세요.</div><div id="accList" style="overflow-x:auto"></div></div>
 <div class="foot">
 <b>v0.6 신규.</b> 분기 TTM 엔진 — SEC 분기 공시에서 연속 8분기를 복원(연간값에서 Q4 역산, 태그 전환 자동대응)해 최근 4분기 연환산 YoY 산출. 전체 333개 종목 확보. 연간 대비 분기의 차이로 가속/둔화를 봅니다.<br>
@@ -290,7 +326,7 @@ async function loadData(){
   // 갱신일 표시
   const up=document.getElementById('updTag'); if(up&&D.updated)up.textContent='데이터 갱신: '+D.updated;
   // 시장 배지 + 첫 화면
-  initMarket(); renderTop5(); renderTree();
+  initMarket(); renderTop5(); renderTree(); loadWatch();
  }catch(e){
   document.getElementById('secList').innerHTML='<div style="padding:20px;color:var(--red);font-size:13px">⚠️ 데이터 로드 실패: '+e.message+'<br><span style="color:var(--mut);font-size:11px">data/tree.json이 같은 폴더에 있는지 확인하세요. 로컬에서 file://로 열면 CORS로 막히니, Netlify 배포 또는 로컬 서버(python -m http.server)로 여세요.</span></div>';
  }
@@ -376,13 +412,14 @@ function bindTree(){document.querySelectorAll('[data-sec]').forEach(b=>b.onclick
 function bindSub(){document.querySelectorAll('[data-sub]').forEach(b=>b.onclick=e=>{e.stopPropagation();const d=document.getElementById('sd_'+b.dataset.sub),o=d.classList.contains('show');b.classList.toggle('open',!o);d.classList.toggle('show',!o);});}
 function animate(){setTimeout(()=>document.querySelectorAll('.fill').forEach((f,i)=>{if(f.style.width)return;setTimeout(()=>f.style.width=f.dataset.w+'%',i*15);}),50);}
 document.querySelectorAll('.tabs button').forEach(btn=>btn.onclick=()=>{document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('on'));btn.classList.add('on');view=btn.dataset.v;
- treeView.classList.toggle('hide',view!='tree');flatView.classList.toggle('hide',view!='flat');signalView.classList.toggle('hide',view!='signal');accelView.classList.toggle('hide',view!='accel');
+ treeView.classList.toggle('hide',view!='tree');flatView.classList.toggle('hide',view!='flat');signalView.classList.toggle('hide',view!='signal');accelView.classList.toggle('hide',view!='accel');watchView.classList.toggle('hide',view!='watch');
  document.getElementById('q').style.display=view=='tree'?'none':'block';
- if(view=='flat')renderFlat();if(view=='signal')renderSignal();if(view=='accel')renderAccel();});
+ if(view=='flat')renderFlat();if(view=='signal')renderSignal();if(view=='accel')renderAccel();if(view=='watch')renderWatch();});
 document.getElementById('q').oninput=e=>{q=e.target.value;if(view=='flat')renderFlat();if(view=='signal')renderSignal();if(view=='accel')renderAccel();};
 document.getElementById('q').style.display='none';
 // ===== 도움말 시스템 =====
 const TIPS={
+ watch:{k:"기능 설명",t:"📌 내 워치리스트",b:"<p>보유·관심 종목을 담아 <b>매수 후 관리</b>를 하는 자리입니다(형님 주도주 헤게모니 v3.3 + 일정매매 v3.2의 미국판).</p><p><b>신호등:</b> 🟢가속(보유 유지) · 🟡유지 · 🔴피크아웃(분기TTM이 연간보다 둔화 = 이익 모멘텀 꺾임, 익절·감량 검토).</p><p><b>실적 캘린더:</b> 과거 발표 주기로 다음 실적일을 추정. 미국은 실적 전후 갭이 크니 임박 종목은 미리 대비. 추정치이니 IR로 확정일 확인.</p><p>브라우저에 저장돼 다시 열어도 유지됩니다.</p>"},
  top5:{k:"기능 설명",t:"⭐ 이상적 매수후보 TOP5",b:"<p>형님의 해석 4단계를 그대로 점수화한 결과입니다.</p><p><b>스코어 구성:</b> 연간 헤게모니 강도(최대25) + 분기TTM 가속 유지(최대20) + 가속 강도(최대30) + 매복 여부(최대25). 피크아웃·과열·갭위험은 감점.</p><p><b>가장 높은 점수 = 펀더 강하고, 최근 더 강해지는데, 시장은 아직 안 깨운 종목.</b> 형님이 말한 '남보다 먼저' 자리입니다. 단, 출발 후보일 뿐 1차 자료 확인 필수.</p>"},
  tree:{k:"탭 설명",t:"🌳 탑다운 트리",b:"<p>형님의 투자 순서 그대로 — <b>대섹터(11개) → 세부산업(79개) → 종목</b>으로 위에서 아래로 좁혀 들어갑니다.</p><p>대섹터 막대는 그 섹터에 속한 모든 종목의 헤게모니 스프레드 <b>중앙값</b>입니다. 막대가 금색(우)이면 이익 레버리지가 붙는 섹터, 회색(좌)이면 마진 압박 섹터.</p><p>대섹터를 누르면 세부산업이, 세부산업을 누르면 종목이 펼쳐집니다.</p>"},
  flat:{k:"탭 설명",t:"📊 세부산업 랭킹",b:"<p>대섹터 구분 없이 <b>79개 세부산업 전체를 헤게모니 순으로</b> 한 줄로 세웁니다.</p><p>검색창에 '반도체', '방산', 'NVDA', 'SIC코드' 등을 치면 즉시 필터됩니다. \"지금 가장 뜨거운 세부산업이 어디든 한눈에\" 보고 싶을 때.</p>"},
@@ -554,6 +591,92 @@ function renderTop5(){
     <div class="t5-cta">⚡ 트레이드 카드 열기 →</div>
    </div>`).join('')}
   <div class="top5-disc">⚠️ 이 순위는 형님의 해석 4단계(펀더→가속→매복)를 그대로 공식화한 것입니다. 알고리즘이 만든 출발 후보일 뿐, 각 종목의 1차 자료(8-K)와 산업 맥락을 직접 확인해야 합니다. 분기 데이터 없는 종목(은행 등)은 후보에서 빠질 수 있습니다.</div>`;
+}
+
+
+// ===== 워치리스트 / 피크아웃 모니터 =====
+function peakStatus(m){
+ // 신호등: 헤게모니 가속/유지/둔화
+ const sp=m.spread,qsp=m.q_spread,acc=m.accel;
+ if(sp==null)return{c:'gray',label:'데이터 부족',msg:'펀더 데이터 없음 — 1차 자료 직접 확인'};
+ if(qsp==null){
+   return sp>0?{c:'yellow',label:'유지(분기N/A)',msg:'연간은 양수지만 분기 데이터 없어 추세 확인 불가'}
+              :{c:'red',label:'주의',msg:'연간 헤게모니 음수 — 마진 압박'};
+ }
+ if(acc!=null&&Math.abs(acc)<=150){
+   if(acc>=5&&qsp>0)return{c:'green',label:'가속 🟢',msg:`헤게모니 가속 중(+${acc}p). 추세 양호, 보유 유지 관점`};
+   if(acc<=-10&&sp>0)return{c:'red',label:'피크아웃 🔴',msg:`분기TTM이 연간보다 ${acc}p 둔화. <b>이익 모멘텀 꺾임 — 익절·감량 검토 신호</b>`};
+   if(qsp>0)return{c:'yellow',label:'유지 🟡',msg:'헤게모니 유지 중. 급가속도 급둔화도 아님'};
+   return{c:'red',label:'둔화 🔴',msg:'분기 스프레드 음수 — 펀더 약화'};
+ }
+ return sp>0?{c:'yellow',label:'유지 🟡',msg:'펀더 양수 유지'}:{c:'red',label:'주의',msg:'펀더 약화'};
+}
+function earnBadge(m){
+ if(m.d_until==null)return'';
+ const d=m.d_until;
+ const soon=(d>=0&&d<=14);
+ const txt=d<0?`실적 지남(${-d}일 전 추정)`:(d===0?'오늘 실적 추정':`다음 실적 D-${d} (추정)`);
+ return `<span class="wl-earn ${soon?'soon':''}">📅 ${txt}</span>`;
+}
+let WATCHLIST=[];
+async function loadWatch(){
+ try{
+   const res=await window.storage.list('watch:',false);
+   const keys=(res&&res.keys)?res.keys:[];
+   WATCHLIST=[];
+   for(const k of keys){try{const r=await window.storage.get(k,false);if(r)WATCHLIST.push(JSON.parse(r.value).tk);}catch(e){}}
+ }catch(e){WATCHLIST=[];}
+ renderWatch();
+}
+async function addWatch(){
+ const inp=document.getElementById('wlInput');
+ const tk=(inp.value||'').trim().toUpperCase();
+ if(!tk)return;
+ if(!TKINDEX[tk]){alert(`${tk}는 현재 데이터(상위 600개 기업)에 없습니다. 티커를 확인하거나, 대형주가 아닐 수 있습니다.`);return;}
+ if(WATCHLIST.includes(tk)){inp.value='';return;}
+ try{await window.storage.set('watch:'+tk, JSON.stringify({tk,added:new Date().toISOString()}), false);
+   WATCHLIST.push(tk); inp.value=''; renderWatch();
+ }catch(e){alert('저장 실패: '+e.message);}
+}
+async function delWatch(tk){
+ try{await window.storage.delete('watch:'+tk,false);WATCHLIST=WATCHLIST.filter(x=>x!==tk);renderWatch();}catch(e){}
+}
+function renderWatch(){
+ const body=document.getElementById('watchBody');
+ const addBar=`<div class="wl-intro">보유·관심 종목을 담아두면 <b>헤게모니 피크아웃 신호등</b>과 <b>다음 실적 발표 임박일</b>을 한눈에 봅니다. 매수 후 "언제 팔까"를 관리하는 자리입니다. (브라우저에 저장 — 다시 열어도 유지)</div>
+  <div class="wl-add"><input id="wlInput" placeholder="티커 입력 (예: NVDA)" onkeydown="if(event.key==='Enter')addWatch()"><button onclick="addWatch()">+ 추가</button></div>`;
+ if(!WATCHLIST.length){
+   body.innerHTML=addBar+`<div class="wl-empty">아직 담은 종목이 없습니다.<br>위에 티커를 입력하거나, TOP5·트리에서 관심 종목을 찾아 담아보세요.</div>`;
+   return;
+ }
+ const items=WATCHLIST.map(tk=>({tk,m:TKINDEX[tk]})).filter(x=>x.m);
+ // 신호등 + 실적임박 정렬: 피크아웃(red) 먼저, 그다음 실적임박순
+ const order={red:0,yellow:1,gray:2,green:3};
+ items.forEach(x=>x.st=peakStatus(x.m));
+ items.sort((a,b)=>(order[a.st.c]-order[b.st.c]) || ((a.m.d_until??999)-(b.m.d_until??999)));
+ const cards=items.map(({tk,m,st})=>`
+   <div class="wl-card ${st.c}">
+    <button class="wl-del" onclick="delWatch('${tk}')">×</button>
+    <div class="wl-r1"><span class="wl-light"></span><span><span class="wl-tk">${tk}</span> <span class="wl-nm">${m.nm}</span></span>
+     <span class="wl-status ${st.c}">${st.label}</span></div>
+    <div class="wl-metrics">
+     <span class="wl-m">연간 <b>${m.spread>0?'+':''}${m.spread}p</b></span>
+     <span class="wl-m">분기 <b>${m.q_spread==null?'—':(m.q_spread>0?'+':'')+m.q_spread+'p'}</b></span>
+     <span class="wl-m ${m.accel!=null&&m.accel<0?'r':'g'}">가속 <b>${m.accel==null?'—':(m.accel>0?'+':'')+m.accel+'p'}</b></span>
+     <span class="wl-m ${m.rs6!=null&&m.rs6<0?'':''}">RS6M <b>${m.rs6==null?'—':(m.rs6>0?'+':'')+m.rs6+'%'}</b></span>
+    </div>
+    ${earnBadge(m)}
+    <div class="wl-msg">${st.msg}</div>
+    <div class="t5-cta" style="cursor:pointer" onclick="openTrade('${tk}')">⚡ 트레이드 카드 →</div>
+   </div>`).join('');
+ // 실적 캘린더 (담은 종목 중 임박순)
+ const cal=items.filter(x=>x.m.d_until!=null&&x.m.d_until>=0).sort((a,b)=>a.m.d_until-b.m.d_until);
+ let calHtml='';
+ if(cal.length){
+   calHtml=`<div class="wl-cal-head">📅 다가오는 실적 (추정)</div>`+
+     cal.slice(0,8).map(({tk,m})=>`<div class="wl-m" style="display:inline-block;margin:0 6px 6px 0;${m.d_until<=14?'border-color:var(--gold);color:var(--gold2)':''}">${tk} · D-${m.d_until}</div>`).join('');
+ }
+ body.innerHTML=addBar+cards+calHtml+`<div class="top5-disc" style="margin-top:14px">🔴 피크아웃 = 분기TTM이 연간보다 크게 둔화 = 이익 모멘텀 꺾임 신호. 실적일은 과거 발표 주기 기반 <b>추정치</b>이며 회사가 변경할 수 있으니, 임박 시 트레이드 카드의 IR 링크로 확정일을 확인하세요.</div>`;
 }
 
 // ===== AI 분석 프롬프트 생성 =====
