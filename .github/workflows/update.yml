@@ -1,0 +1,22 @@
+name: Update Hegemony Data
+on:
+  schedule:
+    - cron: '0 22 * * 6'   # 매주 토요일 22:00 UTC = 한국 일요일 07:00
+  workflow_dispatch:        # 수동 실행 버튼
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build data
+        run: python build_data.py
+      - name: Commit
+        run: |
+          git config user.name "hegemony-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add data/tree.json
+          git commit -m "auto: update $(date +%Y-%m-%d)" || echo "no change"
+          git push
