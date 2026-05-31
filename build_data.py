@@ -5,7 +5,7 @@
 import urllib.request, json, time, os, statistics, re
 from datetime import date
 
-UA_SEC={"User-Agent":"YourName your@email.com"}   # ★★★ 교체 필수 ★★★
+UA_SEC={"User-Agent":"YourName kinghokyun@gmail.com"}   # ★★★ 교체 필수 ★★★
 UA_YH ={"User-Agent":"Mozilla/5.0 (Macintosh) research"}
 def get(u,h=UA_SEC,t=60):
     r=urllib.request.Request(u,headers=h)
