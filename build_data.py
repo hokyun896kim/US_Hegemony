@@ -5,7 +5,7 @@
 import urllib.request, json, time, os, statistics, re
 from datetime import date
 
-UA_SEC={"User-Agent":"YourName kinghokyun@gmail.com"}   # ★★★ 교체 필수 ★★★
+UA_SEC={"User-Agent":"YourName your@email.com"}   # ★★★ 교체 필수 ★★★
 UA_YH ={"User-Agent":"Mozilla/5.0 (Macintosh) research"}
 def get(u,h=UA_SEC,t=60):
     r=urllib.request.Request(u,headers=h)
@@ -207,6 +207,21 @@ for i,t in enumerate(allt):
                 m["ir"]=ir_map.get(t)
     if (i+1)%50==0: print(f"   {i+1}/{len(allt)}")
     time.sleep(0.04)
+
+
+# 다음 실적일 추정 (IR date + 91일 주기)
+from datetime import timedelta as _td
+_today=date.today()
+for _r in rows:
+    for _m in _r["members"]:
+        _ir=_m.get("ir")
+        if _ir and _ir.get("date"):
+            try:
+                _last=date.fromisoformat(_ir["date"]); _nxt=_last+_td(days=91)
+                while (_nxt-_today).days < -7: _nxt=_nxt+_td(days=91)
+                _m["next_earn"]=str(_nxt); _m["d_until"]=(_nxt-_today).days
+            except: _m["next_earn"]=None; _m["d_until"]=None
+        else: _m["next_earn"]=None; _m["d_until"]=None
 
 print("[7/7] 저장")
 out={"sectors":sectors,"subs":rows,
