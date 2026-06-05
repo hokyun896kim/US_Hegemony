@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>US HEGEMONY TREE v1.0</title>
+<title>US HEGEMONY TREE v1.1</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css">
 <style>
 :root{--bg:#080c16;--panel:#0e1626;--panel2:#131f35;--panel3:#0b1322;--line:#1c2942;--gold:#d4af37;--gold2:#f0d27a;--txt:#e8edf6;--mut:#7d8aa3;--neg:#52647f;--red:#c2544d;--grn:#4a9d7f}
@@ -213,7 +213,7 @@ h1{font-size:clamp(24px,5.6vw,42px);font-weight:800;line-height:1.05;margin:8px 
 
 </style></head><body><div class="wrap">
 <div class="kicker">도토리 · US Edition</div>
-<h1>미국 헤게모니 트리 <span style="font-size:.5em;color:var(--mut);-webkit-text-fill-color:var(--mut)">v1.0</span></h1>
+<h1>미국 헤게모니 트리 <span style="font-size:.5em;color:var(--mut);-webkit-text-fill-color:var(--mut)">v1.1</span></h1>
 <div class="def"><b>연간 YoY 옆에 분기 TTM(최근 4분기 연환산)을 나란히.</b> 둘의 차이가 <b>가속/둔화 신호</b>입니다 — 분기가 연간보다 높으면 헤게모니가 막 붙기 시작한 것(형님의 "남보다 먼저"). 3층 구조: 1층 펀더(연간+분기) · 2층 보조(상대강도·갭·VIX) · <b>밸류에이션(PER) 체크</b>. 차트로 고르지 않되, 차트 없이 사지 않는다. <b>종목을 펼치면 최신 8-K 실적 원문(보도자료·CFO 코멘터리)으로 바로가기</b> — 가이던스·톤은 점수화하지 않고 1차 자료를 직접 읽습니다.</div>
 <div class="mkt" id="mkt"></div>
 <div id="updTag" style="font-size:10px;color:var(--mut);margin:-8px 0 12px;letter-spacing:.05em;text-align:right">데이터 로딩 중…</div>
@@ -232,7 +232,7 @@ h1{font-size:clamp(24px,5.6vw,42px);font-weight:800;line-height:1.05;margin:8px 
 <div id="watchView" class="hide"><div class="lbl">내 워치리스트 · 피크아웃 모니터 + 실적 캘린더</div><div id="watchBody"></div></div>
 <div id="accelView" class="hide"><div class="lbl">헤게모니 가속 — 분기TTM이 연간보다 개선된 순</div><div class="hint">가속(+) = 최근 분기 흐름이 연간 평균보다 강해짐 = <b>레버리지가 막 붙는 국면</b>. 단 전년 이익이 0 근처면 비율이 폭발하니 ±150p 초과는 기저효과로 보고 회색 처리. 펀더(분기 스프레드 양수)와 함께 보세요.</div><div id="accList" style="overflow-x:auto"></div></div>
 <div class="foot">
-<b>v1.0 신규.</b> LOGI(제3형 '점화 직후') 사후검증 반영 — ① <b>RS3M 과속 할인</b>: RS6M이 음수여도 RS3M이 +20%↑면 '이미 절반 반영'으로 보고 매복 가점을 절반으로(6M 시차 맹점 보정). ② <b>PER 결측 정교화</b>: trailing PER 없으면 forward PER로 폴백 → 외국기업(스위스 법인 등) 결측은 페널티 면제, 진짜 손익 오염만 가벼운 검증 플래그(-4). <b>※ 외국기업 PER은 데이터 파이프라인에서 yfinance 보조소스로 채우는 것이 근본 해법입니다.</b><br><b>v0.9.</b> 순위 정밀화(2종목 사후검증 반영) — ① <b>분기TTM 기저효과 감지</b>: 연간이 멀쩡해도 분기TTM 영업이익YoY가 폭등(흑자전환)하면 기저효과로 강등(EXPE형 차단). ② <b>RS6M+RS3M 결합</b>: 6M 양수인데 3M 음수면 '정점 통과·냉각' 감점(BKR형 차단), 6M 약세인데 3M 반등이면 '변곡' 가점 — 기존 RS6M 사각지대 해소. ③ <b>PER 결측 무벌점 금지</b>: 손익 오염 가능성으로 -6 + 검증 플래그. 결과적으로 EXPE·BKR 같은 '겉만 1등'은 ⚠검증 필요로 강등됩니다.<br><b>v0.8.</b> 순위 계산 합리화 — TOP5 스코어가 ① <b>매출 동반 성장(고품질)</b>을 핵심 가점으로, ② <b>흑자전환·기저효과·일회성(영익YoY +80%↑ 또는 가속 ±60p↑)을 자동 추정해 강하게 감점</b>(가짜 1등 방지), ③ 비용절감형(매출 역성장)·고PER·피크아웃 감점, ④ 과도한 약세는 매복이 아닌 <b>가치함정</b>으로 절제. 각 후보에 품질 등급(고품질/보통/저품질/⚠️기저효과) 표기. 트레이드 카드도 동일 기준의 강세·약세 논거로 보강.<br><b>v0.7.</b> ① 저장소 표준화 — 워치리스트·일지를 브라우저 기본 저장소(localStorage)로 저장해 어떤 호스팅(Netlify 등)에서도 유지됩니다. ② 밸류에이션 축 — 트레이드 카드에 PER/Forward PER 표시 + "헤게모니 강한데 비싼" 함정 경고. (PER 데이터는 tree.json에 pe/fpe 필드가 있을 때 표시)<br>
+<b>v1.1 신규.</b> 회귀테스트 반영 — ① <b>냉각 모순 제거(P1)</b>: 6M+ / 3M− 종목은 '시장 저반영' 매복 가점을 0으로 죽이고 냉각 감점 -14 (식는 종목이 매복 가점을 동시 수령하던 자기모순 차단 → BKR 1위 복귀 방지). ② <b>일회성 회색지대 플래그(P3)</b>: 분기TTM 영익 35~50%는 강등 대신 🟡일회성 점검 플래그로 8-K·AI 프롬프트에 위임. ③ <b>시그널 탭·트레이드 카드 동기화</b>: verdict()·bullBear()도 냉각/점화/변곡을 같은 기준으로 표기(TOP5와 일관). ④ PER 결측은 forward PER 폴백 후에도 없으면 -4(외국기업은 데이터 파이프라인에서 yfinance 보강이 근본 해법).<br><b>v1.0.</b> LOGI(제3형 '점화 직후') 사후검증 반영 — ① <b>RS3M 과속 할인</b>: RS6M이 음수여도 RS3M이 +20%↑면 '이미 절반 반영'으로 보고 매복 가점을 절반으로(6M 시차 맹점 보정). ② <b>PER 결측 정교화</b>: trailing PER 없으면 forward PER로 폴백 → 외국기업(스위스 법인 등) 결측은 페널티 면제, 진짜 손익 오염만 가벼운 검증 플래그(-4). <b>※ 외국기업 PER은 데이터 파이프라인에서 yfinance 보조소스로 채우는 것이 근본 해법입니다.</b><br><b>v0.9.</b> 순위 정밀화(2종목 사후검증 반영) — ① <b>분기TTM 기저효과 감지</b>: 연간이 멀쩡해도 분기TTM 영업이익YoY가 폭등(흑자전환)하면 기저효과로 강등(EXPE형 차단). ② <b>RS6M+RS3M 결합</b>: 6M 양수인데 3M 음수면 '정점 통과·냉각' 감점(BKR형 차단), 6M 약세인데 3M 반등이면 '변곡' 가점 — 기존 RS6M 사각지대 해소. ③ <b>PER 결측 무벌점 금지</b>: 손익 오염 가능성으로 -6 + 검증 플래그. 결과적으로 EXPE·BKR 같은 '겉만 1등'은 ⚠검증 필요로 강등됩니다.<br><b>v0.8.</b> 순위 계산 합리화 — TOP5 스코어가 ① <b>매출 동반 성장(고품질)</b>을 핵심 가점으로, ② <b>흑자전환·기저효과·일회성(영익YoY +80%↑ 또는 가속 ±60p↑)을 자동 추정해 강하게 감점</b>(가짜 1등 방지), ③ 비용절감형(매출 역성장)·고PER·피크아웃 감점, ④ 과도한 약세는 매복이 아닌 <b>가치함정</b>으로 절제. 각 후보에 품질 등급(고품질/보통/저품질/⚠️기저효과) 표기. 트레이드 카드도 동일 기준의 강세·약세 논거로 보강.<br><b>v0.7.</b> ① 저장소 표준화 — 워치리스트·일지를 브라우저 기본 저장소(localStorage)로 저장해 어떤 호스팅(Netlify 등)에서도 유지됩니다. ② 밸류에이션 축 — 트레이드 카드에 PER/Forward PER 표시 + "헤게모니 강한데 비싼" 함정 경고. (PER 데이터는 tree.json에 pe/fpe 필드가 있을 때 표시)<br>
 <b>v0.6.</b> 분기 TTM 엔진 — SEC 분기 공시에서 연속 8분기를 복원(연간값에서 Q4 역산, 태그 전환 자동대응)해 최근 4분기 연환산 YoY 산출. 전체 333개 종목 확보. 연간 대비 분기의 차이로 가속/둔화를 봅니다.<br>
 <b>한계.</b> ① 분기TTM 확보율 약 83% — 은행·일부 특수섹터는 분기 영업이익 태그 부재로 N/A. ② 기저효과(전년이익≈0) 종목은 비율 폭발 → ±150p 초과 회색 처리로 노이즈 차단. ③ 주가·펀더 모두 CORS로 스냅샷 — 자동갱신은 백엔드 필요. ④ 차트 가공지표(이동평균·RSI 등) 일절 없음, 원시 비율만.
 </div>
@@ -361,6 +361,9 @@ function accCell(m){if(m.accel==null)return'<span class="acc na">—</span>';
  if(Math.abs(m.accel)>150)return`<span class="acc na" title="기저효과">~</span>`;
  return`<span class="acc ${m.accel>=0?'up':'dn'}">${m.accel>0?'+':''}${m.accel}p</span>`;}
 function verdict(m){if(m.spread<=0)return['',''];
+ // ★ v1.1: 냉각(6M+ / 3M−)이면 GO 아님 — TOP5 스코어와 일관성
+ const cooling=(m.rs3!=null&&m.rs6!=null&&m.rs6>0&&m.rs3<0);
+ if(cooling)return['v-wait','냉각'];
  const strong=(m.rs3!=null&&m.rs3>5)||(m.rs6!=null&&m.rs6>15);
  const weak=(m.rs6!=null&&m.rs6<-15);const hot=(m.rs6!=null&&m.rs6>80)&&m.gaplvl=='H';
  if(hot)return['v-wait','과열주의'];if(strong)return['v-go','GO'];if(weak)return['v-cold','매복'];return['v-wait','관망'];}
@@ -467,22 +470,30 @@ const TKINDEX={};  // loadData()에서 채움
 function bullBear(m){
  const bull=[],bear=[];
  const q=spreadQuality(m), base=(q==='base');
+ // ★ v1.1: RS 국면 변수 (TOP5 스코어와 동일 정의)
+ const cooling=(m.rs3!=null&&m.rs6!=null&&m.rs6>0&&m.rs3<0);
+ const ignition=(m.rs6!=null&&m.rs3!=null&&m.rs6<=10&&m.rs3>20);
+ const reversal=(m.rs6!=null&&m.rs3!=null&&m.rs6<=10&&m.rs3>=3&&m.rs3<=20);
  // Bull 논거
  if(m.spread>0&&!base)bull.push(`연간 헤게모니 양수(<b>+${m.spread}p</b>) — 매출보다 이익이 빠르게 증가`);
  if(q==='high')bull.push(`<b>고품질</b> — 매출(${m.rev>0?'+':''}${m.rev}%)도 같이 성장하며 이익 레버리지 (비용절감만 아님)`);
  if(m.q_spread!=null&&m.q_spread>0)bull.push(`분기TTM도 양수(<b>+${m.q_spread}p</b>) — 최근 분기까지 레버리지 유지`);
  if(m.accel!=null&&m.accel>=5&&m.accel<=40)bull.push(`가속 <b>+${m.accel}p</b> — 분기 흐름이 연간보다 강해지는 국면`);
- if(m.rs3!=null&&m.rs3>5)bull.push(`3개월 상대강도 <b>+${m.rs3}%</b> — 시장 대비 강세, 시장이 인정 시작`);
- if(m.rs6!=null&&m.rs6>15)bull.push(`6개월 상대강도 <b>+${m.rs6}%</b> — 중기 추세도 시장 압도`);
+ if(reversal)bull.push(`<b>변곡 초입</b> — 시장이 막 깨우기 시작(6M ${m.rs6}% / 3M +${m.rs3}%), '먼저' 진입 가능 구간`);
+ if(m.rs3!=null&&m.rs3>5&&!cooling&&!ignition)bull.push(`3개월 상대강도 <b>+${m.rs3}%</b> — 시장 대비 강세, 시장이 인정 시작`);
+ if(m.rs6!=null&&m.rs6>15&&!cooling)bull.push(`6개월 상대강도 <b>+${m.rs6}%</b> — 중기 추세도 시장 압도`);
  if(m.pe!=null&&m.pe>0&&m.pe<18&&m.spread>0)bull.push(`밸류 부담 적음(PER <b>${m.pe.toFixed(1)}</b>) — 헤게모니 대비 저평가`);
  // Bear 논거
  if(base)bear.push(`<b>⚠흑자전환·기저효과 추정</b>(영익YoY ${m.op}%) — 스프레드 +${m.spread}p의 상당분이 산수 착시일 수 있음. 다음 분기 정상화 후 잔존 스프레드로 진짜 체력 재확인 필요`);
  if(m.spread<=0)bear.push(`연간 헤게모니 음수(<b>${m.spread}p</b>) — 이익이 매출을 못 따라감(마진 압박)`);
  if(q==='low')bear.push(`<b>저품질</b> — 매출 역성장(${m.rev}%) 위 비용절감형 스프레드. 비용절감은 유한, 1~2년 내 소멸 위험`);
+ if(!base&&m.q_op!=null&&m.q_op>=35&&m.q_op<50)bear.push(`🟡 <b>일회성 점검</b> — 분기TTM 영익 +${m.q_op}%. 매각차익 등 비영업 항목이 섞였는지 8-K로 확인`);
  if(m.q_spread!=null&&m.spread>0&&m.q_spread<m.spread)bear.push(`분기TTM(<b>${m.q_spread}p</b>)이 연간보다 낮음 — <b>피크아웃 의심</b>`);
  if(m.accel!=null&&m.accel<0&&Math.abs(m.accel)<=150)bear.push(`가속 <b>${m.accel}p</b> — 최근 흐름이 둔화 중`);
+ if(cooling)bear.push(`<b>⚠정점 통과·냉각</b>(6M +${m.rs6}/3M ${m.rs3}) — 상승 모멘텀이 식는 중. 매복이 아니라 '뒷북' 위험`);
+ if(ignition)bear.push(`<b>⚠점화 직후</b>(3M +${m.rs3}%) — 시장이 이미 절반 반영. '남보다 먼저'가 아니라 '거의 동시', 추격 주의`);
  if(m.rs6!=null&&m.rs6<-30)bear.push(`6개월 상대강도 <b>${m.rs6}%</b> — 깊은 약세. '매복'이 아니라 시장이 이유 있게 디스카운트하는 <b>가치함정</b>일 수 있으니 왜 싼지 8-K로 확인`);
- else if(m.rs6!=null&&m.rs6<-15)bear.push(`6개월 상대강도 <b>${m.rs6}%</b> — 시장이 아직 안 깨움(매복 or 소외)`);
+ else if(m.rs6!=null&&m.rs6<-15&&!reversal)bear.push(`6개월 상대강도 <b>${m.rs6}%</b> — 시장이 아직 안 깨움(매복 or 소외)`);
  if(m.gaplvl=='H')bear.push(`갭위험 높음(최대 <b>${m.gap}%</b>) — 실적 전후 변동성 큼, 진입 타이밍 주의`);
  if(m.pe!=null&&m.pe>40&&m.spread>0)bear.push(`밸류 부담 큼(PER <b>${m.pe.toFixed(1)}</b>) — 헤게모니 강해도 가격이 비쌈`);
  if(m.q_note&&m.q_note!='정상')bear.push(`분기 데이터 한계(${m.q_note}) — 숫자 신뢰도 낮음, 1차 자료 직접 확인 필요`);
@@ -615,8 +626,9 @@ function scoreCandidate(m){
    else if(acc<0){pts-=8;}
  }
 
- // 5) 상대강도 — ★ v1.0: 위치(RS6M) + 방향(RS3M) + 과속 할인
+ // 5) 상대강도 — ★ v1.1: 위치(RS6M) + 방향(RS3M) + 과속 할인 + 냉각 모순 제거
  const r6=m.rs6, r3=m.rs3;
+ const cooling=(r3!=null && r6!=null && r6>0 && r3<0);  // 6M+ / 3M− = 식는 중
  let amb=0;  // 미반영(매복) 가점 후보
  if(r6!=null){
    if(r6>=-15 && r6<=10){amb=12;}
@@ -624,17 +636,19 @@ function scoreCandidate(m){
    else if(r6>60){pts-=12;reasons.push('⚠과열(RS6M)');}
    else if(r6<-35){pts-=10;reasons.push('⚠깊은 약세(가치함정 점검)');}
  }
+ // ★ v1.1 P1: 냉각 종목엔 '시장 저반영' 매복 가점 금지 (식는데 덜 반영됐다는 모순 제거)
+ if(cooling) amb=0;
  // ★ v1.0: RS3M이 이미 급등(+20%↑)이면 6M 음수여도 '이미 반영' → 매복 가점 절반
- //   (LOGI형 '점화 직후' — 6M 시차 맹점 보정)
  if(amb>0 && r3!=null && r3>20){
    amb=Math.round(amb/2);
    reasons.push(`⚠점화 직후(3M +${r3}%) — 이미 절반 반영, '먼저'가 아님`);
  }
  if(amb>0){pts+=amb;reasons.push(`시장 저반영(RS6M ${r6}%)`);}
- // 방향(RS3M)으로 냉각/반등 보정 — 사각지대(-30~-15)도 방향으로 판정
- if(r3!=null && r6!=null){
-   if(r6>0 && r3<0){pts-=12;reasons.push(`⚠정점 통과·냉각(6M ${r6>0?'+':''}${r6}/3M ${r3})`);}
-   else if(r6<=10 && r3>=3 && r3<=20){pts+=10;reasons.push(`바닥 반등 시작(3M +${r3}%) — 변곡`);}
+ // 방향(RS3M): 냉각 감점 / 바닥반등 가점 / 하락가속 감점
+ if(cooling){
+   pts-=14;reasons.push(`⚠정점 통과·냉각(6M +${r6}/3M ${r3}) — 매복 아님`);
+ } else if(r3!=null && r6!=null){
+   if(r6<=10 && r3>=3 && r3<=20){pts+=10;reasons.push(`바닥 반등 시작(3M +${r3}%) — 변곡`);}
    else if(r6<-15 && r3<-8){pts-=8;reasons.push('⚠하락 가속(매복 아님)');}
  }
 
@@ -654,6 +668,10 @@ function scoreCandidate(m){
  if(q==='base'){
    pts=Math.round(pts*0.35);
    reasons.unshift('⚠흑자전환/기저효과 추정 — 스프레드 과대표시(산수 착시)');
+ }
+ // 9) ★ v1.1 P3: 분기TTM 영익 35~50% = 일회성(매각차익 등) 회색지대 → 점검 플래그(감점 없음, 8-K로 위임)
+ else if(m.q_op!=null && m.q_op>=35 && m.q_op<50){
+   reasons.push(`🟡 일회성 점검(분기 영익 +${m.q_op}%) — 매각차익 등 섞였는지 8-K 확인`);
  }
  return {pts,reasons,grade:q};
 }
