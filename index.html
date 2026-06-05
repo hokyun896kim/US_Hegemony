@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>US HEGEMONY TREE v0.6</title>
+<title>US HEGEMONY TREE v0.8</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css">
 <style>
 :root{--bg:#080c16;--panel:#0e1626;--panel2:#131f35;--panel3:#0b1322;--line:#1c2942;--gold:#d4af37;--gold2:#f0d27a;--txt:#e8edf6;--mut:#7d8aa3;--neg:#52647f;--red:#c2544d;--grn:#4a9d7f}
@@ -213,8 +213,8 @@ h1{font-size:clamp(24px,5.6vw,42px);font-weight:800;line-height:1.05;margin:8px 
 
 </style></head><body><div class="wrap">
 <div class="kicker">도토리 · US Edition</div>
-<h1>미국 헤게모니 트리 <span style="font-size:.5em;color:var(--mut);-webkit-text-fill-color:var(--mut)">v0.6</span></h1>
-<div class="def"><b>연간 YoY 옆에 분기 TTM(최근 4분기 연환산)을 나란히.</b> 둘의 차이가 <b>가속/둔화 신호</b>입니다 — 분기가 연간보다 높으면 헤게모니가 막 붙기 시작한 것(형님의 "남보다 먼저"). 3층 구조: 1층 펀더(연간+분기) · 2층 보조(상대강도·갭·VIX). 차트로 고르지 않되, 차트 없이 사지 않는다. <b>종목을 펼치면 최신 8-K 실적 원문(보도자료·CFO 코멘터리)으로 바로가기</b> — 가이던스·톤은 점수화하지 않고 1차 자료를 직접 읽습니다.</div>
+<h1>미국 헤게모니 트리 <span style="font-size:.5em;color:var(--mut);-webkit-text-fill-color:var(--mut)">v0.8</span></h1>
+<div class="def"><b>연간 YoY 옆에 분기 TTM(최근 4분기 연환산)을 나란히.</b> 둘의 차이가 <b>가속/둔화 신호</b>입니다 — 분기가 연간보다 높으면 헤게모니가 막 붙기 시작한 것(형님의 "남보다 먼저"). 3층 구조: 1층 펀더(연간+분기) · 2층 보조(상대강도·갭·VIX) · <b>밸류에이션(PER) 체크</b>. 차트로 고르지 않되, 차트 없이 사지 않는다. <b>종목을 펼치면 최신 8-K 실적 원문(보도자료·CFO 코멘터리)으로 바로가기</b> — 가이던스·톤은 점수화하지 않고 1차 자료를 직접 읽습니다.</div>
 <div class="mkt" id="mkt"></div>
 <div id="updTag" style="font-size:10px;color:var(--mut);margin:-8px 0 12px;letter-spacing:.05em;text-align:right">데이터 로딩 중…</div>
 <div class="top5" id="top5Panel"></div>
@@ -232,7 +232,8 @@ h1{font-size:clamp(24px,5.6vw,42px);font-weight:800;line-height:1.05;margin:8px 
 <div id="watchView" class="hide"><div class="lbl">내 워치리스트 · 피크아웃 모니터 + 실적 캘린더</div><div id="watchBody"></div></div>
 <div id="accelView" class="hide"><div class="lbl">헤게모니 가속 — 분기TTM이 연간보다 개선된 순</div><div class="hint">가속(+) = 최근 분기 흐름이 연간 평균보다 강해짐 = <b>레버리지가 막 붙는 국면</b>. 단 전년 이익이 0 근처면 비율이 폭발하니 ±150p 초과는 기저효과로 보고 회색 처리. 펀더(분기 스프레드 양수)와 함께 보세요.</div><div id="accList" style="overflow-x:auto"></div></div>
 <div class="foot">
-<b>v0.6 신규.</b> 분기 TTM 엔진 — SEC 분기 공시에서 연속 8분기를 복원(연간값에서 Q4 역산, 태그 전환 자동대응)해 최근 4분기 연환산 YoY 산출. 전체 333개 종목 확보. 연간 대비 분기의 차이로 가속/둔화를 봅니다.<br>
+<b>v0.8 신규.</b> 순위 계산 합리화 — TOP5 스코어가 ① <b>매출 동반 성장(고품질)</b>을 핵심 가점으로, ② <b>흑자전환·기저효과·일회성(영익YoY +80%↑ 또는 가속 ±60p↑)을 자동 추정해 강하게 감점</b>(가짜 1등 방지), ③ 비용절감형(매출 역성장)·고PER·피크아웃 감점, ④ 과도한 약세는 매복이 아닌 <b>가치함정</b>으로 절제. 각 후보에 품질 등급(고품질/보통/저품질/⚠️기저효과) 표기. 트레이드 카드도 동일 기준의 강세·약세 논거로 보강.<br><b>v0.7.</b> ① 저장소 표준화 — 워치리스트·일지를 브라우저 기본 저장소(localStorage)로 저장해 어떤 호스팅(Netlify 등)에서도 유지됩니다. ② 밸류에이션 축 — 트레이드 카드에 PER/Forward PER 표시 + "헤게모니 강한데 비싼" 함정 경고. (PER 데이터는 tree.json에 pe/fpe 필드가 있을 때 표시)<br>
+<b>v0.6.</b> 분기 TTM 엔진 — SEC 분기 공시에서 연속 8분기를 복원(연간값에서 Q4 역산, 태그 전환 자동대응)해 최근 4분기 연환산 YoY 산출. 전체 333개 종목 확보. 연간 대비 분기의 차이로 가속/둔화를 봅니다.<br>
 <b>한계.</b> ① 분기TTM 확보율 약 83% — 은행·일부 특수섹터는 분기 영업이익 태그 부재로 N/A. ② 기저효과(전년이익≈0) 종목은 비율 폭발 → ±150p 초과 회색 처리로 노이즈 차단. ③ 주가·펀더 모두 CORS로 스냅샷 — 자동갱신은 백엔드 필요. ④ 차트 가공지표(이동평균·RSI 등) 일절 없음, 원시 비율만.
 </div>
 </div>
@@ -268,11 +269,11 @@ h1{font-size:clamp(24px,5.6vw,42px);font-weight:800;line-height:1.05;margin:8px 
    <div class="usecase"><div class="u-t">1단계 · 연간 스프레드를 본다</div><div class="u-d"><b>양수(+)면</b> 일단 이익 레버리지가 있는 기업. <b>+20p 이상이면</b> 강한 헤게모니. 음수면 매출은 느는데 이익이 안 따라오는 마진 압박 상태 → 일단 제외 후보.</div></div>
    <div class="usecase"><div class="u-t">2단계 · 분기TTM과 비교한다 (피크아웃 체크)</div><div class="u-d">연간이 +30p인데 분기TTM이 +10p로 <b>낮아졌으면</b> → 헤게모니가 정점을 지나는 중(피크아웃 의심). 반대로 분기가 연간보다 <b>높으면</b> → 최근 더 강해지는 중. 이 비교가 "지금 들어가도 되나"의 핵심입니다.</div></div>
    <div class="usecase"><div class="u-t">3단계 · 가속을 본다 (타이밍의 핵심)</div><div class="u-d"><b>가속이 양수(녹색)</b> = 이익 레버리지가 막 붙기 시작하는 초입. 시장이 아직 모를 때 미리 발견하는 자리. 이게 형님이 가장 원하는 "남보다 먼저"입니다.</div></div>
-   <div class="usecase"><div class="u-t">4단계 · 상대강도로 타이밍을 가른다</div><div class="u-d"><b>펀더 좋은데 RS 약함</b> = 시장이 아직 안 깨움 → "매복 후보"(기다렸다 진입). <b>펀더+RS 둘 다 강함</b> = 이미 진행 중 → 추격 주의. RS는 종목을 고르는 게 아니라 "언제"를 보는 보조지표입니다.</div></div>
+   <div class="usecase"><div class="u-t">4단계 · 상대강도와 밸류로 타이밍을 가른다</div><div class="u-d"><b>펀더 좋은데 RS 약함</b> = 시장이 아직 안 깨움 → "매복 후보"(기다렸다 진입). <b>펀더+RS 둘 다 강함</b> = 이미 진행 중 → 추격 주의. 추가로 <b>PER이 과도하게 높으면</b> 헤게모니가 강해도 가격이 비싼 것 → 진입 신중.</div></div>
 
    <h3>💡 실전 시나리오 예시</h3>
-   <div class="usecase"><div class="u-t">📈 이상적인 매수 후보 (관찰 가치 높음)</div><div class="u-d">연간 +15p / 분기TTM +25p / 가속 +10p / RS6M -5%<br>→ <b>해석:</b> 헤게모니가 가속 중인데 시장은 아직 안 깨움. 전형적인 "매복" 자리. 8-K 원문으로 가이던스 확인 후 분할매수 검토.</div></div>
-   <div class="usecase"><div class="u-t">⚠️ 피해야 할 함정 (피크아웃)</div><div class="u-d">연간 +40p / 분기TTM +8p / 가속 -32p / RS6M +60%<br>→ <b>해석:</b> 과거엔 폭발했지만 최근 둔화 중인데 주가만 이미 많이 오름. 고점 추격 위험. 보류.</div></div>
+   <div class="usecase"><div class="u-t">📈 이상적인 매수 후보 (관찰 가치 높음)</div><div class="u-d">연간 +15p / 분기TTM +25p / 가속 +10p / RS6M -5% / PER 18<br>→ <b>해석:</b> 헤게모니가 가속 중인데 시장은 아직 안 깨웠고 밸류도 부담 없음. 전형적인 "매복" 자리. 8-K 원문으로 가이던스 확인 후 분할매수 검토.</div></div>
+   <div class="usecase"><div class="u-t">⚠️ 피해야 할 함정 (피크아웃 + 고밸류)</div><div class="u-d">연간 +40p / 분기TTM +8p / 가속 -32p / RS6M +60% / PER 70<br>→ <b>해석:</b> 과거엔 폭발했지만 최근 둔화 중인데 주가만 이미 많이 올랐고 PER도 비쌈. 고점 추격 위험. 보류.</div></div>
    <div class="usecase"><div class="u-t">🔍 더 봐야 하는 애매한 경우</div><div class="u-d">연간 +12p / 분기TTM 데이터없음 / RS3M +8%<br>→ <b>해석:</b> 분기 데이터가 없어(은행·특수섹터 등) 판단 재료 부족. 트레이드 카드의 8-K 원문·뉴스 링크로 직접 확인 필요.</div></div>
 
    <h3>🤖 AI로 매매팁 얻는 법</h3>
@@ -307,6 +308,16 @@ h1{font-size:clamp(24px,5.6vw,42px);font-weight:800;line-height:1.05;margin:8px 
 </div>
 
 <script>
+// ── localStorage 폴백: Netlify 등 표준 정적 호스팅에서 워치리스트/일지 저장 ──
+if(!window.storage || typeof window.storage.list!=='function'){
+  window.storage={
+    async list(prefix){const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.indexOf(prefix)===0)keys.push(k);}return{keys};},
+    async get(k){const v=localStorage.getItem(k);return v==null?null:{value:v};},
+    async set(k,v){localStorage.setItem(k,String(v));},
+    async delete(k){localStorage.removeItem(k);}
+  };
+}
+
 let D=null, MXS=1, MXB=1;
 // ===== 라이브 데이터 로드 =====
 async function loadData(){
@@ -314,9 +325,9 @@ async function loadData(){
   const res=await fetch('./data/tree.json',{cache:'no-store'});
   if(!res.ok)throw new Error('HTTP '+res.status);
   D=await res.json();
-  // 누락 필드 안전 기본값
+  // 누락 필드 안전 기본값 (pe/fpe/peg 포함)
   D.subs.forEach(s=>s.members.forEach(m=>{
-    ['q_rev','q_op','q_spread','accel','rs3','rs6','gap','gaplvl','ir','q_note'].forEach(k=>{if(!(k in m))m[k]=null;});
+    ['q_rev','q_op','q_spread','accel','rs3','rs6','gap','gaplvl','ir','q_note','pe','fpe','peg'].forEach(k=>{if(!(k in m))m[k]=null;});
   }));
   MXS=Math.max(...D.sectors.map(s=>Math.abs(s.med)),1);
   MXB=Math.max(...D.subs.map(s=>Math.abs(s.med)),1);
@@ -344,6 +355,8 @@ function initMarket(){
 function fb(med,mx){const p=med>=0;return{p,w:Math.min(46,Math.abs(med)/mx*46)};}
 function rsC(v){return v==null?'na':v>=0?'pos':'neg'}function rsT(v){return v==null?'—':(v>0?'+':'')+v+'%'}
 function qspC(v){return v==null?'na':v>=0?'p':'n'}
+// 밸류에이션 색: 저PER=초록, 보통=금색, 고PER/적자=빨강, 없음=회색
+function valColor(pe){if(pe==null)return'm';if(pe<=0)return'n';if(pe<20)return'g';if(pe<35)return'p';return'n';}
 function accCell(m){if(m.accel==null)return'<span class="acc na">—</span>';
  if(Math.abs(m.accel)>150)return`<span class="acc na" title="기저효과">~</span>`;
  return`<span class="acc ${m.accel>=0?'up':'dn'}">${m.accel>0?'+':''}${m.accel}p</span>`;}
@@ -419,7 +432,7 @@ document.getElementById('q').oninput=e=>{q=e.target.value;if(view=='flat')render
 document.getElementById('q').style.display='none';
 // ===== 도움말 시스템 =====
 const TIPS={
- watch:{k:"기능 설명",t:"📌 내 워치리스트",b:"<p>보유·관심 종목을 담아 <b>매수 후 관리</b>를 하는 자리입니다(형님 주도주 헤게모니 v3.3 + 일정매매 v3.2의 미국판).</p><p><b>신호등:</b> 🟢가속(보유 유지) · 🟡유지 · 🔴피크아웃(분기TTM이 연간보다 둔화 = 이익 모멘텀 꺾임, 익절·감량 검토).</p><p><b>실적 캘린더:</b> 과거 발표 주기로 다음 실적일을 추정. 미국은 실적 전후 갭이 크니 임박 종목은 미리 대비. 추정치이니 IR로 확정일 확인.</p><p>브라우저에 저장돼 다시 열어도 유지됩니다.</p>"},
+ watch:{k:"기능 설명",t:"📌 내 워치리스트",b:"<p>보유·관심 종목을 담아 <b>매수 후 관리</b>를 하는 자리입니다(형님 주도주 헤게모니 v3.3 + 일정매매 v3.2의 미국판).</p><p><b>신호등:</b> 🟢가속(보유 유지) · 🟡유지 · 🔴피크아웃(분기TTM이 연간보다 둔화 = 이익 모멘텀 꺾임, 익절·감량 검토).</p><p><b>실적 캘린더:</b> 과거 발표 주기로 다음 실적일을 추정. 미국은 실적 전후 갭이 크니 임박 종목은 미리 대비. 추정치이니 IR로 확정일 확인.</p><p>브라우저에 저장돼 다시 열어도 유지됩니다(localStorage).</p>"},
  top5:{k:"기능 설명",t:"⭐ 이상적 매수후보 TOP5",b:"<p>형님의 해석 4단계를 그대로 점수화한 결과입니다.</p><p><b>스코어 구성:</b> 연간 헤게모니 강도(최대25) + 분기TTM 가속 유지(최대20) + 가속 강도(최대30) + 매복 여부(최대25). 피크아웃·과열·갭위험은 감점.</p><p><b>가장 높은 점수 = 펀더 강하고, 최근 더 강해지는데, 시장은 아직 안 깨운 종목.</b> 형님이 말한 '남보다 먼저' 자리입니다. 단, 출발 후보일 뿐 1차 자료 확인 필수.</p>"},
  tree:{k:"탭 설명",t:"🌳 탑다운 트리",b:"<p>형님의 투자 순서 그대로 — <b>대섹터(11개) → 세부산업(79개) → 종목</b>으로 위에서 아래로 좁혀 들어갑니다.</p><p>대섹터 막대는 그 섹터에 속한 모든 종목의 헤게모니 스프레드 <b>중앙값</b>입니다. 막대가 금색(우)이면 이익 레버리지가 붙는 섹터, 회색(좌)이면 마진 압박 섹터.</p><p>대섹터를 누르면 세부산업이, 세부산업을 누르면 종목이 펼쳐집니다.</p>"},
  flat:{k:"탭 설명",t:"📊 세부산업 랭킹",b:"<p>대섹터 구분 없이 <b>79개 세부산업 전체를 헤게모니 순으로</b> 한 줄로 세웁니다.</p><p>검색창에 '반도체', '방산', 'NVDA', 'SIC코드' 등을 치면 즉시 필터됩니다. \"지금 가장 뜨거운 세부산업이 어디든 한눈에\" 보고 싶을 때.</p>"},
@@ -430,6 +443,7 @@ const TIPS={
  col_accel:{k:"컬럼 설명",t:"가속",b:"<p><b>분기TTM 스프레드 − 연간 스프레드.</b></p><p>양수(녹색) = 최근 흐름이 연간 평균보다 강해짐 = 레버리지 가속 국면. 음수(빨강) = 둔화. ~표시는 기저효과로 신뢰 어려움.</p>"},
  col_rs:{k:"컬럼 설명",t:"상대강도 (RS)",b:"<p><b>종목 수익률 − S&P500(SPY) 수익률</b> (3개월·6개월).</p><p>가공 차트지표가 아니라 원시 수익률 차이입니다. 양수(녹색)=시장보다 강함. <b>종목을 고르는 신호가 아니라</b>, 펀더로 고른 종목의 진입 타이밍(시장이 깨웠는지)을 보는 보조 지표입니다.</p>"},
  col_gap:{k:"컬럼 설명",t:"갭 위험",b:"<p>최근 60일 중 <b>전일 종가 대비 시가 최대 괴리(%)</b>.</p><p>H(빨강)=실적 발표 등으로 갭이 크게 벌어지는 종목 → 진입 시 변동성 주의. L(녹색)=상대적으로 안정. 리스크 관리용 참고치입니다.</p>"},
+ col_val:{k:"컬럼 설명",t:"밸류에이션 (PER)",b:"<p><b>PER</b> = 주가 ÷ 주당순이익. 낮을수록 저평가. <b>Forward PER</b>는 향후 1년 예상 이익 기준.</p><p>헤게모니가 강해도 PER이 과도하게 높으면(예: 40↑) 이미 기대가 가격에 반영된 것 → 진입 신중. 저PER(20↓)+강한 헤게모니가 이상적.</p><p>※ PER 데이터는 tree.json에 pe/fpe 필드가 있을 때 표시됩니다(없으면 — ).</p>"},
 };
 function tip(key){const d=TIPS[key];if(!d)return;
  document.getElementById('tipKicker').textContent=d.k;
@@ -452,18 +466,25 @@ const TKINDEX={};  // loadData()에서 채움
 
 function bullBear(m){
  const bull=[],bear=[];
+ const q=spreadQuality(m), base=(q==='base');
  // Bull 논거
- if(m.spread>0)bull.push(`연간 헤게모니 양수(<b>+${m.spread}p</b>) — 매출보다 이익이 빠르게 증가`);
+ if(m.spread>0&&!base)bull.push(`연간 헤게모니 양수(<b>+${m.spread}p</b>) — 매출보다 이익이 빠르게 증가`);
+ if(q==='high')bull.push(`<b>고품질</b> — 매출(${m.rev>0?'+':''}${m.rev}%)도 같이 성장하며 이익 레버리지 (비용절감만 아님)`);
  if(m.q_spread!=null&&m.q_spread>0)bull.push(`분기TTM도 양수(<b>+${m.q_spread}p</b>) — 최근 분기까지 레버리지 유지`);
- if(m.accel!=null&&m.accel>0&&Math.abs(m.accel)<=150)bull.push(`가속 <b>+${m.accel}p</b> — 분기 흐름이 연간보다 강해지는 국면`);
+ if(m.accel!=null&&m.accel>=5&&m.accel<=40)bull.push(`가속 <b>+${m.accel}p</b> — 분기 흐름이 연간보다 강해지는 국면`);
  if(m.rs3!=null&&m.rs3>5)bull.push(`3개월 상대강도 <b>+${m.rs3}%</b> — 시장 대비 강세, 시장이 인정 시작`);
  if(m.rs6!=null&&m.rs6>15)bull.push(`6개월 상대강도 <b>+${m.rs6}%</b> — 중기 추세도 시장 압도`);
+ if(m.pe!=null&&m.pe>0&&m.pe<18&&m.spread>0)bull.push(`밸류 부담 적음(PER <b>${m.pe.toFixed(1)}</b>) — 헤게모니 대비 저평가`);
  // Bear 논거
+ if(base)bear.push(`<b>⚠흑자전환·기저효과 추정</b>(영익YoY ${m.op}%) — 스프레드 +${m.spread}p의 상당분이 산수 착시일 수 있음. 다음 분기 정상화 후 잔존 스프레드로 진짜 체력 재확인 필요`);
  if(m.spread<=0)bear.push(`연간 헤게모니 음수(<b>${m.spread}p</b>) — 이익이 매출을 못 따라감(마진 압박)`);
+ if(q==='low')bear.push(`<b>저품질</b> — 매출 역성장(${m.rev}%) 위 비용절감형 스프레드. 비용절감은 유한, 1~2년 내 소멸 위험`);
  if(m.q_spread!=null&&m.spread>0&&m.q_spread<m.spread)bear.push(`분기TTM(<b>${m.q_spread}p</b>)이 연간보다 낮음 — <b>피크아웃 의심</b>`);
  if(m.accel!=null&&m.accel<0&&Math.abs(m.accel)<=150)bear.push(`가속 <b>${m.accel}p</b> — 최근 흐름이 둔화 중`);
- if(m.rs6!=null&&m.rs6<-15)bear.push(`6개월 상대강도 <b>${m.rs6}%</b> — 시장이 아직 안 깨움(매복 or 소외)`);
+ if(m.rs6!=null&&m.rs6<-30)bear.push(`6개월 상대강도 <b>${m.rs6}%</b> — 깊은 약세. '매복'이 아니라 시장이 이유 있게 디스카운트하는 <b>가치함정</b>일 수 있으니 왜 싼지 8-K로 확인`);
+ else if(m.rs6!=null&&m.rs6<-15)bear.push(`6개월 상대강도 <b>${m.rs6}%</b> — 시장이 아직 안 깨움(매복 or 소외)`);
  if(m.gaplvl=='H')bear.push(`갭위험 높음(최대 <b>${m.gap}%</b>) — 실적 전후 변동성 큼, 진입 타이밍 주의`);
+ if(m.pe!=null&&m.pe>40&&m.spread>0)bear.push(`밸류 부담 큼(PER <b>${m.pe.toFixed(1)}</b>) — 헤게모니 강해도 가격이 비쌈`);
  if(m.q_note&&m.q_note!='정상')bear.push(`분기 데이터 한계(${m.q_note}) — 숫자 신뢰도 낮음, 1차 자료 직접 확인 필요`);
  if(!bull.length)bull.push('<span class="none">뚜렷한 강세 논거 없음 — 신중 검토</span>');
  if(!bear.length)bear.push('<span class="none">뚜렷한 약세 논거 없음 — 단, 과신 경계</span>');
@@ -483,6 +504,7 @@ function openTrade(tk){
    <div class="tc-badge"><div class="bl">가속</div><div class="bv ${m.accel==null?'m':m.accel>=0?'g':'n'}">${m.accel==null?'—':(m.accel>0?'+':'')+m.accel+'p'}</div></div>
    <div class="tc-badge"><div class="bl">RS 6M</div><div class="bv ${m.rs6==null?'m':m.rs6>=0?'g':'n'}">${m.rs6==null?'—':(m.rs6>0?'+':'')+m.rs6+'%'}</div></div>
    <div class="tc-badge"><div class="bl">갭위험</div><div class="bv ${m.gaplvl=='H'?'n':m.gaplvl=='L'?'g':'m'}">${m.gap!=null?m.gap+'%':'—'}</div></div>
+   <div class="tc-badge"><div class="bl">PER / Fwd</div><div class="bv ${valColor(m.pe)}">${m.pe!=null?m.pe.toFixed(1):'—'}${m.fpe!=null?' / '+m.fpe.toFixed(1):''}</div></div>
   </div>
   <div class="tc-2col">
    <div class="tc-case bull"><h4>📈 강세 논거 (Bull)</h4><ul>${bb.bull.map(x=>`<li>${x}</li>`).join('')}</ul></div>
@@ -535,36 +557,87 @@ function closeTrade(){document.getElementById('tradeModal').classList.remove('sh
 
 
 // ===== 이상적 매수후보 TOP5 =====
+// ── 기저효과(흑자전환·일회성) 추정: 전년 영업이익 값이 없어도 op YoY/가속으로 추정 ──
+function detectBaseEffect(m){
+ // 영업이익이 전년比 +80%↑ 면 거의 흑자전환/적자기저/일회성 (유기적 성장으론 드묾)
+ if(m.op!=null && m.op>=80) return true;
+ // 가속이 비정상적으로 큼(±60p↑) = 기저/일회성 의심
+ if(m.accel!=null && Math.abs(m.accel)>60) return true;
+ // 데이터 캐비엇
+ if(m.q_note && m.q_note!=='정상' && m.q_note!=='') return true;
+ return false;
+}
+// ── 스프레드의 질: high(매출동반)/mid/low(비용절감)/margin(마진압박)/base(기저효과) ──
+function spreadQuality(m){
+ if(m.spread==null) return 'na';
+ if(detectBaseEffect(m)) return 'base';
+ if(m.spread<=0) return 'margin';
+ if(m.rev!=null && m.rev>=5) return 'high';
+ if(m.rev!=null && m.rev<0) return 'low';
+ return 'mid';
+}
+const QLABEL={high:'🟢고품질',mid:'🟡보통',low:'🔴저품질',margin:'🔴마진압박',base:'⚠️기저효과',na:'—'};
+
+// ── 개선된 스코어러: 유기적 성장(매출 동반) + 지속성 + 합리적 밸류 + 미반영을 보상,
+//    기저효과/일회성/비용절감/고평가/피크아웃은 강하게 감점 → '실질 매매' 후보만 상위로 ──
 function scoreCandidate(m){
  const sp=m.spread,qsp=m.q_spread,acc=m.accel,rs6=m.rs6,gap=m.gap;
  if(sp==null||sp<=0)return null;
+ const q=spreadQuality(m);
  let pts=0; const reasons=[];
- if(sp>=20){pts+=25;reasons.push(`강한 헤게모니 <b>+${sp}p</b>`);}
- else if(sp>=5){pts+=15;reasons.push(`헤게모니 양수 +${sp}p`);}
- else pts+=8;
+
+ // 1) 스프레드 강도 (유기적 기준)
+ if(sp>=20){pts+=22;reasons.push(`강한 헤게모니 <b>+${sp}p</b>`);}
+ else if(sp>=8){pts+=14;reasons.push(`헤게모니 +${sp}p`);}
+ else pts+=6;
+
+ // 2) 품질 게이트 (매출 동반 성장이 핵심) ★ 새 기준
+ if(q==='high'){pts+=22;reasons.push(`고품질(매출 ${m.rev>0?'+':''}${m.rev}% 동반성장)`);}
+ else if(q==='low'){pts-=14;reasons.push('⚠비용절감형(매출 역성장)');}
+ else if(q==='mid'){pts+=4;}
+
+ // 3) 지속성 (분기TTM이 연간 레버리지를 유지하는가)
  if(qsp!=null){
-   if(qsp>=sp){pts+=20;reasons.push('분기TTM이 연간 상회');}
-   else if(qsp>0)pts+=8;
-   else{pts-=15;reasons.push('⚠분기 둔화');}
+   if(qsp>=sp*0.8){pts+=18;reasons.push('분기까지 레버리지 유지');}
+   else if(qsp>0){pts+=6;}
+   else{pts-=18;reasons.push('⚠분기 둔화(피크아웃)');}
  }
- if(acc!=null&&Math.abs(acc)<=150){
-   if(acc>=10){pts+=30;reasons.push(`가속 강함 <b>+${acc}p</b>`);}
-   else if(acc>0){pts+=15;reasons.push(`가속 +${acc}p`);}
-   else if(acc<0)pts-=10;
+
+ // 4) 가속 — 보상하되 상한(과도하면 기저효과라 제외)
+ if(acc!=null && Math.abs(acc)<=60){
+   if(acc>=5 && acc<=40){pts+=16;reasons.push(`가속 <b>+${acc}p</b>`);}
+   else if(acc<0){pts-=8;}
  }
+
+ // 5) 시장 미반영(매복) — 단, 과도한 약세는 '가치함정' 의심이라 절제
  if(rs6!=null){
-   if(rs6>=-25&&rs6<=0){pts+=25;reasons.push(`<b>매복</b>(RS6M ${rs6}%, 시장 미반영)`);}
-   else if(rs6>0&&rs6<=20){pts+=12;reasons.push(`초기 반영 +${rs6}%`);}
-   else if(rs6>60){pts-=15;reasons.push('⚠과열');}
+   if(rs6>=-15 && rs6<=5){pts+=16;reasons.push(`시장 미반영(RS6M ${rs6}%)`);}
+   else if(rs6>5 && rs6<=25){pts+=8;reasons.push(`초기 반영 +${rs6}%`);}
+   else if(rs6<-30){pts-=8;reasons.push('⚠깊은 약세(가치함정 점검)');}
+   else if(rs6>60){pts-=12;reasons.push('⚠과열');}
  }
- if(gap!=null&&gap>10)pts-=8;
- return {pts,reasons};
+
+ // 6) 밸류에이션 — 저PER 가점 / 고PER 감점
+ if(m.pe!=null && m.pe>0){
+   if(m.pe<18){pts+=10;reasons.push(`저PER ${m.pe.toFixed(0)}`);}
+   else if(m.pe>45){pts-=12;reasons.push('⚠고PER(고평가)');}
+ }
+
+ // 7) 갭위험
+ if(gap!=null && gap>10){pts-=6;}
+
+ // 8) ★ 기저효과 패널티: 흑자전환/일회성이면 점수를 강하게 깎아 '가짜 1등' 방지
+ if(q==='base'){
+   pts=Math.round(pts*0.35);
+   reasons.unshift('⚠흑자전환/기저효과 추정 — 스프레드 과대표시(산수 착시)');
+ }
+ return {pts,reasons,grade:q};
 }
 function renderTop5(){
  const cands=[];
  D.subs.forEach(s=>s.members.forEach(m=>{
    const r=scoreCandidate(m);
-   if(r&&r.pts>0)cands.push({...m,sec:s.ko||s.desc,_pts:r.pts,_reasons:r.reasons});
+   if(r&&r.pts>0)cands.push({...m,sec:s.ko||s.desc,_pts:r.pts,_reasons:r.reasons,_grade:r.grade});
  }));
  cands.sort((a,b)=>b._pts-a._pts);
  const top=cands.slice(0,5);
@@ -572,25 +645,27 @@ function renderTop5(){
  if(!top.length){panel.innerHTML='';return;}
  panel.innerHTML=`
   <div class="top5-head">⭐ 오늘의 이상적 매수후보 TOP5<i class="help-i" onclick="tip('top5')">i</i></div>
-  <div class="top5-sub">펀더(헤게모니 양수) + 가속(분기TTM 상회) + 매복(시장 미반영)을 자동 스코어링한 결과입니다. 발견의 출발점이지 매수 신호가 아닙니다 — 누르면 트레이드 카드로.</div>
+  <div class="top5-sub">유기적 성장(<b>매출 동반</b>) + 지속성(분기 유지) + 합리적 밸류 + 시장 미반영을 보상하고, <b>흑자전환·기저효과·비용절감·고평가·피크아웃은 감점</b>한 결과입니다. 발견의 출발점이지 매수 신호가 아닙니다.</div>
   ${top.map((m,i)=>`
    <div class="top5-card" onclick="openTrade('${m.tk}')">
     <div class="t5-row1">
      <span class="t5-rank">${i+1}</span>
      <span><span class="t5-tk">${m.tk}</span> <span class="t5-nm">${m.nm}</span></span>
-     <span class="t5-sec">${m.sec}</span>
+     <span class="t5-sec">${QLABEL[m._grade]||''} · ${m.sec}</span>
     </div>
     <div class="t5-metrics">
      <span class="t5-m">연간 <b>${m.spread>0?'+':''}${m.spread}p</b></span>
+     <span class="t5-m">매출YoY <b>${m.rev==null?'—':(m.rev>0?'+':'')+m.rev+'%'}</b></span>
      <span class="t5-m">분기TTM <b>${m.q_spread==null?'—':(m.q_spread>0?'+':'')+m.q_spread+'p'}</b></span>
      <span class="t5-m">가속 <b>${m.accel==null?'—':(m.accel>0?'+':'')+m.accel+'p'}</b></span>
      <span class="t5-m ${m.rs6!=null&&m.rs6<0?'neg':''}">RS6M <b>${m.rs6==null?'—':(m.rs6>0?'+':'')+m.rs6+'%'}</b></span>
+     <span class="t5-m">PER <b>${m.pe!=null?m.pe.toFixed(1):'—'}</b></span>
      <span class="t5-m" style="margin-left:auto">스코어 <span class="t5-score">${m._pts}</span></span>
     </div>
     <div class="t5-reasons">${m._reasons.slice(0,3).join(' · ')}</div>
     <div class="t5-cta">⚡ 트레이드 카드 열기 →</div>
    </div>`).join('')}
-  <div class="top5-disc">⚠️ 이 순위는 형님의 해석 4단계(펀더→가속→매복)를 그대로 공식화한 것입니다. 알고리즘이 만든 출발 후보일 뿐, 각 종목의 1차 자료(8-K)와 산업 맥락을 직접 확인해야 합니다. 분기 데이터 없는 종목(은행 등)은 후보에서 빠질 수 있습니다.</div>`;
+  <div class="top5-disc">⚠️ 이 순위는 형님의 해석 4단계(펀더→가속→매복→밸류)를 그대로 공식화한 것입니다. 알고리즘이 만든 출발 후보일 뿐, 각 종목의 1차 자료(8-K)와 산업 맥락을 직접 확인해야 합니다. 분기 데이터 없는 종목(은행 등)은 후보에서 빠질 수 있습니다.</div>`;
 }
 
 
@@ -663,6 +738,7 @@ function renderWatch(){
      <span class="wl-m">연간 <b>${m.spread>0?'+':''}${m.spread}p</b></span>
      <span class="wl-m">분기 <b>${m.q_spread==null?'—':(m.q_spread>0?'+':'')+m.q_spread+'p'}</b></span>
      <span class="wl-m ${m.accel!=null&&m.accel<0?'r':'g'}">가속 <b>${m.accel==null?'—':(m.accel>0?'+':'')+m.accel+'p'}</b></span>
+     <span class="wl-m">PER <b>${m.pe!=null?m.pe.toFixed(1):'—'}</b></span>
      <span class="wl-m ${m.rs6!=null&&m.rs6<0?'':''}">RS6M <b>${m.rs6==null?'—':(m.rs6>0?'+':'')+m.rs6+'%'}</b></span>
     </div>
     ${earnBadge(m)}
@@ -695,6 +771,9 @@ function buildPrompt(tk){
 - 가속(분기−연간): ${f(m.accel)}p  ← 양수면 이익레버리지 가속 국면
 - 매출 YoY: ${f(m.rev)}% / 영업이익 YoY: ${f(m.op)}%
 
+[밸류에이션]
+- PER: ${f(m.pe)} / Forward PER: ${f(m.fpe)} / PEG: ${f(m.peg)}
+
 [수급·환경 — 보조지표]
 - 시장(SPY) 대비 3개월 상대강도: ${f(m.rs3)}%
 - 시장 대비 6개월 상대강도: ${f(m.rs6)}%
@@ -704,9 +783,10 @@ function buildPrompt(tk){
 [분석 요청]
 1. 이 종목의 헤게모니가 "진짜 강한지" 판정해라. 연간 대비 분기가 꺾였으면 피크아웃 가능성을, 가속 중이면 그 지속성을 논해라.
 2. 상대강도가 펀더와 일치하는지 봐라. 펀더는 좋은데 RS가 약하면 "시장 미반영 매복" 가능성, 둘 다 강하면 "진행 중"으로 해석.
-3. 이 세부산업 자체의 매크로 맥락(수요 사이클, 정책, 경쟁구도)을 최신 정보로 보강해라.
-4. 가장 중요한 리스크 3가지를 뽑아라 (확증편향 경계: 강세 논거만 말하지 마라).
-5. 결론: 지금이 "관찰 단계 / 분할매수 검토 / 보류" 중 어디인지, 그리고 무엇을 추가 확인해야 진입할지 체크리스트를 줘라.
+3. 밸류에이션(PER)이 헤게모니 강도에 비해 과도한지 판단해라. 강해도 비싸면 진입 신중.
+4. 이 세부산업 자체의 매크로 맥락(수요 사이클, 정책, 경쟁구도)을 최신 정보로 보강해라.
+5. 가장 중요한 리스크 3가지를 뽑아라 (확증편향 경계: 강세 논거만 말하지 마라).
+6. 결론: 지금이 "관찰 단계 / 분할매수 검토 / 보류" 중 어디인지, 그리고 무엇을 추가 확인해야 진입할지 체크리스트를 줘라.
 
 매수·매도를 단정하지 말고, 내가 직접 판단할 재료를 정리하는 데 집중해라.`;
 }
@@ -771,7 +851,7 @@ async function saveJournal(tk){
  if(!note){alert('기록할 내용을 입력하세요.');return;}
  const m=TKINDEX[tk];
  const entry={ts:new Date().toISOString(),tk,note,
-   snap:{spread:m.spread,q:m.q_spread,accel:m.accel,rs6:m.rs6}};
+   snap:{spread:m.spread,q:m.q_spread,accel:m.accel,rs6:m.rs6,pe:m.pe}};
  try{
    const key='journal:'+tk+':'+Date.now();
    await window.storage.set(key, JSON.stringify(entry), false);
