@@ -114,6 +114,40 @@ h1{font-size:clamp(24px,5.6vw,42px);font-weight:800;line-height:1.05;margin:8px 
 .snap-pick:hover{border-color:var(--gold)}
 .snap-pick b{color:var(--gold2)}
 
+/* ===== 선취매 레이더 ===== */
+.radar{margin:16px 0 4px}
+.radar-head{font-size:12px;letter-spacing:.14em;color:var(--grn);text-transform:uppercase;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+.radar-sub{font-size:11px;color:var(--mut);margin:0 0 12px;line-height:1.55}
+.radar-sub b{color:var(--gold2)}
+.radar-funnel{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
+.rf{background:var(--panel3);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:10px;color:var(--mut);font-variant-numeric:tabular-nums}
+.rf b{color:var(--txt);font-size:13px;font-weight:800;display:block;margin-top:1px}
+.rf.on{border-color:var(--grn)}.rf.on b{color:var(--grn)}
+.radar-sec{font-size:10px;letter-spacing:.14em;color:var(--mut);text-transform:uppercase;margin:14px 0 8px;display:flex;align-items:center;gap:9px}
+.radar-sec::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+.ri{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;background:linear-gradient(100deg,var(--panel3),transparent);border:1px solid var(--line);border-left:2px solid var(--grn);border-radius:10px;padding:9px 12px;margin-bottom:6px;cursor:pointer;transition:.15s}
+.ri:hover{border-color:var(--gold);background:var(--panel)}
+.ri-nm{font-size:13px;font-weight:700;color:var(--txt)}
+.ri-nm span{font-size:10px;color:var(--mut);font-weight:500;margin-left:6px}
+.ri-m{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+.ri-m span{font-size:10px;color:#c2cbdb;background:var(--bg);border:1px solid var(--line);padding:2px 7px;border-radius:5px;font-variant-numeric:tabular-nums}
+.ri-m b{color:var(--grn)}
+.ri-go{font-size:10px;color:var(--gold2);white-space:nowrap}
+.rc{background:linear-gradient(105deg,var(--panel2),var(--panel));border:1px solid #2a3552;border-left:3px solid var(--grn);border-radius:12px;padding:11px 13px;margin-bottom:7px;cursor:pointer;transition:.16s}
+.rc:hover{border-color:var(--gold);transform:translateY(-1px)}
+.rc.warn{border-left-color:var(--gold)}
+.rc-r1{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.rc-tk{font-size:14px;font-weight:800;color:var(--txt)}
+.rc-nm{font-size:10px;color:var(--mut)}
+.rc-sec{font-size:9px;color:var(--gold2);background:#1a2438;padding:2px 7px;border-radius:5px;margin-left:auto}
+.rc-m{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
+.rc-m span{font-size:10px;color:#c2cbdb;background:var(--bg);border:1px solid var(--line);padding:2px 7px;border-radius:5px;font-variant-numeric:tabular-nums}
+.rc-m b{color:var(--gold2)}.rc-m.g b{color:var(--grn)}
+.rc-l{font-size:10.5px;line-height:1.55;display:flex;gap:6px;margin-top:3px}
+.rc-l .k{flex-shrink:0;font-weight:700}
+.rc-l.why .k{color:var(--grn)}.rc-l.why{color:#9fc4b2}
+.rc-l.risk .k{color:#e0a0a0}.rc-l.risk{color:#c49a9a}
+.radar-empty{font-size:11.5px;color:var(--mut);background:var(--panel3);border:1px solid var(--line);border-radius:10px;padding:12px 14px;line-height:1.6}
 .tc-ai{background:linear-gradient(135deg,#1a2410,var(--panel3));border:1px solid #3a3420;border-radius:12px;padding:14px;margin:14px 0 0}
 .tc-ai h4{font-size:12px;color:var(--gold2);margin:0 0 4px;letter-spacing:.04em}
 .tc-ai-copy{width:100%;background:var(--gold);color:#0a0e17;border:none;font-family:inherit;font-weight:800;font-size:13px;padding:11px;border-radius:10px;cursor:pointer;margin-top:4px}
@@ -229,6 +263,7 @@ h1{font-size:clamp(24px,5.6vw,42px);font-weight:800;line-height:1.05;margin:8px 
 <div class="def"><b>연간 YoY 옆에 분기 TTM(최근 4분기 연환산)을 나란히.</b> 둘의 차이가 <b>가속/둔화 신호</b>입니다 — 분기가 연간보다 높으면 헤게모니가 막 붙기 시작한 것(형님의 "남보다 먼저"). 3층 구조: 1층 펀더(연간+분기) · 2층 보조(상대강도·갭·변동성) · <b>밸류에이션(PER) 체크</b>. 차트로 고르지 않되, 차트 없이 사지 않는다. <b>종목의 트레이드 카드를 열면 DART 전자공시·네이버 금융·FnGuide로 바로가기</b> — 가이던스·톤은 점수화하지 않고 1차 자료를 직접 읽습니다.</div>
 <div class="mkt" id="mkt"></div>
 <div id="updTag" style="font-size:10px;color:var(--mut);margin:-8px 0 12px;letter-spacing:.05em;text-align:right">데이터 로딩 중…</div>
+<div class="radar" id="radarPanel"></div>
 <div class="top5" id="top5Panel"></div>
 <div class="tabs">
 <button class="on" data-v="tree">🌳 탑다운 트리<i class="help-i" onclick="event.stopPropagation();tip(&quot;tree&quot;)">i</i></button>
@@ -358,7 +393,7 @@ async function loadData(){
     const mkt=document.getElementById('mkt'); mkt.parentNode.insertBefore(b, mkt);
   }
   // 시장 배지 + 첫 화면
-  initMarket(); renderTop5(); renderTree(); loadWatch();
+  initMarket(); renderRadar(); renderTop5(); renderTree(); loadWatch();
  }catch(e){
   document.getElementById('secList').innerHTML='<div style="padding:20px;color:var(--red);font-size:13px">⚠️ 데이터 로드 실패: '+e.message+'<br><span style="color:var(--mut);font-size:11px">data/tree_kr.json이 있는지 확인하세요. 로컬에서 file://로 열면 CORS로 막히니 로컬 서버(python -m http.server)나 배포본으로 여세요.</span></div>';
  }
@@ -495,6 +530,7 @@ document.getElementById('q').style.display='none';
 // ===== 도움말 시스템 =====
 const TIPS={
  watch:{k:"기능 설명",t:"📌 내 워치리스트",b:"<p>보유·관심 종목을 담아 <b>매수 후 관리</b>를 하는 자리입니다.</p><p><b>신호등:</b> 🟢가속(보유 유지) · 🟡유지 · 🔴피크아웃(분기TTM이 연간보다 둔화 = 이익 모멘텀 꺾임, 익절·감량 검토).</p><p>브라우저에 저장돼 다시 열어도 유지됩니다(localStorage).</p><p><b>참고:</b> 야후가 한국 종목의 실적 발표 예정일을 잘 주지 않아 이 빌드에는 실적 캘린더(D-day)가 없습니다. 확정일은 DART·네이버 금융에서 확인하세요.</p>"},
+ radar:{k:"기능 설명",t:"🎯 선취매 레이더",b:"<p>'헤게모니 가속' 탭은 <b>가속 순으로만</b> 세웁니다. 그래서 그 안에는 두 종류의 가짜가 섞입니다 — ① 전년 이익이 바닥이라 비율만 폭발한 <b>흑자전환 착시</b>, ② 가속은 양수지만 분기 스프레드가 여전히 음수인 <b>'덜 나빠진 것'</b>.</p><p>레이더는 이 둘을 걷어내고 <b>지금 실제로 이익 레버리지가 있으면서 가속 중인 것</b>만 남긴 뒤, 거기서 다시 <b>주가가 아직 안 움직인 것</b>을 고릅니다. 상단 깔때기 숫자가 몇 개에서 몇 개로 줄었는지 보여줍니다.</p><p><b>가장 중요한 구분:</b> 6개월 약세가 같아도 3개월이 보합이면 '바닥 다지는 중', 계속 빠지면 '떨어지는 칼날'입니다. 각 카드의 <b>조심</b> 줄에 그게 적힙니다.</p><p><b>한계:</b> RS가 깊게 빠진 이유가 '아직 안 깨워서'인지 '이유가 있어서'인지는 이 도구가 모릅니다. 반드시 DART로 확인하세요.</p>"},
  top5:{k:"기능 설명",t:"⭐ 이상적 매수후보 TOP5",b:"<p>형님의 해석 4단계를 그대로 점수화한 결과입니다.</p><p><b>스코어 구성:</b> 연간 헤게모니 강도 + 매출 동반 성장(품질) + 분기TTM 지속성 + 가속 강도 + 시장 미반영. 피크아웃·과열·기저효과·고PER은 감점.</p><p><b>가장 높은 점수 = 펀더 강하고, 최근 더 강해지는데, 시장은 아직 안 깨운 종목.</b> 형님이 말한 '남보다 먼저' 자리입니다. 단, 출발 후보일 뿐 1차 자료 확인 필수.</p>"},
  tree:{k:"탭 설명",t:"🌳 탑다운 트리",b:"<p>형님의 투자 순서 그대로 — <b>대섹터 → 세부산업 → 종목</b>으로 위에서 아래로 좁혀 들어갑니다.</p><p>대섹터 막대는 그 섹터에 속한 모든 종목의 헤게모니 스프레드 <b>중앙값</b>입니다. 막대가 금색(우)이면 이익 레버리지가 붙는 섹터, 회색(좌)이면 마진 압박 섹터.</p><p>대섹터를 누르면 세부산업이, 세부산업을 누르면 종목이 펼쳐집니다.</p>"},
  flat:{k:"탭 설명",t:"📊 세부산업 랭킹",b:"<p>대섹터 구분 없이 <b>세부산업 전체를 헤게모니 순으로</b> 한 줄로 세웁니다.</p><p>검색창에 '반도체', '방산', '005930' 등을 치면 즉시 필터됩니다. \"지금 가장 뜨거운 세부산업이 어디든 한눈에\" 보고 싶을 때.</p>"},
@@ -733,6 +769,130 @@ function scoreCandidate(m){
  }
  return {pts,reasons,grade:q};
 }
+// ===== 선취매 레이더 =====
+// 가속 탭은 가속 순으로만 세우기 때문에, 그 안에 섞인 기저효과·허수 가속을
+// 사람이 일일이 걸러야 한다. 그 작업을 화면이 대신 한다.
+function medOf(arr){
+ const v=arr.filter(x=>x!=null).sort((a,b)=>a-b);
+ if(!v.length)return null;
+ const h=Math.floor(v.length/2);
+ return v.length%2 ? v[h] : Math.round((v[h-1]+v[h])/2*10)/10;
+}
+// '진짜 가속' = 가속 중 + 지금 실제로 레버리지가 있음 + 흑자전환 착시 아님.
+// (가속만 양수이고 분기 스프레드는 여전히 음수인 종목은 '덜 나빠진 것'이지 가속이 아니다)
+function realAccel(m){
+ return m.accel!=null && Math.abs(m.accel)<=150 && m.q_spread!=null
+     && m.accel>0 && m.q_spread>0 && m.spread>0 && spreadQuality(m)!=='base';
+}
+// 하락이 멈췄는가 — 선취매 타이밍을 가르는 핵심. 6개월 약세가 같아도
+// 3개월이 보합이면 바닥 다지는 중, 계속 빠지면 떨어지는 칼날이다.
+function falling(m){
+ if(m.rs3==null) return {c:'m',t:'3개월 추세 확인 불가'};
+ if(m.rs3>=-5)   return {c:'g',t:'하락 멈춤'};
+ if(m.rs3<=-8)   return {c:'n',t:'아직 하락 중'};
+ return {c:'m',t:'횡보'};
+}
+function radarWhy(m){
+ const w=[];
+ if(m.rev!=null&&m.rev>=5) w.push(`매출 <b>+${m.rev}%</b> 동반성장`);
+ w.push(`분기 <b>+${m.q_spread}p</b>(가속 +${m.accel}p)`);
+ if(m.from_high!=null&&m.from_high<=-15) w.push(`고점比 ${m.from_high}%`);
+ if(falling(m).c==='g') w.push('<b>하락 멈춤</b>');
+ const val=(m.pe!=null&&m.pe>0)?m.pe:null;
+ if(val!=null&&val<15) w.push(`PER ${val.toFixed(0)}`);
+ return w.join(' · ');
+}
+function radarRisk(m){
+ const r=[];
+ const val=(m.pe!=null&&m.pe>0)?m.pe:((m.fpe!=null&&m.fpe>0)?m.fpe:null);
+ if(m.rs6!=null&&m.rs6<-35) r.push('6개월 −35% 이하 깊은 약세 — <b>매복인지 가치함정인지</b> DART 확인 필수');
+ if(falling(m).c==='n') r.push(`3개월 ${m.rs3}% — <b>아직 떨어지는 중</b>`);
+ if(val!=null&&val>40) r.push(`PER ${val.toFixed(0)} — 많이 눌렸는데도 비싸다`);
+ if(m.rev!=null&&m.rev<3) r.push(`매출 ${m.rev>0?'+':''}${m.rev}% — 성장 미미, 헤게모니라기엔 약함`);
+ if(m.gaplvl==='H') r.push(`갭위험 ${m.gap}% — 실적 전후 변동 큼`);
+ if(m.q_approx) r.push('분기TTM은 근사치');
+ return r.length ? r.join(' · ') : '뚜렷한 결격 없음 — 그래도 1차 자료는 확인';
+}
+function gotoIndustry(ko){
+ const btn=document.querySelector('.tabs button[data-v="flat"]');
+ if(btn)btn.click();
+ const box=document.getElementById('q');
+ if(box){box.value=ko;q=ko;renderFlat();box.scrollIntoView({behavior:'smooth',block:'center'});}
+}
+function renderRadar(){
+ const panel=document.getElementById('radarPanel');
+ const all=[]; D.subs.forEach(s=>s.members.forEach(m=>all.push({...m,sec:s.ko||s.desc})));
+ const pool=all.filter(m=>m.accel!=null&&Math.abs(m.accel)<=150&&m.q_spread!=null); // 가속 탭 모집단
+ const real=pool.filter(realAccel);
+ const picks=real.filter(m=>priceIn(m).c==='g')      // 아직 저반영
+      .sort((a,b)=>{const A=scoreCandidate(a),B=scoreCandidate(b);
+                    return (B?B.pts:-999)-(A?A.pts:-999);});
+ const partial=real.filter(m=>priceIn(m).c==='m').sort((a,b)=>b.accel-a.accel).slice(0,3);
+
+ // 산업 단위: '가속 중인데 아직 안 깨워진 산업'.
+ // 중앙값을 전 종목으로 내면 흑자전환 착시가 그대로 들어와(항공 +95p 같은 값)
+ // 종목 쪽에서 걷어낸 노이즈가 산업 쪽으로 되살아난다. 그래서 기저효과 종목을
+ // 뺀 '깨끗한' 구성원만으로 계산하고, 실제 후보를 최소 1개는 품은 산업만 남긴다.
+ const inds=D.subs.map(s=>{
+     const clean=s.members.filter(m=>m.q_spread!=null && spreadQuality(m)!=='base'
+                                  && (m.accel==null||Math.abs(m.accel)<=150));
+     return {s, clean, hits:s.members.filter(realAccel),
+       acc:medOf(clean.map(m=>m.accel)),
+       qsp:medOf(clean.map(m=>m.q_spread)),
+       rs :medOf(clean.map(m=>m.rs6))};
+   })
+   // Unknown 은 산업이 아니라 야후 분류가 빠진 종목들을 담은 자루다.
+   // 여길 '유망 산업'으로 띄우면 없는 신호를 만들어내는 셈이라 뺀다.
+   .filter(x=>x.s.desc!=='Unknown' && x.s.gics!=='Unknown'
+            && x.clean.length>=2 && x.hits.length>=1
+            && x.acc!=null&&x.acc>0 && x.qsp!=null&&x.qsp>0 && x.rs!=null&&x.rs<10)
+   .sort((a,b)=>b.acc-a.acc).slice(0,4);
+
+ const card=(m,warn)=>`<div class="rc ${warn?'warn':''}" onclick="openTrade('${m.tk}')">
+   <div class="rc-r1"><span class="rc-tk">${m.tk}</span><span class="rc-nm">${m.nm}</span>
+    <span class="rc-sec">${m.sec}</span></div>
+   <div class="rc-m">
+    <span>연간 <b>${m.spread>0?'+':''}${m.spread}p</b></span>
+    <span class="g">분기 <b>${m.q_spread>0?'+':''}${m.q_spread}p</b></span>
+    <span class="g">가속 <b>+${m.accel}p</b></span>
+    <span>매출 <b>${m.rev==null?'—':(m.rev>0?'+':'')+m.rev+'%'}</b></span>
+    <span>RS6M <b>${m.rs6==null?'—':(m.rs6>0?'+':'')+m.rs6+'%'}</b></span>
+    <span>고점比 <b>${m.from_high==null?'—':m.from_high+'%'}</b></span>
+    <span>PER <b>${peShow(m)}</b></span>
+   </div>
+   <div class="rc-l why"><span class="k">근거</span><span>${radarWhy(m)}</span></div>
+   <div class="rc-l risk"><span class="k">조심</span><span>${radarRisk(m)}</span></div>
+  </div>`;
+
+ panel.innerHTML=`
+  <div class="radar-head">🎯 선취매 레이더<i class="help-i" onclick="tip('radar')">i</i></div>
+  <div class="radar-sub">"이익은 막 붙는데 <b>주가는 아직 안 움직인</b>" 것만 남깁니다. 가속 탭은 가속 순으로만 세우기 때문에 흑자전환 착시와 허수 가속이 섞여 있어, 그걸 걷어낸 결과입니다.</div>
+  <div class="radar-funnel">
+   <div class="rf">가속 탭 전체<b>${pool.length}</b></div>
+   <div class="rf">→ 진짜 가속<b>${real.length}</b></div>
+   <div class="rf on">→ 아직 저반영<b>${picks.length}</b></div>
+  </div>
+
+  <div class="radar-sec">산업 — 가속 중인데 시장이 안 깨운 곳</div>
+  ${inds.length ? inds.map(x=>`
+   <div class="ri" onclick="gotoIndustry('${(x.s.ko||x.s.desc).replace(/'/g,"\\'")}')">
+    <div><div class="ri-nm">${x.s.ko||x.s.desc}<span>${x.s.desc} · ${x.s.n}개${x.hits.length?` · 후보 ${x.hits.length}`:''}</span></div>
+     <div class="ri-m"><span>가속 중앙 <b>+${x.acc}p</b></span><span>분기 중앙 <b>+${x.qsp}p</b></span>
+      <span>RS6M 중앙 ${x.rs>0?'+':''}${x.rs}%</span></div></div>
+    <div class="ri-go">펼쳐보기 →</div>
+   </div>`).join('')
+   : `<div class="radar-empty">지금은 <b>산업 단위로</b> 가속하면서 저평가된 곳이 없습니다. 산업 전체가 움직이는 국면이 아니라 종목별로 갈리는 장이라는 뜻이니, 아래 종목 단위로 보세요.</div>`}
+
+  <div class="radar-sec">종목 — 선취매 권역</div>
+  ${picks.length ? picks.map(m=>card(m,false)).join('')
+   : `<div class="radar-empty">지금은 조건을 다 만족하는 종목이 없습니다. 아래 '부분 반영' 쪽을 보시거나, 다음 주 갱신을 기다리세요.</div>`}
+
+  ${partial.length ? `<div class="radar-sec">종목 — 이미 절반 반영(추격 주의)</div>
+   ${partial.map(m=>card(m,true)).join('')}` : ''}
+
+  <div class="top5-disc">이건 조건으로 걸러낸 <b>출발 후보</b>지 매수 신호가 아닙니다. 특히 RS6M이 깊게 빠진 종목은 "시장이 아직 안 깨운 것"과 "시장이 이유 있게 던지는 것"을 이 도구가 구분하지 못합니다 — 종목을 눌러 트레이드 카드에서 DART로 확인하세요.</div>`;
+}
+
 function renderTop5(){
  const cands=[];
  D.subs.forEach(s=>s.members.forEach(m=>{
