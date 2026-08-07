@@ -1,0 +1,11 @@
+{
+  "name": "hegemony-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "python3 make_fixture.py && node smoke_kr.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^30.0.0"
+  }
+}
