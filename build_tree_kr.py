@@ -385,7 +385,7 @@ def fetch_stock(tk, log=print):
 # ── 가격 ─────────────────────────────────────────────────────────────
 def fetch_prices(tickers, log=print):
     """RS3/RS6(코스피 대비), 갭위험, 52주 고점 대비를 한 번에."""
-    import pandas as pd  # noqa: F401  (yfinance 의존성으로 항상 존재)
+    import pandas as pd   # yfinance 의존성이라 항상 존재
     import yfinance as yf
 
     symbols = list(tickers) + [BENCH]
@@ -407,14 +407,37 @@ def fetch_prices(tickers, log=print):
             log(f"  시세 실패 {i}~{i+len(part)}: {exc}")
             continue
         for sym in part:
+            # 마지막 청크가 1종목이면 yfinance 가 티커 레벨 없이 돌려주기도 한다
             try:
-                sub = df[sym] if len(part) > 1 else df
+                sub = df[sym]
+            except Exception:  # noqa: BLE001
+                sub = df if len(part) == 1 else None
+            try:
                 if sub is not None and not sub.dropna(how="all").empty:
                     frames[sym] = sub
             except Exception:  # noqa: BLE001, S110
                 pass
         log(f"  시세 {min(i+chunk, len(symbols))}/{len(symbols)}")
         time.sleep(0.8)
+
+    # 병렬 다운로드는 yfinance 의 sqlite 캐시 경합으로 일부가 흘린다
+    # ("database is locked"). 빠진 것만 단일 스레드로 한 번 더 줍는다.
+    missing = [s for s in symbols if s not in frames]
+    if missing:
+        log(f"  누락 {len(missing)}종목 재시도")
+        for sym in missing:
+            try:
+                d = yf.download(sym, period="1y", interval="1d",
+                                auto_adjust=False, progress=False, threads=False)
+                if d is not None and not d.dropna(how="all").empty:
+                    if isinstance(d.columns, pd.MultiIndex):
+                        d.columns = d.columns.droplevel(-1)
+                    frames[sym] = d
+            except Exception:  # noqa: BLE001, S110
+                pass
+            time.sleep(0.4)
+        still = [s for s in symbols if s not in frames]
+        log(f"  재시도 후 누락 {len(still)}종목")
 
     def ret(sym, days):
         d = frames.get(sym)
