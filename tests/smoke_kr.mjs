@@ -91,6 +91,27 @@ for (const tk of allTk) window.openTrade(tk);   // 결측 섞인 전 종목이 �
 t(doc.getElementById('tradeModal').classList.contains('show'),
   `트레이드 카드 ${allTk.length}종목 전부 예외 없이 열림`);
 
+// 5b) PER 표시: 후행 없고 선행만 있으면 F 표기로 대체되는지
+{
+  const withF = D.subs.flatMap(s => s.members).find(m => m.pe == null && m.fpe != null);
+  window.openTrade(withF.tk);
+  const badge = doc.getElementById('tcBody').innerHTML;
+  t(badge.includes(withF.fpe.toFixed(1)) && badge.includes('>F<'),
+    `후행 PER 결측 시 선행 PER + F 표기 (${withF.tk})`);
+  const noPe = D.subs.flatMap(s => s.members).find(m => m.pe == null && m.fpe == null);
+  window.openTrade(noPe.tk);
+  t(doc.getElementById('tcBody').innerHTML.includes('PER / Fwd'), '둘 다 없으면 조용히 — 표시');
+}
+
+// 5c) 분기 근사 모드는 '데이터 한계'가 아니라 약한 주의로만 뜨는지
+{
+  const ap = D.subs.flatMap(s => s.members).find(m => m.q_approx);
+  window.openTrade(ap.tk);
+  const body = doc.getElementById('tcBody').textContent;
+  t(body.includes('근사치'), `q_approx 종목에 근사 안내 노출 (${ap.tk})`);
+  t(!body.includes('숫자 신뢰도 낮음'), 'q_approx 를 데이터 한계로 격상하지 않음');
+}
+
 // 6) 포지션 계산기
 doc.getElementById('tcEntry').value = '71000';
 doc.getElementById('tcStop').value = '65000';

@@ -169,6 +169,15 @@ def slug(text: str) -> str:
     return s or "misc"
 
 
+# 전년 값이 이보다 작으면 YoY 비율이 의미를 잃는다. 원화 기준이라 미국판보다
+# 자릿수가 크다 — 10억원. (시총 3000억 이상만 보므로 이 밑은 사실상 잡음)
+MIN_BASE_KRW = 1e9
+# 비율 상한. 미국판 build_data.py 와 같은 기준이며, 이걸 넘으면 헤게모니가
+# 아니라 흑자전환·기저효과다. 실제로 이 상한이 없을 때 +4472p 가 나왔다.
+MAX_REV_YOY = 300.0
+MAX_OP_YOY = 500.0
+
+
 def pct(new, old):
     """YoY %. 분모가 0 근처거나 부호가 뒤집히면 비율이 무의미하므로 None."""
     if new is None or old is None:
@@ -180,9 +189,18 @@ def pct(new, old):
         return None
     if not math.isfinite(new) or not math.isfinite(old):
         return None
-    if old <= 0 or abs(old) < 1e8:  # 1억원 미만 기저는 버린다
+    if old <= 0 or abs(old) < MIN_BASE_KRW:
         return None
     return (new - old) / abs(old) * 100.0
+
+
+def sane(rev, op):
+    """기저효과 폭발을 걸러낸다. 상한을 넘으면 (None, None)."""
+    if rev is None or op is None:
+        return None, None
+    if abs(rev) > MAX_REV_YOY or abs(op) > MAX_OP_YOY:
+        return None, None
+    return rev, op
 
 
 def med(values):
@@ -285,42 +303,44 @@ def series_values(row):
 
 
 def annual_yoy(inc):
-    """연간 매출/영업이익 YoY."""
+    """연간 매출/영업이익 YoY (기저효과 상한 적용)."""
     rev = series_values(pick_row(inc, REV_ROWS))
     op = series_values(pick_row(inc, OP_ROWS))
     if len(rev) < 2 or len(op) < 2:
         return None, None
-    return pct(rev[0][1], rev[1][1]), pct(op[0][1], op[1][1])
+    return sane(pct(rev[0][1], rev[1][1]), pct(op[0][1], op[1][1]))
 
 
 def quarterly_ttm(qinc, inc):
-    """분기 TTM YoY.
+    """분기 TTM YoY. (q_rev, q_op, q_note, q_approx) 를 돌려준다.
 
     8분기가 있으면 진짜 TTM vs 전년 동기 TTM.
-    4~7분기뿐이면 TTM 을 직전 회계연도 연간과 비교하고 q_note 로 표시한다.
+    4~7분기뿐이면 TTM 을 직전 회계연도 연간과 비교한 근사치이고 q_approx=True.
+
+    한국 종목은 야후가 8분기를 거의 주지 않아 근사 모드가 오히려 정상이다.
+    그래서 이걸 q_note(이상 징후) 로 쓰지 않는다 — 그렇게 했더니 232종목 중
+    230종목이 '비정상'으로 찍혀 화면의 기저효과 패널티가 전부에게 걸렸다.
+    q_note 는 진짜 이상일 때만 채우고, 근사 여부는 q_approx 로 따로 알린다.
     """
     qrev = series_values(pick_row(qinc, REV_ROWS))
     qop = series_values(pick_row(qinc, OP_ROWS))
     if len(qrev) < 4 or len(qop) < 4:
-        return None, None, ""
+        return None, None, "", False
 
     ttm_rev = sum(v for _, v in qrev[:4])
     ttm_op = sum(v for _, v in qop[:4])
 
     if len(qrev) >= 8 and len(qop) >= 8:
-        prev_rev = sum(v for _, v in qrev[4:8])
-        prev_op = sum(v for _, v in qop[4:8])
-        return pct(ttm_rev, prev_rev), pct(ttm_op, prev_op), "정상"
+        r, o = sane(pct(ttm_rev, sum(v for _, v in qrev[4:8])),
+                    pct(ttm_op, sum(v for _, v in qop[4:8])))
+        return r, o, "정상", False
 
     arev = series_values(pick_row(inc, REV_ROWS))
     aop = series_values(pick_row(inc, OP_ROWS))
     if not arev or not aop:
-        return None, None, ""
-    return (
-        pct(ttm_rev, arev[0][1]),
-        pct(ttm_op, aop[0][1]),
-        "TTM vs 직전연간(8분기 미확보)",
-    )
+        return None, None, "", False
+    r, o = sane(pct(ttm_rev, arev[0][1]), pct(ttm_op, aop[0][1]))
+    return r, o, "정상", True
 
 
 def num(v):
@@ -351,13 +371,25 @@ def fetch_stock(tk, log=print):
     rev, op = annual_yoy(inc)
     if rev is None or op is None:
         return None
-    q_rev, q_op, q_note = quarterly_ttm(qinc, inc)
+    q_rev, q_op, q_note, q_approx = quarterly_ttm(qinc, inc)
 
     info = {}
     try:
         info = t.get_info() or {}
     except Exception as exc:  # noqa: BLE001
         log(f"  {tk} info 실패(분류 없이 진행): {exc}")
+
+    # 한국 종목은 trailingPE 가 거의 안 온다(232종목 중 0건). 주가/주당순이익으로
+    # 직접 계산해 채운다.
+    pe = num(info.get("trailingPE"))
+    if pe is None:
+        price = info.get("currentPrice") or info.get("regularMarketPrice")
+        eps = info.get("trailingEps")
+        try:
+            if price and eps and float(eps) > 0:
+                pe = num(float(price) / float(eps))
+        except (TypeError, ValueError, ZeroDivisionError):
+            pe = None
 
     spread = op - rev
     q_spread = (q_op - q_rev) if (q_op is not None and q_rev is not None) else None
@@ -371,11 +403,12 @@ def fetch_stock(tk, log=print):
         "q_spread": None if q_spread is None else round(q_spread, 1),
         "accel": None if accel is None else round(accel, 1),
         "q_note": q_note,
+        "q_approx": q_approx,
         "_info": {
             "sector": info.get("sector"),
             "industry": info.get("industry"),
             "nm": info.get("longName") or info.get("shortName"),
-            "pe": num(info.get("trailingPE")),
+            "pe": pe,
             "fpe": num(info.get("forwardPE")),
             "peg": num(info.get("trailingPegRatio") or info.get("pegRatio")),
         },
@@ -439,13 +472,30 @@ def fetch_prices(tickers, log=print):
         still = [s for s in symbols if s not in frames]
         log(f"  재시도 후 누락 {len(still)}종목")
 
-    def ret(sym, days):
+    def closes(sym):
+        """종가 시계열에서 명백한 오프린트를 걷어낸다.
+
+        야후의 한국 지수·종목 시세에는 가끔 자릿수가 튄 값이 섞인다. 그대로
+        쓰면 코스피 30일 변동성이 92%로 나오는 식으로 지표가 통째로 망가진다.
+        5일 롤링 중앙값에서 35% 넘게 벗어난 점은 데이터 오류로 보고 버린다.
+        """
         d = frames.get(sym)
         if d is None:
             return None
         col = "Adj Close" if "Adj Close" in d.columns else "Close"
-        s = d[col].dropna()
-        if len(s) < days + 5:
+        try:
+            s = d[col].dropna()
+            s = s[s > 0]
+            if len(s) < 30:
+                return None
+            base = s.rolling(5, center=True, min_periods=1).median()
+            return s[(s / base - 1).abs() <= 0.35]
+        except Exception:  # noqa: BLE001
+            return None
+
+    def ret(sym, days):
+        s = closes(sym)
+        if s is None or len(s) < days + 5:
             return None
         try:
             return (float(s.iloc[-1]) / float(s.iloc[-days]) - 1.0) * 100.0
@@ -477,9 +527,8 @@ def fetch_prices(tickers, log=print):
 
         from_high = None
         try:
-            col = "Adj Close" if "Adj Close" in d.columns else "Close"
-            s = d[col].dropna()
-            if len(s):
+            s = closes(sym)
+            if s is not None and len(s):
                 hi = float(s.max())
                 if hi > 0:
                     from_high = round((float(s.iloc[-1]) / hi - 1.0) * 100, 1)
@@ -493,14 +542,16 @@ def fetch_prices(tickers, log=print):
     market = {"spy3": round(bench3, 1) if bench3 is not None else None,
               "spy6": round(bench6, 1) if bench6 is not None else None}
     vol = None
-    b = frames.get(BENCH)
-    if b is not None:
+    s = closes(BENCH)
+    if s is not None:
         try:
-            col = "Adj Close" if "Adj Close" in b.columns else "Close"
-            s = b[col].dropna()
-            rets = (s / s.shift(1) - 1).dropna().tail(30)
-            if len(rets) > 10:
+            rets = (s / s.shift(1) - 1).dropna()
+            rets = rets[rets.abs() <= 0.15].tail(30)  # 지수 일간 ±15% 초과는 오프린트
+            if len(rets) >= 15:
                 vol = round(float(rets.std()) * math.sqrt(252) * 100, 1)
+                if not (0 < vol < 80):   # 코스피에서 나올 수 없는 값이면 버린다
+                    log(f"  변동성 이상치 {vol} — 표시하지 않음")
+                    vol = None
         except Exception:  # noqa: BLE001, S110
             pass
     market["vix"] = vol
@@ -633,7 +684,15 @@ def selftest():
     check(pct(120e8, 100e8) == 20, "pct 기본")
     check(pct(100e8, 0) is None, "pct 0 기저 차단")
     check(pct(100e8, -50e8) is None, "pct 음수 기저 차단")
-    check(pct(120, 100) is None, "pct 1억원 미만 기저 차단")
+    check(pct(120, 100) is None, "pct 10억원 미만 기저 차단")
+
+    # 실빌드에서 +4472p 스프레드를 만들어냈던 케이스
+    check(sane(10.0, 40.0) == (10.0, 40.0), "sane 정상 통과")
+    check(sane(10.0, 4500.0) == (None, None), "sane 영익 폭발 차단(+4500%)")
+    check(sane(400.0, 10.0) == (None, None), "sane 매출 폭발 차단(+400%)")
+    check(sane(-10.0, -600.0) == (None, None), "sane 음수 폭발도 차단")
+    check(num(-3) is None and num(0) is None and num("x") is None, "num 비정상 차단")
+    check(num(12.345) == 12.35, "num 반올림")
     check(slug("Semiconductor Equipment & Materials") ==
           "semiconductor_equipment_materials", "slug")
 
@@ -672,22 +731,32 @@ def selftest():
             + [(f"Q{i}", 60e8) for i in range(4, 0, -1)]
         ),
     })
-    q_rev, q_op, note = quarterly_ttm(q, annual)
-    check(note == "정상", f"8분기 TTM 인식 (note={note})")
+    q_rev, q_op, note, approx = quarterly_ttm(q, annual)
+    check(note == "정상" and approx is False, f"8분기 = 정식 TTM (approx={approx})")
     check(q_rev == 0 and q_op == 50, f"TTM YoY (rev={q_rev}, op={q_op})")
+
+    # 한국 종목의 실제 다수 케이스: 분기가 4~7개뿐 → 직전 연간과 비교
+    q5 = FakeDF({
+        "Total Revenue": {f"Q{i}": 260e8 for i in range(5, 0, -1)},
+        "Operating Income": {f"Q{i}": 75e8 for i in range(5, 0, -1)},
+    })
+    _, _, note5, approx5 = quarterly_ttm(q5, annual)
+    check(approx5 is True, "4~7분기 = 근사 모드로 표시")
+    check(note5 == "정상",
+          "근사 모드를 q_note 이상으로 찍지 않음(기저효과 패널티 오작동 방지)")
 
     members = [
         {"tk": "005930.KS", "nm": "삼성전자", "sector": "Technology",
          "industry": "Semiconductors", "rev": 10.0, "op": 40.0, "spread": 30.0,
          "q_rev": 12.0, "q_op": 55.0, "q_spread": 43.0, "accel": 13.0,
-         "q_note": "정상", "pe": 12.3, "fpe": None, "peg": None,
+         "q_note": "정상", "q_approx": False, "pe": 12.3, "fpe": None, "peg": None,
          "rs3": 4.0, "rs6": -8.0, "gap": 5.0, "gaplvl": "M", "from_high": -14.0,
          "foreign_net": None, "inst_net": None, "foreign_pct": None,
          "supply": None, "d_until": None, "ir": None},
         {"tk": "000660.KS", "nm": "SK하이닉스", "sector": "Technology",
          "industry": "Semiconductors", "rev": 20.0, "op": 15.0, "spread": -5.0,
          "q_rev": None, "q_op": None, "q_spread": None, "accel": None,
-         "q_note": "", "pe": None, "fpe": None, "peg": None,
+         "q_note": "", "q_approx": True, "pe": None, "fpe": None, "peg": None,
          "rs3": None, "rs6": None, "gap": None, "gaplvl": None,
          "from_high": None, "foreign_net": None, "inst_net": None,
          "foreign_pct": None, "supply": None, "d_until": None, "ir": None},
@@ -706,7 +775,7 @@ def selftest():
 
     # index.html 이 각 member 에서 실제로 읽는 필드 전부
     need = {"tk", "nm", "spread", "rev", "op", "q_rev", "q_op", "q_spread",
-            "accel", "rs3", "rs6", "gap", "gaplvl", "ir", "q_note",
+            "accel", "rs3", "rs6", "gap", "gaplvl", "ir", "q_note", "q_approx",
             "pe", "fpe", "peg", "from_high", "foreign_net", "inst_net",
             "foreign_pct", "supply", "d_until"}
     missing = need - set(data["subs"][0]["members"][0])

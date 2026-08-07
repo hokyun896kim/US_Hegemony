@@ -44,8 +44,12 @@ for i, (sector, industry) in enumerate(GROUPS):
             "q_rev": q_rev, "q_op": q_op, "q_spread": q_spread,
             "accel": round(q_spread - spread, 1) if q_spread is not None else None,
             "q_note": "정상" if has_q else "",
-            "pe": round(random.uniform(4, 60), 2) if j != 1 else None,   # PER 결측
-            "fpe": None, "peg": None,
+            # 한국 종목 대다수가 근사 모드다 — 화면이 이걸 기저효과로 오인하면 안 된다
+            "q_approx": has_q and (i % 2 == 0),
+            # 후행 PER 결측 + 선행 PER 만 있는 조합(실제로 가장 흔한 형태)까지 섞는다
+            "pe": round(random.uniform(4, 60), 2) if j == 0 else None,
+            "fpe": round(random.uniform(5, 40), 2) if j == 1 else None,
+            "peg": None,
             "rs3": round(random.uniform(-30, 45), 1) if j != 2 else None,  # RS 결측
             "rs6": round(random.uniform(-45, 70), 1) if j != 2 else None,
             "gap": round(random.uniform(1, 18), 1),
