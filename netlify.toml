@@ -1,0 +1,17 @@
+# 정적 사이트 — 빌드 단계 없이 레포 루트를 그대로 서빙한다.
+# 데이터(data/tree_kr.json)는 GitHub Actions 가 커밋하고, 그 push 가 배포를 부른다.
+[build]
+  publish = "."
+  command = ""
+
+# 한국판이 루트로 올라오기 전 주소. 기존 링크·북마크가 깨지지 않게 넘겨준다.
+[[redirects]]
+  from = "/kr.html"
+  to = "/"
+  status = 301
+
+# 데이터는 매주 바뀌므로 캐시에 눌러붙으면 안 된다.
+[[headers]]
+  for = "/data/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
