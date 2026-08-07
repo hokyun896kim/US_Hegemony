@@ -226,23 +226,25 @@ def fetch_universe(limit: int, min_cap: float, log=print):
 
 
 def normalize_quote(qt: dict):
-    """스크리너 응답 한 줄 → 우리가 쓰는 필드만."""
+    """스크리너 응답 한 줄 → 우리가 쓰는 필드만.
+
+    스크리너는 한국 종목에 sector/industry 를 실어주지 않는 경우가 많다(전부
+    Unknown 으로 뭉개져 트리가 죽는다). 그래서 여기서는 유니버스와 이름만
+    확보하고, 분류·밸류는 종목별 info 에서 채운 뒤 이 값을 폴백으로 쓴다.
+    """
     tk = qt.get("symbol")
     if not tk or not (tk.endswith(".KS") or tk.endswith(".KQ")):
         return None
     name = qt.get("longName") or qt.get("shortName") or tk
-    sector = qt.get("sector") or "Unknown"
-    industry = qt.get("industry") or sector or "Unknown"
     return {
         "tk": tk,
         "nm": str(name)[:28],
-        "sector": sector,
-        "industry": industry,
+        "sector": qt.get("sector"),
+        "industry": qt.get("industry"),
         "cap": qt.get("marketCap"),
         "pe": qt.get("trailingPE"),
         "fpe": qt.get("forwardPE"),
         "peg": qt.get("pegRatio") or qt.get("trailingPegRatio"),
-        "hi52": qt.get("fiftyTwoWeekHigh"),
     }
 
 
@@ -321,8 +323,21 @@ def quarterly_ttm(qinc, inc):
     )
 
 
-def fetch_financials(tk, log=print):
-    """한 종목의 연간/분기 스프레드."""
+def num(v):
+    """양수 실수만 통과. 그 외(None/NaN/0 이하/문자열)는 None."""
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return None
+    return round(f, 2) if math.isfinite(f) and f > 0 else None
+
+
+def fetch_stock(tk, log=print):
+    """한 종목의 연간/분기 스프레드 + 분류(섹터·산업) + 밸류.
+
+    Ticker 하나로 income_stmt / quarterly_income_stmt / info 를 함께 받는다.
+    분류는 스크리너가 주지 않으므로 info 가 사실상 유일한 출처다.
+    """
     import yfinance as yf
 
     try:
@@ -338,6 +353,12 @@ def fetch_financials(tk, log=print):
         return None
     q_rev, q_op, q_note = quarterly_ttm(qinc, inc)
 
+    info = {}
+    try:
+        info = t.get_info() or {}
+    except Exception as exc:  # noqa: BLE001
+        log(f"  {tk} info 실패(분류 없이 진행): {exc}")
+
     spread = op - rev
     q_spread = (q_op - q_rev) if (q_op is not None and q_rev is not None) else None
     accel = (q_spread - spread) if q_spread is not None else None
@@ -350,6 +371,14 @@ def fetch_financials(tk, log=print):
         "q_spread": None if q_spread is None else round(q_spread, 1),
         "accel": None if accel is None else round(accel, 1),
         "q_note": q_note,
+        "_info": {
+            "sector": info.get("sector"),
+            "industry": info.get("industry"),
+            "nm": info.get("longName") or info.get("shortName"),
+            "pe": num(info.get("trailingPE")),
+            "fpe": num(info.get("forwardPE")),
+            "peg": num(info.get("trailingPegRatio") or info.get("pegRatio")),
+        },
     }
 
 
@@ -515,19 +544,23 @@ def build(limit, min_cap, sleep, log=print):
     if not rows:
         raise SystemExit("유니버스가 비었습니다. 스크리너 응답을 확인하세요.")
 
-    log("[2/4] 재무 (종목별)")
-    members, meta = [], {}
+    log("[2/4] 재무 + 분류 (종목별)")
+    members = []
     for i, r in enumerate(rows, 1):
-        fin = fetch_financials(r["tk"], log)
+        fin = fetch_stock(r["tk"], log)
         if fin:
-            meta[r["tk"]] = r
-            m = {"tk": r["tk"], "nm": r["nm"], "sector": r["sector"],
-                 "industry": r["industry"]}
+            info = fin.pop("_info", {})
+            sector = info.get("sector") or r.get("sector") or "Unknown"
+            m = {
+                "tk": r["tk"],
+                "nm": (info.get("nm") or r["nm"] or r["tk"])[:28],
+                "sector": sector,
+                "industry": info.get("industry") or r.get("industry") or sector,
+            }
             m.update(fin)
+            # 밸류는 info 우선, 없으면 스크리너 값
             for k in ("pe", "fpe", "peg"):
-                v = r.get(k)
-                m[k] = round(float(v), 2) if isinstance(v, (int, float)) and \
-                    math.isfinite(float(v)) and float(v) > 0 else None
+                m[k] = info.get(k) if info.get(k) is not None else num(r.get(k))
             members.append(m)
         if i % 25 == 0:
             log(f"  {i}/{len(rows)} (확보 {len(members)})")
@@ -535,6 +568,15 @@ def build(limit, min_cap, sleep, log=print):
     log(f"  재무 확보 {len(members)}/{len(rows)}")
     if not members:
         raise SystemExit("재무를 하나도 못 받았습니다.")
+
+    # 분류가 안 붙으면 트리 전체가 한 덩어리가 되어 도구가 무의미해진다.
+    known = sum(1 for m in members if m["sector"] != "Unknown")
+    log(f"  섹터 분류 확보 {known}/{len(members)}")
+    if known < len(members) * 0.5:
+        raise SystemExit(
+            f"섹터 분류를 {known}/{len(members)} 밖에 못 받았습니다. "
+            "야후 info 응답이 막혔을 수 있으니 재시도하거나 소스를 점검하세요."
+        )
 
     log("[3/4] 시세")
     price, market = fetch_prices([m["tk"] for m in members], log)

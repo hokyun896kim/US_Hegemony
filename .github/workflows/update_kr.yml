@@ -66,6 +66,10 @@ jobs:
           print(f"- 종목 **{len(mem)}** · 세부산업 **{len(d['subs'])}** · 대섹터 **{len(d['sectors'])}**")
           print(f"- 분기 TTM 확보 **{cnt('q_spread')}/{len(mem)}** · 상대강도 **{cnt('rs6')}/{len(mem)}** "
                 f"· PER **{cnt('pe')}/{len(mem)}**")
+          # 분류가 무너지면 트리가 한 덩어리가 되므로 눈에 띄게 남긴다
+          unk = sum(s['n'] for s in d['subs'] if s['gics'] in ('Unknown', 'Unknown'))
+          if len(d['subs']) < 3 or unk > len(mem) * 0.3:
+              print(f"- ⚠️ **분류 이상**: 세부산업 {len(d['subs'])}개 · 미분류 {unk}종목")
           print(f"- 시장: {d['market']}\n")
           print("### 헤게모니 상위 세부산업")
           print("| 세부산업 | 중앙 스프레드 | 종목수 |")
