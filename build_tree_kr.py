@@ -579,6 +579,10 @@ def fetch_prices(tickers, log=print):
     if s is not None:
         try:
             rets = (s / s.shift(1) - 1).dropna()
+            # 연속 거래일 사이의 등락만 쓴다. 설·추석 같은 긴 연휴나 시세 누락이
+            # 있으면 며칠치 등락이 '하루'로 잡혀 변동성이 부풀려진다.
+            gap_days = s.index.to_series().diff().dt.days.reindex(rets.index)
+            rets = rets[gap_days <= 4]
             rets = rets[rets.abs() <= 0.15].tail(30)  # 지수 일간 ±15% 초과는 오프린트
             if len(rets) >= 15:
                 vol = round(float(rets.std()) * math.sqrt(252) * 100, 1)
