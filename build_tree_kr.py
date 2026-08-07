@@ -582,9 +582,12 @@ def fetch_prices(tickers, log=print):
             rets = rets[rets.abs() <= 0.15].tail(30)  # 지수 일간 ±15% 초과는 오프린트
             if len(rets) >= 15:
                 vol = round(float(rets.std()) * math.sqrt(252) * 100, 1)
-                # 값이 크게 나오면 진짜 급등락인지 잔여 오프린트인지 남겨둔다
+                # 값이 크면 진짜 급등락인지 잔여 오프린트인지 근거를 남긴다.
+                # 로그는 나중에 못 읽을 수 있으니 산출물에도 함께 싣는다.
                 top = sorted((abs(float(v)) * 100 for v in rets), reverse=True)[:5]
-                log(f"  코스피 30일 실현변동성 {vol}% "
+                market["vol_moves"] = [round(v, 2) for v in top]
+                market["vol_days"] = len(rets)
+                log(f"  코스피 {len(rets)}일 실현변동성 {vol}% "
                     f"(일간 최대 {', '.join(f'{v:.1f}%' for v in top)})")
                 if not (0 < vol < 120):
                     log(f"  변동성 {vol}% 는 지수로 불가능 — 표시하지 않음")
