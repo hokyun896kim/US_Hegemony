@@ -169,6 +169,18 @@ def slug(text: str) -> str:
     return s or "misc"
 
 
+def is_common_share(code: str) -> bool:
+    """보통주만 통과. 한국 종목코드는 끝자리로 주식 종류를 구분한다
+    (0=보통주, 5/7/9=우선주, K/L=신형우선주).
+
+    우선주를 넣으면 두 가지가 망가진다.
+      ① 같은 회사가 세부산업 중앙값에 두 번 들어간다(실측 22쌍).
+      ② 재무는 회사 전체인데 발행주식수는 우선주 물량이라 PER 이 붕괴한다
+         (실측: 삼성물산우 0.13, LG우 0.27 — 저PER 로 오인되어 가점까지 받는다).
+    """
+    return len(code) == 6 and code.endswith("0") and code[:5].isdigit()
+
+
 # 전년 값이 이보다 작으면 YoY 비율이 의미를 잃는다. 원화 기준이라 미국판보다
 # 자릿수가 크다 — 10억원. (시총 3000억 이상만 보므로 이 밑은 사실상 잡음)
 MIN_BASE_KRW = 1e9
@@ -220,7 +232,7 @@ def fetch_universe(limit: int, min_cap: float, log=print):
             yf.EquityQuery("gt", ["intradaymarketcap", min_cap]),
         ],
     )
-    rows, offset, page = [], 0, 100
+    rows, offset, page, skipped = [], 0, 100, 0
     while len(rows) < limit:
         try:
             res = yf.screen(
@@ -236,10 +248,17 @@ def fetch_universe(limit: int, min_cap: float, log=print):
         quotes = (res or {}).get("quotes") or []
         if not quotes:
             break
-        rows.extend(quotes)
+        # 우선주·비한국 종목을 여기서 걸러야 --limit 이 '유효 종목 수'가 된다
+        for qt in quotes:
+            row = normalize_quote(qt)
+            if row:
+                rows.append(row)
+            else:
+                skipped += 1
         offset += page
-        log(f"  누적 {len(rows)}종목")
+        log(f"  누적 {len(rows)}종목 (제외 {skipped})")
         time.sleep(0.6)
+    log(f"  우선주·비대상 제외 {skipped}종목")
     return rows[:limit]
 
 
@@ -252,6 +271,8 @@ def normalize_quote(qt: dict):
     """
     tk = qt.get("symbol")
     if not tk or not (tk.endswith(".KS") or tk.endswith(".KQ")):
+        return None
+    if not is_common_share(tk.split(".")[0]):
         return None
     name = qt.get("longName") or qt.get("shortName") or tk
     return {
@@ -386,22 +407,20 @@ def fetch_stock(tk, log=print):
     # 그래서 손익계산서의 순이익과 발행주식수로 직접 후행 PER 을 만든다.
     # 그래도 안 되면 pe 는 None 이고, 화면이 선행 PER 에 F 를 붙여 보여준다.
     pe = num(info.get("trailingPE"))
-    price = info.get("currentPrice") or info.get("regularMarketPrice")
-    if pe is None and price:
-        eps = info.get("trailingEps")
-        if not eps:
-            ni = series_values(pick_row(inc, NI_ROWS))
-            shares = info.get("sharesOutstanding") or info.get("impliedSharesOutstanding")
-            try:
-                if ni and shares and float(shares) > 0 and ni[0][1] > 0:
-                    eps = ni[0][1] / float(shares)
-            except (TypeError, ValueError, ZeroDivisionError):
-                eps = None
+    if pe is None:
+        # 시가총액 ÷ 순이익. 주가÷EPS 보다 안전하다 — 발행주식수와 순이익의
+        # 기준이 어긋날 여지가 없기 때문이다(우선주에서 그 어긋남이 터졌다).
+        ni = series_values(pick_row(inc, NI_ROWS))
+        cap = info.get("marketCap")
         try:
-            if eps and float(eps) > 0:
-                pe = num(float(price) / float(eps))
+            if cap and ni and ni[0][1] > 0:
+                pe = num(float(cap) / ni[0][1])
         except (TypeError, ValueError, ZeroDivisionError):
             pe = None
+    # 계산해서 얻은 값은 반드시 상식선을 통과해야 한다. PER 0.39 같은 값이
+    # 그대로 나가면 스코어러가 '저PER' 가점을 준다.
+    if pe is not None and not (1.0 <= pe <= 300.0):
+        pe = None
 
     spread = op - rev
     q_spread = (q_op - q_rev) if (q_op is not None and q_rev is not None) else None
@@ -631,8 +650,7 @@ def assemble(members, market, log=print):
 
 def build(limit, min_cap, sleep, log=print):
     log("[1/4] 유니버스")
-    quotes = fetch_universe(limit, min_cap, log)
-    rows = [r for r in (normalize_quote(q) for q in quotes) if r]
+    rows = fetch_universe(limit, min_cap, log)
     log(f"  유효 {len(rows)}종목")
     if not rows:
         raise SystemExit("유니버스가 비었습니다. 스크리너 응답을 확인하세요.")
@@ -714,6 +732,14 @@ def selftest():
     check(num(12.345) == 12.35, "num 반올림")
     check(slug("Semiconductor Equipment & Materials") ==
           "semiconductor_equipment_materials", "slug")
+
+    # 우선주 배제 — 실측에서 22쌍 중복 + PER 붕괴를 일으켰다
+    check(is_common_share("005930"), "보통주 통과 (삼성전자)")
+    check(is_common_share("196170"), "보통주 통과 (코스닥)")
+    check(not is_common_share("005935"), "우선주 배제 (삼성전자우)")
+    check(not is_common_share("000105"), "우선주 배제 (유한양행우)")
+    check(not is_common_share("005387"), "우선주 배제 (현대차3우B)")
+    check(not is_common_share("02826K"), "신형우선주 배제 (삼성물산우B)")
 
     class FakeDF:
         """income_stmt 최소 흉내."""
