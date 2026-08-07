@@ -12,11 +12,12 @@
 
 | 파일 | 역할 |
 |---|---|
-| `kr.html` | 화면. `./data/tree_kr.json` 을 읽는다 |
+| `index.html` | 화면(루트). `./data/tree_kr.json` 을 읽는다 |
+| `us.html` | 기존 미국판 화면 |
 | `build_tree_kr.py` | 데이터 빌더 (yfinance 단일 소스, **API 키 불필요**) |
 | `data/tree_kr.json` | 빌더 산출물. GitHub Actions가 매주 갱신 |
 | `.github/workflows/update_kr.yml` | 주간 자동 갱신 + 개발 브랜치 스모크 빌드 |
-| `tests/` | `kr.html` 을 jsdom으로 띄워 눌러보는 스모크 테스트 |
+| `tests/` | `index.html` 을 jsdom으로 띄워 눌러보는 스모크 테스트 |
 
 ## 실행
 
@@ -103,7 +104,7 @@ python -m http.server 8000             # file:// 로 열면 CORS로 막힌다
 ```bash
 python build_tree_kr.py --selftest     # 빌더 로직 + 출력 스키마
 
-cd tests && npm install && npm test    # kr.html 을 실제로 띄워 전 기능 클릭
+cd tests && npm install && npm test    # index.html 을 실제로 띄워 전 기능 클릭
 ```
 
 스모크 테스트는 결측(분기 없음·PER 없음·RS 없음)과 한글 매핑 없는 산업을 일부러

@@ -17,7 +17,7 @@ on:
     branches: ['claude/**']
     paths:
       - 'build_tree_kr.py'
-      - 'kr.html'
+      - 'index.html'
       - '.github/workflows/update_kr.yml'
 
 permissions:

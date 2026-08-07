@@ -1,4 +1,4 @@
-// kr.html 을 jsdom 으로 실제로 띄워 모든 탭·모달·계산기를 눌러보는 스모크 테스트.
+// index.html(한국판) 을 jsdom 으로 실제로 띄워 모든 탭·모달·계산기를 눌러보는 스모크 테스트.
 //   cd tests && npm install && npm test
 import fs from 'node:fs';
 import path from 'node:path';
@@ -6,14 +6,14 @@ import { fileURLToPath } from 'node:url';
 import { JSDOM } from 'jsdom';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const html = fs.readFileSync(path.join(here, '..', 'kr.html'), 'utf8');
+const html = fs.readFileSync(path.join(here, '..', 'index.html'), 'utf8');
 const fixture = fs.readFileSync(path.join(here, 'fixture_kr.json'), 'utf8');
 
 const errors = [];
 const dom = new JSDOM(html, {
   runScripts: 'dangerously',
   pretendToBeVisual: true,
-  url: 'https://example.test/kr.html',
+  url: 'https://example.test/',
   beforeParse(win) {
     win.fetch = async () => ({ ok: true, status: 200, json: async () => JSON.parse(fixture) });
     win.alert = (m) => errors.push('alert: ' + m);

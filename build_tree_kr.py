@@ -611,7 +611,7 @@ def fetch_prices(tickers, log=print):
 
 # ── 조립 ─────────────────────────────────────────────────────────────
 def assemble(members, market, log=print):
-    """종목 리스트 → index.html 이 기대하는 sectors/subs 구조."""
+    """종목 리스트 → index.html(한국판) 이 기대하는 sectors/subs 구조."""
     by_industry = {}
     for m in members:
         by_industry.setdefault((m.pop("sector"), m.pop("industry")), []).append(m)
