@@ -269,6 +269,9 @@ def normalize_quote(qt: dict):
 # ── 재무 ─────────────────────────────────────────────────────────────
 REV_ROWS = ("Total Revenue", "Operating Revenue", "Revenue")
 OP_ROWS = ("Operating Income", "Total Operating Income As Reported", "EBIT")
+NI_ROWS = ("Net Income Common Stockholders", "Net Income",
+           "Net Income From Continuing Operation Net Minority Interest",
+           "Net Income Continuous Operations")
 
 
 def pick_row(df, candidates):
@@ -379,14 +382,23 @@ def fetch_stock(tk, log=print):
     except Exception as exc:  # noqa: BLE001
         log(f"  {tk} info 실패(분류 없이 진행): {exc}")
 
-    # 한국 종목은 trailingPE 가 거의 안 온다(232종목 중 0건). 주가/주당순이익으로
-    # 직접 계산해 채운다.
+    # 야후는 한국 종목에 trailingPE 도 trailingEps 도 주지 않는다(실측 0/232).
+    # 그래서 손익계산서의 순이익과 발행주식수로 직접 후행 PER 을 만든다.
+    # 그래도 안 되면 pe 는 None 이고, 화면이 선행 PER 에 F 를 붙여 보여준다.
     pe = num(info.get("trailingPE"))
-    if pe is None:
-        price = info.get("currentPrice") or info.get("regularMarketPrice")
+    price = info.get("currentPrice") or info.get("regularMarketPrice")
+    if pe is None and price:
         eps = info.get("trailingEps")
+        if not eps:
+            ni = series_values(pick_row(inc, NI_ROWS))
+            shares = info.get("sharesOutstanding") or info.get("impliedSharesOutstanding")
+            try:
+                if ni and shares and float(shares) > 0 and ni[0][1] > 0:
+                    eps = ni[0][1] / float(shares)
+            except (TypeError, ValueError, ZeroDivisionError):
+                eps = None
         try:
-            if price and eps and float(eps) > 0:
+            if eps and float(eps) > 0:
                 pe = num(float(price) / float(eps))
         except (TypeError, ValueError, ZeroDivisionError):
             pe = None
@@ -541,6 +553,8 @@ def fetch_prices(tickers, log=print):
     # 시장 지표
     market = {"spy3": round(bench3, 1) if bench3 is not None else None,
               "spy6": round(bench6, 1) if bench6 is not None else None}
+    # 코스피 30일 실현변동성(연율화). VIX 같은 옵션 내재변동성이 아니라
+    # 실제 등락폭에서 나온 값이라 기준선도 지수 실현변동성에 맞춰 잡는다.
     vol = None
     s = closes(BENCH)
     if s is not None:
@@ -549,17 +563,22 @@ def fetch_prices(tickers, log=print):
             rets = rets[rets.abs() <= 0.15].tail(30)  # 지수 일간 ±15% 초과는 오프린트
             if len(rets) >= 15:
                 vol = round(float(rets.std()) * math.sqrt(252) * 100, 1)
-                if not (0 < vol < 80):   # 코스피에서 나올 수 없는 값이면 버린다
-                    log(f"  변동성 이상치 {vol} — 표시하지 않음")
+                # 값이 크게 나오면 진짜 급등락인지 잔여 오프린트인지 남겨둔다
+                top = sorted((abs(float(v)) * 100 for v in rets), reverse=True)[:5]
+                log(f"  코스피 30일 실현변동성 {vol}% "
+                    f"(일간 최대 {', '.join(f'{v:.1f}%' for v in top)})")
+                if not (0 < vol < 120):
+                    log(f"  변동성 {vol}% 는 지수로 불가능 — 표시하지 않음")
                     vol = None
         except Exception:  # noqa: BLE001, S110
             pass
     market["vix"] = vol
     market["vix_state"] = (
         "—" if vol is None
-        else "안정" if vol < 16
-        else "보통" if vol < 22
-        else "불안"
+        else "안정" if vol < 15
+        else "보통" if vol < 25
+        else "높음" if vol < 40
+        else "극단"
     )
     return out, market
 

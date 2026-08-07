@@ -368,7 +368,7 @@ function initMarket(){
  const mk=D.market||{};
  const v=mk.vix;
  document.getElementById('mkt').innerHTML=`
- <div class="m"><span class="mlbl">코스피 변동성(30일)</span><span class="mval"><span class="vix-dot" style="background:${v==null?'#7d8aa3':v<16?'#4a9d7f':v<22?'#d4af37':'#c2544d'}"></span>${v==null?'—':v}</span><span class="mlbl" style="margin-top:2px">${mk.vix_state||'—'}</span></div>
+ <div class="m"><span class="mlbl">코스피 30일 실현변동성</span><span class="mval"><span class="vix-dot" style="background:${v==null?'#7d8aa3':v<15?'#4a9d7f':v<25?'#d4af37':'#c2544d'}"></span>${v==null?'—':v+'%'}</span><span class="mlbl" style="margin-top:2px">${mk.vix_state||'—'}</span></div>
  <div class="m"><span class="mlbl">코스피 3개월</span><span class="mval sm">${mk.spy3==null?'—':(mk.spy3>0?'+':'')+mk.spy3+'%'}</span></div>
  <div class="m"><span class="mlbl">코스피 6개월</span><span class="mval sm">${mk.spy6==null?'—':(mk.spy6>0?'+':'')+mk.spy6+'%'}</span></div>
  <div class="m"><span class="mlbl">벤치마크</span><span class="mval sm">KOSPI</span></div>`;
