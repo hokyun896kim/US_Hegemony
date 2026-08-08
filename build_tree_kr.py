@@ -414,6 +414,36 @@ def quarterly_ttm(qinc, inc, qseries=None):
     return r, o, "정상", True, qend
 
 
+def is_dart(src: str) -> bool:
+    """이 분기 숫자가 DART 계열(확정 또는 확정+잠정)에서 왔는가.
+
+    `q_src == "DART"` 로 비교하면 잠정이 얹힌 종목("DART+잠정")이 빠진다.
+    실제로 그렇게 세다가 DART 성공률을 낮게 집계할 뻔했다.
+    """
+    return (src or "").startswith("DART")
+
+
+def pick_quarterly(qinc, inc, qseries, prelim=0):
+    """분기 TTM 을 어느 소스로 낼지 정한다. (q_src, rev, op, note, approx, end).
+
+    이 분기 흐름은 DART 키가 있는 회차에만 밟히는 코드라 평소엔 아무도 안
+    지나간다. 그래서 함수로 떼어 자가진단이 **실제 코드를** 밟게 한다 —
+    예전엔 테스트가 이 로직을 베껴 갖고 있었는데, 본체만 고치고 사본은 그대로
+    둬서 테스트가 통과하는데 코드는 틀린 상태가 될 뻔했다.
+    """
+    q_src = "yfinance"
+    q_rev = q_op = q_end = None
+    if qseries:
+        q_rev, q_op, q_note, q_approx, q_end = quarterly_ttm(qinc, inc, qseries)
+        if q_rev is not None or q_op is not None:
+            q_src = "DART+잠정" if prelim else "DART"
+    # DART 가 분기를 4개 넘겨줬어도 매출·영익이 군데군데 비면 TTM 이 안 나온다.
+    # 그때 그냥 포기하면 yfinance 로 얻었을 값까지 같이 잃는다 — 다시 시도한다.
+    if not is_dart(q_src):
+        q_rev, q_op, q_note, q_approx, q_end = quarterly_ttm(qinc, inc)
+    return q_src, q_rev, q_op, q_note, q_approx, q_end
+
+
 def num(v):
     """양수 실수만 통과. 그 외(None/NaN/0 이하/문자열)는 None."""
     try:
@@ -486,16 +516,8 @@ def fetch_stock(tk, log=print):
         except Exception as exc:  # noqa: BLE001 — 잠정은 없어도 되는 값이다
             log(f"  {tk} 네이버 실패({exc}) — 확정(DART)만 씁니다")
 
-    q_src = "yfinance"
-    q_rev = q_op = q_end = None
-    if qseries:
-        q_rev, q_op, q_note, q_approx, q_end = quarterly_ttm(qinc, inc, qseries)
-        if q_rev is not None or q_op is not None:
-            q_src = "DART+잠정" if prelim else "DART"
-    # DART 가 분기를 4개 넘겨줬어도 매출·영익이 군데군데 비면 TTM 이 안 나온다.
-    # 그때 그냥 포기하면 yfinance 로 얻었을 값까지 같이 잃는다 — 다시 시도한다.
-    if not q_src.startswith("DART"):
-        q_rev, q_op, q_note, q_approx, q_end = quarterly_ttm(qinc, inc)
+    q_src, q_rev, q_op, q_note, q_approx, q_end = pick_quarterly(
+        qinc, inc, qseries, prelim)
 
     info = {}
     try:
@@ -814,8 +836,11 @@ def build(limit, min_cap, sleep, log=print):
     # 실제로 URL 에 .json 확장자를 빼먹어 모든 요청이 101 로 거절당하면서도
     # 아무 일 없는 것처럼 성공한 적이 있다(프로브를 돌려서야 알았다).
     if DART_CORP:
-        n_dart = sum(1 for m in members if m.get("q_src") == "DART")
-        log(f"  DART 로 분기를 받은 종목 {n_dart}/{len(members)} · {dart.status_report()}")
+        n_dart = sum(1 for m in members if is_dart(m.get("q_src")))
+        n_prelim = sum(1 for m in members if "잠정" in (m.get("q_src") or ""))
+        log(f"  DART 로 분기를 받은 종목 {n_dart}/{len(members)}"
+            f" (그중 네이버 잠정으로 최근 분기를 메운 종목 {n_prelim})"
+            f" · {dart.status_report()}")
         if not dart.healthy():
             log("  ⚠️ DART 응답이 한 건도 정상(000)이 아닙니다 — 전부 yfinance 로 떨어졌습니다.")
             log("     python dart.py --probe 005930 (또는 Actions 의 probe 입력)으로 원인을 보세요.")
@@ -946,16 +971,7 @@ def selftest():
     # 평소엔 아무도 안 지나간다 — 정작 필요한 순간에 처음 실행되는 코드는
     # 믿을 수 없으므로 세 경로를 여기서 매번 밟는다. (q_note/q_approx 가
     # 어느 한 경로에서 미할당으로 남으면 빌드 중간에 UnboundLocalError 로 죽는다.)
-    def _flow(qseries):
-        q_src = "yfinance"
-        q_rev = q_op = q_end = None
-        if qseries:
-            q_rev, q_op, q_note, q_approx, q_end = quarterly_ttm(q, annual, qseries)
-            if q_rev is not None or q_op is not None:
-                q_src = "DART"
-        if q_src != "DART":
-            q_rev, q_op, q_note, q_approx, q_end = quarterly_ttm(q, annual)
-        return q_src, q_rev, q_op, q_note, q_approx, q_end
+    _flow = lambda qseries, prelim=0: pick_quarterly(q, annual, qseries, prelim)
 
     _dart_ok = [(c, 260e8, 60e8 if i < 4 else 90e8) for i, c in enumerate(QCOLS)]
     _s, _r, _o, _n, _a, _e = _flow(_dart_ok)
@@ -970,6 +986,15 @@ def selftest():
 
     _s, _r, _o, _n, _a, _e = _flow(None)
     check(_s == "yfinance" and _r == 0, f"DART 미사용이면 yfinance (src={_s})")
+
+    # 네이버 잠정이 얹힌 경우. 출처가 달라지므로 화면이 '잠정' 이라고 밝힐 수 있다.
+    _s, _r, _o, _n, _a, _e = _flow(_dart_ok, prelim=1)
+    check(_s == "DART+잠정", f"잠정이 얹히면 출처에 남긴다 (src={_s})")
+    check(_r == 0 and _o == 50, "잠정이 얹혀도 TTM 계산은 그대로")
+    # q_src == "DART" 로 세면 잠정 얹힌 종목이 집계에서 빠진다 — 실제로 그랬다.
+    check(is_dart("DART") and is_dart("DART+잠정"), "DART 계열을 모두 DART 로 센다")
+    check(not is_dart("yfinance") and not is_dart(None) and not is_dart(""),
+          "yfinance·빈값은 DART 가 아니다")
 
     _empty = FakeDF({"Total Revenue": {}, "Operating Income": {}})
     _s2 = "yfinance"
