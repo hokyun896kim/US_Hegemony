@@ -5,6 +5,7 @@
    그대로 두면 돌아간다. 다만 SEC 에 본인 연락처를 밝히려면 저장소 Secret 에
    SEC_UA 를 넣으면 된다(아래 UA_SEC 참고)."""
 import urllib.request, urllib.error, json, time, os, sys, statistics, re
+import est_trend
 from datetime import date
 
 # SEC 는 UA 에 '이름 + 연락 이메일' 형태를 요구하고, 이메일이 없으면 403 을 준다
@@ -29,7 +30,7 @@ def _throttle(u):
     if dt<0.35: time.sleep(0.35-dt)
     _last_sec=time.time()
 
-def get(u,h=UA_SEC,t=60,tries=3):
+def get(u,h=UA_SEC,t=60,tries=2):   # 속도제한 확인은 한 번이면 족하다(위 주석 참고)
     global _ua_warned
     for i in range(tries):
         _throttle(u)
@@ -52,22 +53,30 @@ def get(u,h=UA_SEC,t=60,tries=3):
                 if rate:
                     print("    요청 속도 제한입니다(UA 문제 아님). Actions 러너의 공유 출구 IP 가",file=sys.stderr)
                     print("    다른 크롤러들 때문에 이미 타 있는 경우입니다(실측: 첫 요청부터 403).",file=sys.stderr)
-                    print("    11분 대기 후 재시도하되, 공유 출구가 계속 달궈지면 이 회차는",file=sys.stderr)
-                    print("    실패로 끝납니다 — 다음 스케줄(백업 슬롯 포함)이 새 출구를 뽑습니다.",file=sys.stderr)
+                    print("    대기로는 안 풀립니다(실측: 22분 대기에도 지속). 이 회차 전체 빌드는",file=sys.stderr)
+                    print("    포기하고, refresh_prices.py 가 가격층만 갱신합니다 — 펀더멘털은 유지됩니다.",file=sys.stderr)
                 else:
                     print(f'    UA: {h.get("User-Agent")!r}',file=sys.stderr)
                     print('    저장소 Secret 에 SEC_UA="이름 you@example.com" 를 넣어보세요.',file=sys.stderr)
                 print("",file=sys.stderr)
             if i<tries-1:
-                # 속도 제한 시 11분 대기 후 재시도. 다만 출구 IP 가 공유 NAT 라
-                # 다른 세입자가 계속 달구면 대기로도 안 풀린다(실측: 22분 대기에도
-                # 지속). 그런 회차는 포기하고 다음 스케줄이 새 출구를 뽑게 한다.
-                w=660 if rate else 5
-                print(f"    … {w}초 대기 후 재시도 ({i+1}/{tries-1})",file=sys.stderr)
+                # 한때 여기서 11분씩 두 번(총 22분) 기다렸다. 실측으로 폐기했다 —
+                # run #12~#18 일곱 회차 연속으로, 22분을 꽉 채우고도 첫 요청부터
+                # 403 이었다. 공유 NAT 출구가 계속 달궈지는 한 대기로는 안 풀린다.
+                # 그래서 짧게 한 번만 확인하고 넘긴다. 회차를 버리는 게 아니라
+                # refresh_prices.py 가 받아서 가격층을 갱신하므로, 여기서 20분을
+                # 태우는 건 부분 갱신만 그만큼 늦출 뿐이다.
+                w=90 if rate else 5
+                print(f"    … {w}초 뒤 한 번만 더 시도 ({i+1}/{tries-1})",file=sys.stderr)
                 time.sleep(w)
                 continue
             raise
 def getj(u,h=UA_SEC): return json.loads(get(u,h))
+try:
+    import yfinance as _yf
+except Exception:
+    _yf=None
+    print("[!] yfinance 없음 — 컨센서스 추정치는 비웁니다(나머지는 정상 동작)",file=sys.stderr)
 CUR=date.today().year-1; PRV=CUR-1
 
 print("[1/7] 티커맵")
@@ -264,8 +273,11 @@ for i,t in enumerate(allt):
     qrev=best_rev_ttm(cik) if cik else None
     qop,qnote=best_op_ttm(cik) if cik else (None,"CIK없음")
     qspread=round(qop-qrev,1) if (qrev is not None and qop is not None) else None
+    # 컨센서스 추정치 방향 — 야후 quoteSummary 는 crumb 인증을 타므로
+    # 그 처리를 대신해주는 yfinance 로만 이 값을 받는다. 실패는 조용히 None.
+    est=est_trend.fetch(_yf.Ticker(t)) if _yf else {"est30":None,"est90":None}
     # 상대강도
-    s=yseries(t); rs3=rs6=gap=gaplvl=from_high=pe=None
+    s=yseries(t); rs3=rs6=gap=gaplvl=from_high=pe=eps=None
     if s:
         cl=[r[2] for r in s]; r3=ret(cl,63); r6=ret(cl,126)
         rs3=round(r3-spy3,1) if r3 is not None else None
@@ -278,9 +290,12 @@ for i,t in enumerate(allt):
         if _hi>0: from_high=round((cl[-1]/_hi-1)*100,1)
         # 후행 PER = 현재가 ÷ 직전 회계연도 EPS.
         # 상식선(1~300)을 벗어나면 계산이 어긋난 것으로 보고 버린다.
+        # eps 를 같이 남긴다 — SEC 가 막힌 회차에 refresh_prices.py 가
+        # 새 가격으로 PER 을 다시 낼 때 필요하다.
         try:
             _e=eps_map.get(int(cik)) if cik else None
             if _e and _e>0:
+                eps=round(_e,4)
                 _p=round(cl[-1]/_e,2)
                 if 1.0<=_p<=300.0: pe=_p
         except Exception: pass
@@ -292,7 +307,8 @@ for i,t in enumerate(allt):
                 m["accel"]=round(qspread-m["spread"],1) if qspread is not None else None
                 m["rs3"]=rs3;m["rs6"]=rs6;m["gap"]=gap;m["gaplvl"]=gaplvl
                 m["from_high"]=from_high
-                m["pe"]=pe; m["fpe"]=None; m["peg"]=None
+                m["pe"]=pe; m["eps"]=eps; m["fpe"]=None; m["peg"]=None
+                m["est30"]=est.get("est30"); m["est90"]=est.get("est90")
                 m["q_approx"]=False   # 미국은 8분기 정식 TTM 이라 근사가 아니다
                 m["ir"]=ir_map.get(t)
     if (i+1)%50==0: print(f"   {i+1}/{len(allt)}")
@@ -316,7 +332,9 @@ for _r in rows:
 print("[7/7] 저장")
 out={"sectors":sectors,"subs":rows,
      "market":{"vix":vix_now,"vix_state":vix_state,"spy3":round(spy3,1),"spy6":round(spy6,1)},
-     "updated":str(date.today())}
+     # 전체 빌드라 펀더멘털도 오늘 것이다. refresh_prices.py 가 도는 회차에는
+     # fund_updated 만 옛 날짜로 남고 updated 는 그날로 올라간다.
+     "updated":str(date.today()),"fund_updated":str(date.today()),"partial":None}
 os.makedirs("data",exist_ok=True)
 json.dump(out,open("data/tree.json","w"),ensure_ascii=False)
 print(f"완료: data/tree.json (세부산업 {len(rows)}, 갱신일 {out['updated']})")

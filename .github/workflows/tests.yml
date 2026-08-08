@@ -1,0 +1,55 @@
+name: Page tests
+
+# 페이지 결함은 대부분 '실데이터를 넣어봐야' 보인다. 그래서 테스트는 픽스처가
+# 아니라 레포에 커밋된 실제 data/*.json 을 그대로 먹여 jsdom 에서 렌더한다.
+# 파리티 테스트는 한국판·미국판 판정 로직이 갈라지는 것을 막는다(실제로 났던 사고).
+
+on:
+  push:
+    paths: &paths
+      - 'index.html'
+      - 'us.html'
+      - 'tests/**'
+      - 'docs/gpt-instructions.md'
+      - '*.webmanifest'
+      - 'refresh_prices.py'
+      - 'build_tree_kr.py'
+      - '.github/workflows/tests.yml'
+  pull_request:
+    paths: *paths
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tests/package.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install
+        working-directory: tests
+        run: npm install --no-audit --no-fund
+
+      - name: Run tests
+        working-directory: tests
+        run: npm test
+
+      # 부분 갱신은 SEC 가 막힌 회차에만 도는 코드라 평소엔 아무도 안 밟는다.
+      # 정작 필요한 순간에 처음 실행되는 코드는 믿을 수 없으므로 매번 돌린다.
+      - name: 빌더 자가진단 (네트워크 불필요)
+        run: |
+          python refresh_prices.py --selftest
+          python build_tree_kr.py --selftest

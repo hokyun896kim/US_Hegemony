@@ -174,12 +174,25 @@ h1{font-size:clamp(24px,5.6vw,42px);font-weight:800;line-height:1.05;margin:8px 
 .rc-sec{font-size:9px;color:var(--gold2);background:#1a2438;padding:2px 7px;border-radius:5px;margin-left:auto}
 .rc-m{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
 .rc-m span{font-size:10px;color:#c2cbdb;background:var(--bg);border:1px solid var(--line);padding:2px 7px;border-radius:5px;font-variant-numeric:tabular-nums}
+.rc-m sub{font-size:8px;color:var(--mut);vertical-align:baseline;margin-left:1px}
 .rc-m b{color:var(--gold2)}.rc-m.g b{color:var(--grn)}
 .rc-l{font-size:10.5px;line-height:1.55;display:flex;gap:6px;margin-top:3px}
 .rc-l .k{flex-shrink:0;font-weight:700}
 .rc-l.why .k{color:var(--grn)}.rc-l.why{color:#9fc4b2}
 .rc-l.risk .k{color:#e0a0a0}.rc-l.risk{color:#c49a9a}
 .radar-empty{font-size:11.5px;color:var(--mut);background:var(--panel3);border:1px solid var(--line);border-radius:10px;padding:12px 14px;line-height:1.6}
+/* 타이밍 등급 배지 — 좋은 종목이 아니라 '지금 들어가기 편한 자리'라는 뜻 */
+.rc-tier{font-size:9.5px;font-weight:800;width:16px;height:16px;line-height:16px;text-align:center;border-radius:5px;flex-shrink:0}
+.rc-tier.tA{background:rgba(90,200,150,.18);color:#6ddaa8;border:1px solid rgba(90,200,150,.35)}
+.rc-tier.tB{background:rgba(240,198,116,.15);color:#e8c46f;border:1px solid rgba(240,198,116,.3)}
+.rc-tier.tC{background:rgba(224,140,140,.15);color:#e09090;border:1px solid rgba(224,140,140,.3)}
+/* 점수 분해 — 왜 이 순위인지 한 줄로 보이게 */
+.rc-score{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-top:7px;padding-top:7px;border-top:1px dashed var(--line)}
+.rc-score .sl{font-size:10px;font-weight:800;color:var(--gold2);margin-right:2px}
+.rc-score .sb{position:relative;font-size:9px;color:var(--mut);background:var(--panel3);border-radius:4px;padding:2px 6px;overflow:hidden;white-space:nowrap}
+.rc-score .sb i{position:absolute;inset:0 auto 0 0;background:rgba(120,170,255,.16);display:block}
+.radar-gate{font-size:10px;color:var(--mut);line-height:1.55;margin:-4px 0 10px;padding:7px 10px;background:var(--panel3);border-radius:8px;border:1px solid var(--line)}
+.radar-note{font-size:11px;color:#c9b58a;line-height:1.6;background:rgba(240,198,116,.07);border:1px solid rgba(240,198,116,.22);border-radius:9px;padding:9px 11px;margin-bottom:8px}
 .tc-ai{background:linear-gradient(135deg,#1a2410,var(--panel3));border:1px solid #3a3420;border-radius:12px;padding:14px;margin:14px 0 0}
 .tc-ai h4{font-size:12px;color:var(--gold2);margin:0 0 4px;letter-spacing:.04em}
 .tc-ai-copy{width:100%;background:var(--gold);color:#0a0e17;border:none;font-family:inherit;font-weight:800;font-size:13px;padding:11px;border-radius:10px;cursor:pointer;margin-top:4px}
@@ -529,12 +542,21 @@ function supplyBonus(m){
 function hasSupplyData(){return D&&D.subs&&D.subs.some(s=>s.members.some(m=>m.foreign_net!=null||m.inst_net!=null));}
 function toggleSupply(){const c=document.getElementById('supplyToggle');SUPPLY_ON=!!(c&&c.checked);renderTop5();}
 // 가격 반영도 판정(표시·프롬프트용 — 점수 로직 아님): 선취매 권역 vs 이미 반영
+// 정점을 지나 식는 중인가. 예전엔 'RS6M>0 이고 RS3M<0' 이면 무조건 냉각이었는데,
+// 그러면 6개월 +4% / 3개월 -1% 같은 단순 숨고르기까지 '뒷북 위험'으로 몰렸다.
+// 의미 있는 악화 — 충분히 오른 뒤 실제로 꺾였거나, 3개월이 6개월 대비 15p 넘게
+// 나빠진 경우 — 만 냉각으로 본다.
+function cooling(m){
+ const r6=m.rs6,r3=m.rs3;
+ if(r6==null||r3==null) return false;
+ return (r6>10 && r3<=-5) || (r6>0 && r3<0 && (r3-r6)<=-15);
+}
 function priceIn(m){
  const r6=m.rs6,r3=m.rs3,fh=m.from_high;
- if(r6!=null&&r3!=null&&r6>0&&r3<0) return {c:'n',t:'🔴 정점 통과·냉각(뒷북 위험)'};
+ if(cooling(m)) return {c:'n',t:'🔴 정점 통과·냉각(뒷북 위험)'};
  if(r6!=null&&r3!=null&&r6<=10&&r3>20) return {c:'p',t:'⚠ 점화 직후(이미 절반 반영)'};
  if((fh!=null&&fh>-3)||(r6!=null&&r6>30)) return {c:'n',t:'🔴 이미 반영(고점권)'};
- if((fh==null||fh<=-12)&&(r6==null||r6<=5)) return {c:'g',t:'🌱 선취매 권역(저반영·여력)'};
+ if((fh==null||fh<=GATE.FH_DEEP)&&(r6==null||r6<=GATE.RS6_QUIET)) return {c:'g',t:'🌱 선취매 권역(저반영·여력)'};
  return {c:'m',t:'🟡 진행 중(부분 반영)'};
 }
 function accCell(m){if(m.accel==null)return'<span class="acc na">—</span>';
@@ -761,103 +783,167 @@ function closeTrade(){document.getElementById('tradeModal').classList.remove('sh
 
 
 // ===== 이상적 매수후보 TOP5 =====
-// ── 기저효과(흑자전환·일회성) 추정 — 연간 + 분기TTM 양쪽 점검 ──
+
+// ── 문턱값은 전부 여기 한 곳에 ─────────────────────────────────
+// 화면 곳곳에 흩어져 있으면 한쪽만 고치게 된다. 값을 바꿀 일이 있으면 여기만.
+const GATE={
+  MIN_ANN:3,      // 연간 스프레드 최소치(p). 0 초과만으로는 무의미한 미세 레버리지가 통과한다
+  MIN_QTTM:5,     // 분기TTM 스프레드 최소치(p)
+  REV_GROW:5,     // 매출 YoY 이 이상이면 '동반성장'
+  HUGE:60,        // 스프레드가 이 이상이면 산수 착시 경고(탈락은 아님)
+  FH_DEEP:-12,    // 52주 고점比 이 이하여야 '아직 안 실렸다'
+  RS6_QUIET:5,    // RS6M 이 이하여야 '아직 안 실렸다'
+};
+
+// ── 매출 성장 분류 ────────────────────────────────────────────
+// 이익이 매출보다 빨리 느는 건 같아도, '매출이 늘면서' 그런 것과 '매출이 줄면서'
+// 그런 것은 완전히 다른 현상이다. 후자는 비용절감의 산물이라 오래 못 간다 —
+// 자를 살은 유한하기 때문이다. 헤게모니와 같은 칸에 두면 안 된다.
+// 분기TTM 매출이 있으면 그쪽이 최신이라 우선한다.
+function revClass(m){
+ const k=r=>r==null?'na':(r>=GATE.REV_GROW?'grow':(r>=0?'slow':'shrink'));
+ const r = (m.q_rev!=null) ? m.q_rev : m.rev;   // 분기TTM 이 있으면 그쪽이 최신
+ const out = {k:k(r), r:r, basis:(m.q_rev!=null?'분기TTM':'연간'), turning:null};
+ // 연간과 분기TTM 이 서로 다른 방향을 가리키면 그 자체가 신호다. 어느 한쪽만
+ // 보면 안 보인다 — 401종목 중 98개(24%)가 여기서 갈렸다. 예: CPB 는 연간
+ // +6.4% 인데 최근 4분기는 -2.9% 다. '성장 기업'으로 읽으면 안 되는 상태다.
+ if(m.q_rev!=null && m.rev!=null && k(m.q_rev)!==k(m.rev))
+   out.turning = (m.q_rev < m.rev)
+     ? `연간 ${m.rev>0?'+':''}${m.rev}% → 최근 4분기 ${m.q_rev>0?'+':''}${m.q_rev}% — 매출이 꺾이는 중`
+     : `연간 ${m.rev>0?'+':''}${m.rev}% → 최근 4분기 ${m.q_rev>0?'+':''}${m.q_rev}% — 매출이 돌아서는 중`;
+ out.t = out.k==='na'    ? '매출 확인 불가'
+       : out.k==='grow'  ? `매출 +${r}% 동반성장`
+       : out.k==='slow'  ? `매출 +${r}% — 저성장 레버리지`
+       :                   `매출 ${r}% — 축소형(비용절감) 레버리지`;
+ return out;
+}
+
+// ── 기저효과(흑자전환·일회성) 추정 ────────────────────────────
 function detectBaseEffect(m){
  if(m.op!=null && m.op>=80) return true;                    // 연간 영익 +80%↑ = 흑자전환/적자기저 의심
  if(m.accel!=null && Math.abs(m.accel)>60) return true;      // 가속 과대 = 기저/일회성 의심
+ // 분기 영업이익 급증을 '무조건 기저효과'로 몰면 진짜 고성장까지 버린다.
+ // 예전엔 q_op>=50 만으로 탈락시켰는데, 그 그물에 NVDA(영익+88%/매출+71%),
+ // DELL(+65%/+39%), CLS(+85%/+47%) 처럼 매출이 함께 폭증한 종목이 걸렸다.
+ // 이익만 튀고 매출이 안 따라오는 경우가 기저효과지, 둘 다 튀면 진짜다.
+ const qr=m.q_rev;
  if(m.q_op!=null){
-   if(m.q_op>=50) return true;
-   if(m.accel!=null && m.accel>25 && m.q_op>40) return true;
+   if(m.q_op>=80 && !(qr!=null && qr>=40)) return true;      // 초고성장은 매출 +40% 를 요구
+   if(m.q_op>=50 && !(qr!=null && qr>=15)) return true;      // 고성장은 매출 +15% 를 요구
+   if(m.accel!=null && m.accel>25 && m.q_op>40 && !(qr!=null && qr>=15)) return true;
  }
  if(m.q_note && m.q_note!=='정상' && m.q_note!=='') return true;
  return false;
+}
+// 기저효과 판정과 별개로, 스프레드 자체가 비정상적으로 크면 산수 착시를 의심한다.
+// 탈락시키지는 않고 경고만 — 진짜로 그런 해도 있기 때문이다.
+function hugeSpread(m){
+ const a=m.spread, q=m.q_spread;
+ return (a!=null&&a>=GATE.HUGE)||(q!=null&&q>=GATE.HUGE);
 }
 // ── 스프레드의 질: high(매출동반)/mid/low(비용절감)/margin(마진압박)/base(기저효과) ──
 function spreadQuality(m){
  if(m.spread==null) return 'na';
  if(detectBaseEffect(m)) return 'base';
  if(m.spread<=0) return 'margin';
- if(m.rev!=null && m.rev>=5) return 'high';
- if(m.rev!=null && m.rev<0) return 'low';
+ const rc=revClass(m);
+ if(rc.k==='grow')   return 'high';
+ if(rc.k==='shrink') return 'low';
  return 'mid';
 }
 const QLABEL={high:'🟢고품질',mid:'🟡보통',low:'🔴저품질',margin:'🔴마진압박',base:'⚠️기저효과',na:'—'};
+
+// ── 컨센서스 이익 추정치 방향 ─────────────────────────────────
+// 과거 실적이 좋은 것과 '지금 막 좋아지기 시작한 것'은 다르다. 애널리스트
+// 추정치가 올라가는 중이면 시장이 아직 반영 못 한 개선이 진행 중일 확률이 높고,
+// 실적은 좋은데 추정치가 계속 내려가면 가치함정 신호다.
+// 데이터가 없으면 중립 — 없다고 감점하지 않는다(PER 결측에 감점을 줬다가
+// 전 종목이 '밸류 미검증'으로 깎였던 전례가 있다).
+function estTrend(m){
+ const e=m.est30;
+ if(e==null)  return {k:'na', t:'추정치 미수집'};
+ if(e>=2)     return {k:'up',   t:`추정치 <b>+${e}%</b> 상향(1개월)`};
+ if(e<=-2)    return {k:'down', t:`추정치 ${e}% 하향(1개월) — 가치함정 점검`};
+ return           {k:'flat', t:'추정치 보합'};
+}
 
 // ── 스코어러: 유기적 성장(매출 동반) + 지속성 + 합리적 밸류 + 미반영을 보상,
 //    기저효과/일회성/비용절감/고평가/피크아웃은 강하게 감점 ──
 function scoreCandidate(m){
  const sp=m.spread,qsp=m.q_spread,acc=m.accel,gap=m.gap;
  if(sp==null||sp<=0)return null;
- const q=spreadQuality(m);
- let pts=0; const reasons=[];
+ const q=spreadQuality(m), rc=revClass(m), et=estTrend(m), fl=falling(m);
+ const reasons=[];
 
- // 1) 스프레드 강도
- if(sp>=20){pts+=22;reasons.push(`강한 헤게모니 <b>+${sp}p</b>`);}
- else if(sp>=8){pts+=14;reasons.push(`헤게모니 +${sp}p`);}
- else pts+=6;
+ // 네 축으로 나눠 매긴다. 예전엔 가감점이 한 통에 섞여 있어서 왜 이 순위인지
+ // 알 수 없었고, 저PER 하나로 구조가 약한 기업이 위로 올라오기도 했다.
+ // 배점: 헤게모니 품질 50 · 가격 미반영 30 · 타이밍 10 · 밸류 10.
+ // 밸류 비중을 10 으로 묶어둔 게 요점이다 — 싸다는 건 이유가 있을 수 있다.
 
- // 2) 품질 게이트 (매출 동반 성장이 핵심)
- if(q==='high'){pts+=22;reasons.push(`고품질(매출 ${m.rev>0?'+':''}${m.rev}% 동반성장)`);}
- else if(q==='low'){pts-=14;reasons.push('⚠비용절감형(매출 역성장)');}
- else if(q==='mid'){pts+=4;}
-
- // 3) 지속성 (분기TTM이 연간 레버리지를 유지하는가)
+ // ── ① 헤게모니 품질 (50) ── 본업의 이익 레버리지가 진짜로 강한가
+ let Q=0;
+ //   분기TTM 스프레드(최대 18) — 연간보다 최신이라 더 무겁게 본다
  if(qsp!=null){
-   if(qsp>=sp*0.8){pts+=18;reasons.push('분기까지 레버리지 유지');}
-   else if(qsp>0){pts+=6;}
-   else{pts-=18;reasons.push('⚠분기 둔화(피크아웃)');}
+   Q+=Math.max(0,Math.min(qsp,25))/25*18;
+   if(qsp>=15) reasons.push(`분기 레버리지 <b>+${qsp}p</b>`);
  }
+ //   가속(최대 12) — 지금 강해지는 중인가
+ if(acc!=null&&acc>0){
+   Q+=Math.min(acc,15)/15*12;
+   if(acc>=5) reasons.push(`가속 <b>+${acc}p</b>`);
+ }
+ //   매출 동반(최대 12) — 축소형은 여기서 크게 벌어진다
+ if(rc.k==='grow'){Q+=12;reasons.push(rc.t);}
+ else if(rc.k==='slow'){Q+=5;reasons.push(rc.t);}
+ else if(rc.k==='shrink'){Q+=0;reasons.push('⚠'+rc.t);}
+ else Q+=4;
+ //   추정치 방향(최대 8) — 없으면 중립 4. 없다고 깎지 않는다
+ if(et.k==='up'){Q+=8;reasons.push(et.t);}
+ else if(et.k==='down'){Q+=0;reasons.push('⚠'+et.t);}
+ else if(et.k==='flat')Q+=4; else Q+=4;
+ //   지속성 점검 — 분기가 연간을 못 따라가면 피크아웃
+ if(qsp!=null&&qsp<=0){Q=Q*0.5;reasons.push('⚠분기 둔화(피크아웃)');}
 
- // 4) 가속 — 보상하되 상한(과도하면 기저효과라 제외)
- if(acc!=null && Math.abs(acc)<=60){
-   if(acc>=5 && acc<=40){pts+=16;reasons.push(`가속 <b>+${acc}p</b>`);}
-   else if(acc<0){pts-=8;}
- }
+ // ── ② 가격 미반영 (30) ── 아직 안 실렸는가
+ let U=0;
+ const fh=m.from_high,r6=m.rs6;
+ //   52주 고점比(최대 15) — 깊이 눌릴수록 여력
+ U += (fh!=null) ? Math.max(0,Math.min(-fh,45)-12)/33*15 : 7;
+ //   RS6M(최대 15) — 낮을수록 시장이 아직 안 깨움
+ U += (r6!=null) ? Math.max(0,Math.min(5-r6,45))/45*15 : 7;
+ if(fh!=null&&fh<=-25) reasons.push(`고점比 <b>${fh}%</b>`);
+ if(r6!=null&&r6<=-15) reasons.push(`시장 저반영(RS6M ${r6}%)`);
+ //   이미 실린 경우는 여기서 스스로 낮아지지만, 이유는 밝혀준다
+ if(cooling(m)) reasons.push(`⚠정점 통과·냉각(6M ${r6>0?'+':''}${r6}/3M ${m.rs3}) — 매복 아님`);
+ if(r6!=null&&m.rs3!=null&&r6<=10&&m.rs3>20) reasons.push(`⚠점화 직후(3M +${m.rs3}%) — 이미 절반 반영`);
+ if(r6!=null&&r6<-35) reasons.push('⚠깊은 약세 — 매복인지 가치함정인지 확인 필요');
 
- // 5) 상대강도 — 위치(RS6M) + 방향(RS3M) + 과속 할인 + 냉각 모순 제거
- const r6=m.rs6, r3=m.rs3;
- const cooling=(r3!=null && r6!=null && r6>0 && r3<0);
- let amb=0;
- if(r6!=null){
-   if(r6>=-15 && r6<=10){amb=12;}
-   else if(r6>10 && r6<=35){amb=6;}
-   else if(r6>60){pts-=12;reasons.push('⚠과열(RS6M)');}
-   else if(r6<-35){pts-=10;reasons.push('⚠깊은 약세(가치함정 점검)');}
- }
- if(cooling) amb=0;   // 식는데 '저반영'이라는 모순 제거
- if(amb>0 && r3!=null && r3>20){
-   amb=Math.round(amb/2);
-   reasons.push(`⚠점화 직후(3M +${r3}%) — 이미 절반 반영, '먼저'가 아님`);
- }
- if(amb>0){pts+=amb;reasons.push(`시장 저반영(RS6M ${r6}%)`);}
- if(cooling){
-   pts-=14;reasons.push(`⚠정점 통과·냉각(6M +${r6}/3M ${r3}) — 매복 아님`);
- } else if(r3!=null && r6!=null){
-   if(r6<=10 && r3>=3 && r3<=20){pts+=10;reasons.push(`바닥 반등 시작(3M +${r3}%) — 변곡`);}
-   else if(r6<-15 && r3<-8){pts-=8;reasons.push('⚠하락 가속(매복 아님)');}
- }
+ // ── ③ 타이밍 (10) ── 하락이 멈췄는가. 삭제가 아니라 등급으로
+ const T={A:10,B:5,C:0}[fl.g];
+ if(fl.g==='A') reasons.push(`<b>${fl.t}</b>`);
+ else if(fl.g==='C') reasons.push('⚠'+fl.t);
 
- // 6) 밸류에이션 — pe → fpe(선행) 폴백
+ // ── ④ 밸류에이션 (10) ── 상한을 낮게 묶는다
  const val=(m.pe!=null&&m.pe>0)?m.pe:(m.fpe!=null&&m.fpe>0)?m.fpe:null;
- if(val!=null){
-   if(val<18){pts+=10;reasons.push(`저PER ${val.toFixed(0)}`);}
-   else if(val>45){pts-=12;reasons.push('⚠고PER(고평가)');}
- } else {
-   pts-=4;reasons.push('⚠밸류 미검증(PER 결측)');
- }
+ let V;
+ if(val==null) V=4;                                     // 결측은 중립. 감점 금지
+ else if(val<18){V=10;reasons.push(`저PER ${val.toFixed(0)}`);}
+ else if(val<28) V=7;
+ else if(val<40) V=4;
+ else {V=0;reasons.push(`⚠고PER ${val.toFixed(0)}`);}
 
- // 7) 갭위험
- if(gap!=null && gap>10){pts-=6;}
+ let pts=Q+U+T+V;
 
- // 8) 기저효과 패널티: 흑자전환/일회성이면 점수를 강하게 깎아 '가짜 1등' 방지
- if(q==='base'){
-   pts=Math.round(pts*0.35);
-   reasons.unshift('⚠흑자전환/기저효과 추정 — 스프레드 과대표시(산수 착시)');
- }
- else if(m.q_op!=null && m.q_op>=35 && m.q_op<50){
-   reasons.push(`🟡 일회성 점검(분기 영익 +${m.q_op}%) — 자산처분익 등 섞였는지 DART 확인`);
- }
- return {pts,reasons,grade:q};
+ // ── 감점: 착시와 리스크 ──
+ if(q==='base'){pts*=0.35;reasons.unshift('⚠흑자전환/기저효과 추정 — 스프레드 과대표시(산수 착시)');}
+ else if(m.q_op!=null&&m.q_op>=35&&m.q_op<50&&!(m.q_rev!=null&&m.q_rev>=15))
+   reasons.push(`🟡 일회성 점검(분기 영익 +${m.q_op}%, 매출은 ${m.q_rev==null?'미상':m.q_rev+'%'}) — 자산처분익 등 섞였는지 DART 확인`);
+ if(hugeSpread(m)) reasons.push(`🟡 스프레드가 비정상적으로 큼(${Math.max(sp,qsp==null?sp:qsp)}p) — 산수 착시 가능`);
+ if(gap!=null&&gap>10) pts-=4;
+ if(earnSoon(m)) reasons.push(`⚠실적 D-${m.d_until} — 발표 전 진입은 갭 리스크`);
+
+ return {pts:Math.round(pts*10)/10, parts:{Q:Math.round(Q*10)/10,U:Math.round(U*10)/10,T,V},
+         reasons, grade:q, tier:fl.g};
 }
 // ===== 선취매 레이더 =====
 // 가속 탭은 가속 순으로만 세우기 때문에, 그 안에 섞인 기저효과·허수 가속을
@@ -868,37 +954,64 @@ function medOf(arr){
  const h=Math.floor(v.length/2);
  return v.length%2 ? v[h] : Math.round((v[h-1]+v[h])/2*10)/10;
 }
-// '진짜 가속' = 가속 중 + 지금 실제로 레버리지가 있음 + 흑자전환 착시 아님.
-// (가속만 양수이고 분기 스프레드는 여전히 음수인 종목은 '덜 나빠진 것'이지 가속이 아니다)
-function realAccel(m){
- return m.accel!=null && Math.abs(m.accel)<=150 && m.q_spread!=null
-     && m.accel>0 && m.q_spread>0 && m.spread>0 && spreadQuality(m)!=='base';
+// '진짜 가속' 판정. 통과/탈락만 주지 않고 '왜 떨어졌는지'를 함께 돌려준다 —
+// 화면에서 축소형을 별도 구간으로 빼려면 탈락 사유를 알아야 한다.
+//  · 가속만 양수이고 분기 스프레드가 음수인 종목은 '덜 나빠진 것'이지 가속이 아니다
+//  · 0 초과만 요구하면 +0.2p 짜리 무의미한 레버리지가 그대로 통과한다
+//  · 매출이 줄면서 나오는 이익 레버리지는 비용절감이라 오래 못 간다
+function accelCheck(m){
+ const a=m.accel,q=m.q_spread,s=m.spread;
+ if(a==null||Math.abs(a)>150||q==null||s==null) return {ok:false,why:'na'};
+ if(a<=0)                    return {ok:false,why:'noaccel'};
+ if(revClass(m).k==='shrink') return {ok:false,why:'shrink'};   // 턴어라운드 구간으로
+ if(s<GATE.MIN_ANN||q<GATE.MIN_QTTM) return {ok:false,why:'weak'};
+ if(spreadQuality(m)==='base') return {ok:false,why:'base'};
+ return {ok:true,why:null};
+}
+function realAccel(m){ return accelCheck(m).ok; }
+// 축소형 레버리지 — 버리지 않고 따로 본다. 헤게모니는 아니지만 턴어라운드
+// 초입일 수 있어서, 성격이 다르다는 걸 밝힌 채로 별도 구간에 둔다.
+function turnaround(m){
+ const c=accelCheck(m);
+ return !c.ok && c.why==='shrink' && m.spread!=null && m.spread>=GATE.MIN_ANN
+        && m.q_spread!=null && m.q_spread>=GATE.MIN_QTTM && spreadQuality(m)!=='base';
 }
 // 하락이 멈췄는가 — 선취매 타이밍을 가르는 핵심. 6개월 약세가 같아도
 // 3개월이 보합이면 바닥 다지는 중, 계속 빠지면 떨어지는 칼날이다.
+// 이걸로 후보를 삭제하지는 않는다. 등급만 낮춘다 — 바닥은 지나봐야 알기 때문이다.
 function falling(m){
- if(m.rs3==null) return {c:'m',t:'3개월 추세 확인 불가'};
- if(m.rs3>=-5)   return {c:'g',t:'하락 멈춤'};
- if(m.rs3<=-8)   return {c:'n',t:'아직 하락 중'};
- return {c:'m',t:'횡보'};
+ if(m.rs3==null) return {c:'m',g:'B',t:'3개월 추세 확인 불가'};
+ if(m.rs3>=-5)   return {c:'g',g:'A',t:`하락 멈춤(3M ${m.rs3>0?'+':''}${m.rs3}%)`};
+ if(m.rs3<=-8)   return {c:'n',g:'C',t:`아직 하락 중(3M ${m.rs3}%)`};
+ return {c:'m',g:'B',t:`횡보(3M ${m.rs3}%)`};
 }
+// 실적 발표가 코앞이면 펀더멘털과 무관하게 갭 리스크가 커진다.
+function earnSoon(m){ return m.d_until!=null && m.d_until>=0 && m.d_until<=7; }
 function radarWhy(m){
- const w=[];
- if(m.rev!=null&&m.rev>=5) w.push(`매출 <b>+${m.rev}%</b> 동반성장`);
+ const w=[], rc=revClass(m), et=estTrend(m);
+ if(rc.k==='grow') w.push(`매출 <b>+${rc.r}%</b> 동반성장`);
  w.push(`분기 <b>+${m.q_spread}p</b>(가속 +${m.accel}p)`);
+ if(et.k==='up') w.push(et.t);                       // 추정치 상향 = 지금 막 좋아지는 중
  if(m.from_high!=null&&m.from_high<=-15) w.push(`고점比 ${m.from_high}%`);
- if(falling(m).c==='g') w.push('<b>하락 멈춤</b>');
+ if(falling(m).g==='A') w.push('<b>하락 멈춤</b>');
+ // 근거 쪽은 후행 PER 만 본다 — 선행(fpe)은 추정치라 '싸다'의 증거로 쓰지 않는다.
+ // (반대로 radarRisk 의 '비싸다' 경고에는 선행도 쓴다. 경고는 넓게, 근거는 좁게)
  const val=(m.pe!=null&&m.pe>0)?m.pe:null;
  if(val!=null&&val<15) w.push(`PER ${val.toFixed(0)}`);
  return w.join(' · ');
 }
 function radarRisk(m){
- const r=[];
+ const r=[], rc=revClass(m), et=estTrend(m), fl=falling(m);
  const val=(m.pe!=null&&m.pe>0)?m.pe:((m.fpe!=null&&m.fpe>0)?m.fpe:null);
+ if(et.k==='down') r.push(`실적은 좋은데 <b>추정치는 하향</b>(1개월 ${m.est30}%) — 가치함정 점검`);
+ if(earnSoon(m)) r.push(`<b>실적 D-${m.d_until}</b> — 발표 전 진입은 펀더멘털과 별개로 갭 리스크`);
  if(m.rs6!=null&&m.rs6<-35) r.push('6개월 −35% 이하 깊은 약세 — <b>매복인지 가치함정인지</b> DART 확인 필수');
- if(falling(m).c==='n') r.push(`3개월 ${m.rs3}% — <b>아직 떨어지는 중</b>`);
+ if(fl.g==='C') r.push(`3개월 ${m.rs3}% — <b>아직 떨어지는 중</b>`);
  if(val!=null&&val>40) r.push(`PER ${val.toFixed(0)} — 많이 눌렸는데도 비싸다`);
- if(m.rev!=null&&m.rev<3) r.push(`매출 ${m.rev>0?'+':''}${m.rev}% — 성장 미미, 헤게모니라기엔 약함`);
+ if(rc.turning) r.push(`<b>${rc.turning}</b>`);
+ if(rc.k==='shrink') r.push(`<b>${rc.t}</b> — 자를 살은 유한하다`);
+ else if(rc.k==='slow') r.push(`매출 +${rc.r}% — 성장 미미, 헤게모니라기엔 약함`);
+ if(hugeSpread(m)) r.push('스프레드가 비정상적으로 큼 — 산수 착시 가능');
  if(m.gaplvl==='H') r.push(`갭위험 ${m.gap}% — 실적 전후 변동 큼`);
  if(m.q_approx) r.push('분기TTM은 근사치');
  return r.length ? r.join(' · ') : '뚜렷한 결격 없음 — 그래도 1차 자료는 확인';
@@ -909,17 +1022,30 @@ function gotoIndustry(ko){
  const box=document.getElementById('q');
  if(box){box.value=ko;q=ko;renderFlat();box.scrollIntoView({behavior:'smooth',block:'center'});}
 }
+// 산업이 아니라 '분류 못 한 것들을 담은 자루'인 버킷. 여기 중앙값은
+// 수요 사이클이 공유되지 않는 회사들의 평균이라 아무 뜻이 없고,
+// 자루일수록 구성원이 많아 통과 문턱만 쉽게 넘는다.
+// 한국은 야후 분류가 빠진 종목이 통째로 'Unknown' 한 칸에 들어간다(21종목).
+const isBag=s=>{const d=(s.desc||'').trim();
+  return !d || d==='Unknown' || s.gics==='Unknown';};
 function renderRadar(){
  const panel=document.getElementById('radarPanel');
+ if(!panel)return;
  const all=[]; D.subs.forEach(s=>s.members.forEach(m=>all.push({...m,sec:s.ko||s.desc})));
  const pool=all.filter(m=>m.accel!=null&&Math.abs(m.accel)<=150&&m.q_spread!=null); // 가속 탭 모집단
  const real=pool.filter(realAccel);
+ // 정렬은 네 축 가중 점수로 — 품질 50 · 미반영 30 · 타이밍 10 · 밸류 10.
+ // 예전엔 저PER 하나로 구조가 약한 기업이 위로 올라올 수 있었다.
  const picksAll=real.filter(m=>priceIn(m).c==='g')   // 아직 저반영
       .sort((a,b)=>{const A=scoreCandidate(a),B=scoreCandidate(b);
                     return (B?B.pts:-999)-(A?A.pts:-999);});
  // 한눈에 보는 게 목적이라 상한을 둔다. 다만 몇 개를 감췄는지는 반드시 밝힌다.
  const CAP=6, picks=picksAll.slice(0,CAP);
  const partial=real.filter(m=>priceIn(m).c==='m').sort((a,b)=>b.accel-a.accel).slice(0,3);
+ // 축소형 레버리지 — 매출이 줄면서 이익만 느는 것. 헤게모니가 아니라서 본
+ // 후보에서 뺐지만, 턴어라운드 초입일 수 있어 성격을 밝힌 채 따로 보여준다.
+ const turns=pool.filter(m=>turnaround(m)&&priceIn(m).c==='g')
+      .sort((a,b)=>(b.q_spread||0)-(a.q_spread||0)).slice(0,3);
 
  // 산업 단위: '가속 중인데 아직 안 깨워진 산업'.
  // 중앙값을 전 종목으로 내면 흑자전환 착시가 그대로 들어와(항공 +95p 같은 값)
@@ -933,28 +1059,38 @@ function renderRadar(){
        qsp:medOf(clean.map(m=>m.q_spread)),
        rs :medOf(clean.map(m=>m.rs6))};
    })
-   // Unknown 은 산업이 아니라 야후 분류가 빠진 종목들을 담은 자루다.
-   // 여길 '유망 산업'으로 띄우면 없는 신호를 만들어내는 셈이라 뺀다.
-   .filter(x=>x.s.desc!=='Unknown' && x.s.gics!=='Unknown'
+   .filter(x=>!isBag(x.s)
             && x.clean.length>=2 && x.hits.length>=1
             && x.acc!=null&&x.acc>0 && x.qsp!=null&&x.qsp>0 && x.rs!=null&&x.rs<10)
    .sort((a,b)=>b.acc-a.acc).slice(0,4);
 
- const card=(m,warn)=>`<div class="rc ${warn?'warn':''}" onclick="openTrade('${m.tk}')">
+ // 등급은 '타이밍'만 뜻한다 — 하락이 멈췄는지. A 라고 좋은 종목이 아니라
+ // A 는 지금 들어가기 편한 자리, C 는 더 빠질 수 있는 자리라는 뜻이다.
+ const TIER={A:{t:'A',d:'하락 멈춤'},B:{t:'B',d:'횡보·확인 불가'},C:{t:'C',d:'아직 하락 중'}};
+ const card=(m,warn)=>{const sc=scoreCandidate(m), tg=TIER[(sc&&sc.tier)||'B'];
+  return `<div class="rc ${warn?'warn':''}" onclick="openTrade('${m.tk}')">
    <div class="rc-r1"><span class="rc-tk">${m.tk}</span><span class="rc-nm">${m.nm}</span>
+    <span class="rc-tier t${tg.t}" title="타이밍 등급 — ${tg.d}">${tg.t}</span>
     <span class="rc-sec">${m.sec}</span></div>
    <div class="rc-m">
     <span>연간 <b>${m.spread>0?'+':''}${m.spread}p</b></span>
     <span class="g">분기 <b>${m.q_spread>0?'+':''}${m.q_spread}p</b></span>
     <span class="g">가속 <b>+${m.accel}p</b></span>
-    <span>매출 <b>${m.rev==null?'—':(m.rev>0?'+':'')+m.rev+'%'}</b></span>
+    <span title="${m.q_rev!=null?'분기TTM 기준 — 판정도 이 값을 씁니다':'연간 기준(분기 자료 없음)'}">매출${m.q_rev!=null?'<sub>분기</sub>':'<sub>연간</sub>'} <b>${(()=>{const r=revClass(m);return r.r==null?'—':(r.r>0?'+':'')+r.r+'%';})()}</b></span>
     <span>RS6M <b>${m.rs6==null?'—':(m.rs6>0?'+':'')+m.rs6+'%'}</b></span>
     <span>고점比 <b>${m.from_high==null?'—':m.from_high+'%'}</b></span>
     <span>PER <b>${peShow(m)}</b></span>
    </div>
    <div class="rc-l why"><span class="k">근거</span><span>${radarWhy(m)}</span></div>
    <div class="rc-l risk"><span class="k">조심</span><span>${radarRisk(m)}</span></div>
-  </div>`;
+   ${sc?`<div class="rc-score" title="헤게모니 품질 50 · 가격 미반영 30 · 타이밍 10 · 밸류 10">
+    <span class="sl">점수 ${sc.pts}</span>
+    <span class="sb"><i style="width:${sc.parts.Q/50*100}%"></i>품질 ${sc.parts.Q}/50</span>
+    <span class="sb"><i style="width:${sc.parts.U/30*100}%"></i>미반영 ${sc.parts.U}/30</span>
+    <span class="sb"><i style="width:${sc.parts.T/10*100}%"></i>타이밍 ${sc.parts.T}/10</span>
+    <span class="sb"><i style="width:${sc.parts.V/10*100}%"></i>밸류 ${sc.parts.V}/10</span>
+   </div>`:''}
+  </div>`;};
 
  panel.innerHTML=`
   <div class="radar-head">🎯 선취매 레이더<i class="help-i" onclick="tip('radar')">i</i></div>
@@ -964,6 +1100,7 @@ function renderRadar(){
    <div class="rf">→ 진짜 가속<b>${real.length}</b></div>
    <div class="rf on">→ 아직 저반영<b>${picksAll.length}</b></div>
   </div>
+  <div class="radar-gate">거르는 조건: 매출 역성장 제외 · 연간 스프레드 ${GATE.MIN_ANN}p↑ · 분기TTM ${GATE.MIN_QTTM}p↑ · 가속 &gt; 0 · 기저효과 제외 · 52주 고점比 ${GATE.FH_DEEP}%↓ · RS6M ${GATE.RS6_QUIET}%↓</div>
 
   <div class="radar-sec">산업 — 가속 중인데 시장이 안 깨운 곳</div>
   ${inds.length ? inds.map(x=>`
@@ -981,6 +1118,10 @@ function renderRadar(){
 
   ${partial.length ? `<div class="radar-sec">종목 — 이미 절반 반영(추격 주의)</div>
    ${partial.map(m=>card(m,true)).join('')}` : ''}
+
+  ${turns.length ? `<div class="radar-sec">종목 — 축소형 레버리지(턴어라운드 후보 · 성격 다름)</div>
+   <div class="radar-note">매출은 <b>줄고 있는데</b> 이익만 느는 종목입니다. 비용절감·구조조정의 결과라 헤게모니(가격결정력)와는 다른 현상이고, 자를 살은 유한하니 오래 못 갑니다. 그래도 <b>턴어라운드 초입</b>일 수 있어 따로 둡니다 — 매출이 언제 돌아서는지가 전부입니다.</div>
+   ${turns.map(m=>card(m,true)).join('')}` : ''}
 
   <div class="top5-disc">이건 조건으로 걸러낸 <b>출발 후보</b>지 매수 신호가 아닙니다. 특히 RS6M이 깊게 빠진 종목은 "시장이 아직 안 깨운 것"과 "시장이 이유 있게 던지는 것"을 이 도구가 구분하지 못합니다 — 종목을 눌러 트레이드 카드에서 DART로 확인하세요.</div>`;
 }
@@ -1206,7 +1347,7 @@ function buildPrompt(tk){
 
 // ── GPT 상주 지침 (docs/gpt-instructions.md 와 동일 — 테스트가 일치를 강제) ──
 // 종목 프롬프트는 매번 바뀌는 질문이고, 이건 GPT 에 한 번만 넣어두는 규칙이다.
-const GPT_GUIDE="[역할]\n너는 \"헤게모니 트리\" 스크리너와 짝을 이루는 주식 펀더멘털 분석가다. 사용자는 한국(코스피·코스닥) 또는 미국 증시 종목의 스냅샷 데이터를 붙여넣는다. 스냅샷이 오면 아래 [검증 절차]와 [분석·출력 형식]을 그대로 수행한다. 너의 일은 숫자를 검증하고 맥락을 붙여 사용자가 스스로 판단할 재료를 정리하는 것이지, 매수·매도 명령을 내리는 것이 아니다. 한국 종목은 K-IFRS 연결 영업이익, 미국 종목은 US-GAAP 기준으로 본다.\n\n[데이터 사전 — 붙여넣기에 나오는 용어]\n- 헤게모니 스프레드 = 영업이익 YoY% − 매출 YoY%. 양수면 이익이 매출보다 빨리 늘어 이익 레버리지(가격결정력·고정비 효과)가 작동 중.\n- 분기TTM 스프레드 = 최근 4분기 합산 기준 스프레드. 연간보다 최신 상태.\n- 가속 = 분기TTM − 연간. 양수면 레버리지가 최근 더 강해지는 중.\n- RS3M / RS6M = 벤치마크(한국은 코스피, 미국은 S&P500) 대비 3·6개월 상대수익률. 차트 지표가 아니라 원시 수익률 차이다.\n- 52주 고점比 = 현재가가 52주 고점 대비 몇 % 아래인가. 고점에 가까울수록 이미 반영, 깊게 눌릴수록 여력.\n- 갭위험 = 최근 60거래일의 시가 갭 최대치. H 면 실적 전후 변동이 크다.\n- PER 뒤의 F = 후행 PER 이 없어 선행(Forward) PER 로 대체된 값. 서로 다른 지표이므로 비교 시 감안하라.\n- \"근사치\"(q_approx) = 분기 자료가 8분기 미만이라 TTM 을 직전 연간과 비교한 근사값. 한국 종목 대부분이 이 모드다.\n\n[스크리너의 알려진 맹점 — 숫자를 그대로 믿지 말 것]\n1. 기저효과: 전년 이익이 바닥이면 스프레드가 폭발한다. 영업이익 YoY +80% 이상이거나 가속이 ±60p 를 넘으면 흑자전환·일회성을 의심하라.\n2. 출처 정의 차이: 숫자는 야후·SEC 프레임 기반이라 한국 K-IFRS 연결 영업이익, 미국 US-GAAP 공시와 어긋날 수 있다. 1차 자료와 대조하라.\n3. 한국판은 외국인·기관 수급을 수집하지 않는다. 웹검색으로 반드시 보강하라.\n4. 주간 스냅샷이다. 붙여넣기의 데이터 기준일 이후에 나온 실적·공시가 있는지 날짜부터 확인하라.\n5. RS 가 깊게 빠진 것(-30% 이하)은 \"시장이 아직 못 본 것\"과 \"이유 있는 투매\"를 구분하지 못한다. 왜 싼지를 밝히는 게 네 몫이다.\n\n[검증 절차 — 분석에 앞서 반드시]\nV1. 스냅샷 숫자를 표로 요약한다. 원문 그대로, 각색 금지.\nV2. 스프레드 분해: 영업이익 증가가 (1)유기적 매출성장·마진개선인지 (2)전년 적자·저기저에서의 흑자전환인지 (3)자산처분익·지분법·환율 같은 일회성이 섞인 것인지 — 한국은 DART 분기보고서 주석, 미국은 8-K·10-Q 로 구분한다. (2)(3)이면 스프레드는 과대표시다.\nV3. 가이던스·경영진 톤: 미국은 보도자료·어닝콜에서 다음 분기·연간 가이던스의 방향(상향/유지/하향)과 어조(자신감/방어)를 인용한다. 한국 기업은 명시적 가이던스가 약하므로 증권사 컨센서스로 대체한다.\nV4. RS 해석: 6개월 약세인데 3개월 급등이면 '점화 직후(이미 절반 반영)', 6개월 강세인데 3개월 둔화면 '정점 통과·냉각'일 수 있다. 어느 쪽인지 판정한다.\nV5. 수급·일정: 한국은 외국인·기관 순매수와 지분율 추세, 공매도·대차잔고, 신용융자를 웹검색(네이버 금융 등)으로 확인한다. 미국은 다음 실적 발표일과 다가오는 촉매를 확인한다.\nV6. 컨센서스: 증권사(애널리스트) 목표가 대비 현재가 위치 — 이미 추월했는지, 괴리가 남았는지.\n모든 외부 사실에는 출처를 달고, 확인 못 한 것은 \"미확인\"으로 표기한다.\n\n[분석·출력 형식 — 이 순서로 쓴다]\n① 스냅샷 요약(표) + 검증 결과 — 원문과 다른 숫자가 있으면 명시\n② 헤게모니 진위 — V2 기준 청결도 판정(깨끗 / 기저효과 / 일회성 오염) + 분기 추세로 가속/피크아웃 결론\n③ 산업·해자 — 세부산업의 수요 사이클·정책·경쟁구도, 가격결정력·점유율을 지킬 구조적 해자가 있는지(없으면 마진 레버리지는 일시적)\n④ 밸류에이션 — 현재 PER 을 역사 레인지·동종업계와 비교. 헤게모니 강도 대비 싼지/제값인지/비싼지, 안전마진 유무\n⑤ 가격 반영도 / 선취매 판정 (가장 비중 있게) — (a) RS 6M/3M 패턴과 52주 고점比 (b) 컨센서스 목표가 대비 위치 (c) 밸류에이션의 역사적 위치 (d) 수급·촉매(V5) 를 종합해 [잠복·선취매 / 초기 반영 / 점화 직후(절반 반영) / 정점 통과·냉각 / 고점권 과반영] 중 하나로 판정하고 근거를 댄다\n⑥ 베어 케이스(스틸맨) — 이 종목을 사면 안 되는 가장 강력한 반대 논거를 일부러 세게\n⑦ 반증 조건 — 논제가 틀렸음을 입증할 단 하나의 관찰값·이벤트\n⑧ 결론 — 관찰 / 분할매수 검토 / 보류 중 택1 + (⑤와 연결해) 지금이 '먼저 들어갈 자리'인지 '추격 위험 자리'인지 + 진입 전 체크리스트 + 다음 실적에서 확인할 핵심 1~2개 + 확신도(상/중/하)와 근거\n붙여넣기에 별도의 번호 달린 분석 요청이 포함돼 있으면 그쪽 구조를 우선한다.\n\n[절대 규칙]\n- 매수·매도를 단정하지 마라. 지시가 아니라 판단 재료를 정리하라.\n- 차트 기술지표(이동평균·RSI·볼린저·거래량 패턴 등)는 쓰지 마라. 펀더멘털·수급·일정만 다룬다.\n- 확인하지 못한 것은 \"미확인\"으로 표시하라. 숫자를 지어내지 마라.\n- 외부 사실에는 출처를 달아라. 검색이 안 되면 안 된다고 말하라.\n- 목표가를 찍지 마라. 대신 논제가 깨지는 조건을 줘라. 손절가와 비중은 사용자가 R-멀티플로 직접 정한다.\n- 한국어로 답하고, 용어는 위 데이터 사전의 정의대로 쓴다.";
+const GPT_GUIDE="[역할]\n너는 \"헤게모니 트리\" 스크리너와 짝을 이루는 주식 펀더멘털 분석가다. 사용자는 한국(코스피·코스닥) 또는 미국 증시 종목의 스냅샷 데이터를 붙여넣는다. 스냅샷이 오면 아래 [검증 절차]와 [분석·출력 형식]을 그대로 수행한다. 너의 일은 숫자를 검증하고 맥락을 붙여 사용자가 스스로 판단할 재료를 정리하는 것이지, 매수·매도 명령을 내리는 것이 아니다. 한국 종목은 K-IFRS 연결 영업이익, 미국 종목은 US-GAAP 기준으로 본다.\n\n[데이터 사전 — 붙여넣기에 나오는 용어]\n- 헤게모니 스프레드 = 영업이익 YoY% − 매출 YoY%. 양수면 이익이 매출보다 빨리 늘어 이익 레버리지(가격결정력·고정비 효과)가 작동 중.\n- 분기TTM 스프레드 = 최근 4분기 합산 기준 스프레드. 연간보다 최신 상태.\n- 가속 = 분기TTM − 연간. 양수면 레버리지가 최근 더 강해지는 중.\n- RS3M / RS6M = 벤치마크(한국은 코스피, 미국은 S&P500) 대비 3·6개월 상대수익률. 차트 지표가 아니라 원시 수익률 차이다.\n- 52주 고점比 = 현재가가 52주 고점 대비 몇 % 아래인가. 고점에 가까울수록 이미 반영, 깊게 눌릴수록 여력.\n- 갭위험 = 최근 60거래일의 시가 갭 최대치. H 면 실적 전후 변동이 크다.\n- PER 뒤의 F = 후행 PER 이 없어 선행(Forward) PER 로 대체된 값. 서로 다른 지표이므로 비교 시 감안하라.\n- \"근사치\"(q_approx) = 분기 자료가 8분기 미만이라 TTM 을 직전 연간과 비교한 근사값. 한국 종목 대부분이 이 모드다.\n- 매출 분류 = 매출 YoY(분기TTM 우선) 기준. +5% 이상 \"동반성장\", 0~5% \"저성장 레버리지\", 0% 미만 \"축소형(비용절감) 레버리지\". 축소형은 본 후보에서 빠져 별도 '턴어라운드' 구간에 놓인다.\n- \"매출이 꺾이는 중 / 돌아서는 중\" = 연간 매출 방향과 최근 4분기 방향이 어긋난다는 표시. 어느 한쪽만 보면 안 보이는 변곡이다.\n- 타이밍 등급 A/B/C = RS3M 기준. A는 하락이 멈춤(≥-5%), B는 횡보·확인 불가, C는 아직 하락 중(≤-8%). **좋은 종목 등급이 아니라 '지금 들어가기 편한 자리인가'** 다. C 라고 탈락은 아니다.\n- 점수 분해 = 헤게모니 품질 50 · 가격 미반영 30 · 타이밍 10 · 밸류 10. 밸류 비중을 낮게 묶어둔 이유는 \"싼 데는 이유가 있다\"를 반영하기 위해서다.\n- 추정치(est30/est90) = 애널리스트 당해 EPS 컨센서스의 30일·90일 변화율(%). 한국 종목은 대부분 미수집이라 비어 있고, 비어 있으면 화면은 중립으로 처리한다.\n\n[스크리너의 알려진 맹점 — 숫자를 그대로 믿지 말 것]\n1. 기저효과: 전년 이익이 바닥이면 스프레드가 폭발한다. 영업이익 YoY +80% 이상이거나 가속이 ±60p 를 넘으면 흑자전환·일회성을 의심하라.\n2. 출처 정의 차이: 숫자는 야후·SEC 프레임 기반이라 한국 K-IFRS 연결 영업이익, 미국 US-GAAP 공시와 어긋날 수 있다. 1차 자료와 대조하라.\n3. 한국판은 외국인·기관 수급을 수집하지 않는다. 웹검색으로 반드시 보강하라.\n4. 주간 스냅샷이다. 붙여넣기의 데이터 기준일 이후에 나온 실적·공시가 있는지 날짜부터 확인하라.\n5. RS 가 깊게 빠진 것(-30% 이하)은 \"시장이 아직 못 본 것\"과 \"이유 있는 투매\"를 구분하지 못한다. 왜 싼지를 밝히는 게 네 몫이다.\n6. 매출 분류는 분기TTM 을 우선한다. 연간과 분기TTM 이 어긋나는 종목이 미국 기준 401개 중 98개(24%)나 되므로, 스냅샷에 \"꺾이는 중/돌아서는 중\" 표시가 있으면 그게 이 종목의 핵심 논점이다.\n7. 추정치가 비어 있는 것은 \"추정치가 나쁘다\"가 아니라 \"못 받았다\"는 뜻이다. 한국 종목은 대부분 비어 있으니 네가 웹검색으로 증권사 컨센서스 방향을 직접 확인해야 한다.\n8. 스크리너는 컨센서스 '방향'만 본다. 절대 수준(목표가 대비 위치)은 안 본다.\n\n[검증 절차 — 분석에 앞서 반드시]\nV1. 스냅샷 숫자를 표로 요약한다. 원문 그대로, 각색 금지.\nV2. 스프레드 분해: 영업이익 증가가 (1)유기적 매출성장·마진개선인지 (2)전년 적자·저기저에서의 흑자전환인지 (3)자산처분익·지분법·환율 같은 일회성이 섞인 것인지 — 한국은 DART 분기보고서 주석, 미국은 8-K·10-Q 로 구분한다. (2)(3)이면 스프레드는 과대표시다.\nV3. 가이던스·경영진 톤: 미국은 보도자료·어닝콜에서 다음 분기·연간 가이던스의 방향(상향/유지/하향)과 어조(자신감/방어)를 인용한다. 한국 기업은 명시적 가이던스가 약하므로 증권사 컨센서스로 대체한다.\nV4. RS 해석: 6개월 약세인데 3개월 급등이면 '점화 직후(이미 절반 반영)', 6개월 강세인데 3개월 둔화면 '정점 통과·냉각'일 수 있다. 어느 쪽인지 판정한다.\nV5. 수급·일정: 한국은 외국인·기관 순매수와 지분율 추세, 공매도·대차잔고, 신용융자를 웹검색(네이버 금융 등)으로 확인한다. 미국은 다음 실적 발표일과 다가오는 촉매를 확인한다.\nV6. 컨센서스: 증권사(애널리스트) 목표가 대비 현재가 위치 — 이미 추월했는지, 괴리가 남았는지.\nV7. 추정치 방향: 최근 1~3개월 EPS·영업이익 컨센서스가 상향인지 하향인지 확인한다. 스냅샷에 est30/est90 이 있으면 그 값을 쓰고, 없으면(한국 종목 대부분) 웹검색으로 보강한다. **실적 숫자는 좋은데 추정치가 계속 하향이면 가치함정을 강하게 의심하라** — 시장은 이미 다음 분기를 보고 있다는 뜻이다. 미국 기업은 경영진 가이던스 방향(상향/유지/하향)도 함께 본다.\nV8. 매출 방향 변곡: 연간 매출과 최근 4분기(분기TTM) 매출의 방향이 다르면, 어느 쪽이 이 기업의 '현재'인지 1차 자료로 판정한다. 이익 레버리지가 매출 성장에서 오는지 비용절감에서 오는지가 여기서 갈린다.\n모든 외부 사실에는 출처를 달고, 확인 못 한 것은 \"미확인\"으로 표기한다.\n\n[분석·출력 형식 — 이 순서로 쓴다]\n① 스냅샷 요약(표) + 검증 결과 — 원문과 다른 숫자가 있으면 명시\n② 헤게모니 진위 — V2 기준 청결도 판정(깨끗 / 기저효과 / 일회성 오염) + 분기 추세로 가속/피크아웃 결론 + **레버리지의 출처 판정**: 매출 성장에서 오는 '동반성장'인가, 매출이 정체·감소하는데 비용절감으로 만든 '축소형'인가. 축소형이면 자를 살이 얼마나 남았는지(판관비율·인력·설비 추이)와 매출이 언제 돌아서는지를 논점으로 잡아라 — 이건 헤게모니가 아니라 턴어라운드 논제다.\n③ 산업·해자 — 세부산업의 수요 사이클·정책·경쟁구도, 가격결정력·점유율을 지킬 구조적 해자가 있는지(없으면 마진 레버리지는 일시적)\n④ 밸류에이션 — 현재 PER 을 역사 레인지·동종업계와 비교. 헤게모니 강도 대비 싼지/제값인지/비싼지, 안전마진 유무\n⑤ 가격 반영도 / 선취매 판정 (가장 비중 있게) — (a) RS 6M/3M 패턴과 52주 고점比 (b) 컨센서스 목표가 대비 위치 (c) 밸류에이션의 역사적 위치 (d) 수급·촉매(V5) (e) **추정치 방향(V7)** 을 종합해 [잠복·선취매 / 초기 반영 / 점화 직후(절반 반영) / 정점 통과·냉각 / 고점권 과반영] 중 하나로 판정하고 근거를 댄다. 이 도구가 찾는 것은 \"이익 레버리지가 실제로 강해지고 추정치도 막 좋아지기 시작했는데 주가는 아직 안 따라온\" 자리다 — 세 조건 중 몇 개가 충족됐는지 명시하라. 타이밍 등급(A/B/C)이 C 라면 \"논제는 맞지만 아직 떨어지는 중\"이라는 뜻이므로 분할매수 간격을 넓히는 근거로 쓴다.\n⑥ 베어 케이스(스틸맨) — 이 종목을 사면 안 되는 가장 강력한 반대 논거를 일부러 세게\n⑦ 반증 조건 — 논제가 틀렸음을 입증할 단 하나의 관찰값·이벤트\n⑧ 결론 — 관찰 / 분할매수 검토 / 보류 중 택1 + (⑤와 연결해) 지금이 '먼저 들어갈 자리'인지 '추격 위험 자리'인지 + 진입 전 체크리스트 + 다음 실적에서 확인할 핵심 1~2개 + 확신도(상/중/하)와 근거\n붙여넣기에 별도의 번호 달린 분석 요청이 포함돼 있으면 그쪽 구조를 우선한다.\n\n[절대 규칙]\n- 매수·매도를 단정하지 마라. 지시가 아니라 판단 재료를 정리하라.\n- 차트 기술지표(이동평균·RSI·볼린저·거래량 패턴 등)는 쓰지 마라. 펀더멘털·수급·일정만 다룬다.\n- 확인하지 못한 것은 \"미확인\"으로 표시하라. 숫자를 지어내지 마라.\n- 외부 사실에는 출처를 달아라. 검색이 안 되면 안 된다고 말하라.\n- 목표가를 찍지 마라. 대신 논제가 깨지는 조건을 줘라. 손절가와 비중은 사용자가 R-멀티플로 직접 정한다.\n- 한국어로 답하고, 용어는 위 데이터 사전의 정의대로 쓴다.";
 function copyGptGuide(btn){
  const prev=document.getElementById('promptPreview');
  if(prev){prev.textContent=GPT_GUIDE;prev.classList.add('show');}

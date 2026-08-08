@@ -3,8 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "python3 make_fixture.py && node smoke_kr.mjs && node smoke_ux.mjs",
-    "test:ux": "node smoke_ux.mjs"
+    "test": "python3 make_fixture.py && node smoke_kr.mjs && node smoke_ux.mjs && node parity.mjs",
+    "test:ux": "node smoke_ux.mjs",
+    "test:parity": "node parity.mjs"
   },
   "devDependencies": {
     "jsdom": "^30.0.0"

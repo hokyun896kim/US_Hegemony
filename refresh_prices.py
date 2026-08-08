@@ -1,0 +1,284 @@
+#!/usr/bin/env python3
+"""SEC 가 막혔을 때 쓰는 부분 갱신 — 가격층만 새로 받는다.
+
+왜 필요한가
+-----------
+미국 빌드는 18회 중 17회 실패했다. 전부 SEC 403 "Request Rate Threshold
+Exceeded" 이고, 첫 요청부터 막힌다. Actions 러너는 공유 NAT 출구 IP 를 쓰는데
+같은 IP 뒤의 다른 크롤러들이 이미 SEC 쿼터를 태워놓기 때문이다. 우리가
+초당 3건으로 낮춰도, 11분씩 두 번(총 22분) 기다려도 안 풀린다 — 우리 쪽
+속도의 문제가 아니라서 그렇다.
+
+그런데 이 화면이 주간으로 갱신돼야 하는 이유를 보면 대부분 가격 쪽이다.
+
+  · SEC 에서 오는 것  = 매출·영업이익 YoY, 스프레드, 분기TTM, 가속, IR 링크
+    → 분기에 한 번 바뀐다. 지난주 값과 이번 주 값이 같다.
+  · 야후에서 오는 것  = RS3M·RS6M, 52주 고점比, 갭위험, 현재가(→PER)
+    → 매일 바뀐다. 선취매 판정(priceIn)이 쓰는 게 정확히 이 셋이다.
+
+그래서 SEC 가 막히면 통째로 실패하는 대신, 커밋돼 있는 펀더멘털을 그대로
+두고 가격층만 새로 받는다. 판정에 쓰이는 값은 최신이 되고, 펀더멘털이 언제
+것인지는 fund_updated 로 화면에 밝힌다 — 오래된 걸 최신인 척하지 않는다.
+
+전체 빌드가 성공하면 이 스크립트는 돌지 않는다(워크플로가 실패했을 때만 부른다).
+"""
+import json, os, sys, time, urllib.request, urllib.error
+from datetime import date
+
+UA_YH = {"User-Agent": "Mozilla/5.0"}
+PATH = "data/tree.json"
+
+
+def get(url, tries=3):
+    for i in range(tries):
+        try:
+            r = urllib.request.Request(url, headers=UA_YH)
+            with urllib.request.urlopen(r, timeout=30) as x:
+                return x.read().decode("utf-8", "ignore")
+        except Exception:
+            if i == tries - 1:
+                return None
+            time.sleep(1.5 * (i + 1))
+
+
+def yseries(sym):
+    """(날짜, 종가, 시가, 수정종가) 목록. 수익률·고점比는 수정종가로 낸다."""
+    raw = get(f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}"
+              f"?range=1y&interval=1d")
+    if not raw:
+        return None
+    try:
+        res = json.loads(raw)["chart"]["result"][0]
+        ts, q = res["timestamp"], res["indicators"]["quote"][0]
+        try:
+            adj = res["indicators"]["adjclose"][0]["adjclose"]
+        except Exception:
+            adj = q["close"]
+        out = []
+        for i in range(len(ts)):
+            if not q["close"][i]:
+                continue
+            a = adj[i] if (i < len(adj) and adj[i]) else q["close"][i]
+            out.append((date.fromtimestamp(ts[i]).isoformat(),
+                        q["close"][i], q["open"][i], a))
+        return out or None
+    except Exception:
+        return None
+
+
+def ret(cl, n):
+    return (cl[-1] / cl[-1 - n] - 1) * 100 if len(cl) > n else None
+
+
+def eps_of(m, s, fund_day):
+    """주당순이익을 되찾는다 — 새 가격으로 PER 을 다시 내기 위해.
+
+    build_data.py 가 eps 를 남기기 시작한 뒤로는 그대로 쓴다. 그 전에 만들어진
+    데이터에는 pe 만 있으므로, 펀더멘털 기준일의 종가로 되푼다
+    (pe = 그날 종가 / eps  →  eps = 그날 종가 / pe). 둘 다 없으면 PER 은 비운다
+    — 옛 EPS 를 새 가격에 곱해 만든 가짜 PER 보다 '없음'이 정직하다.
+    """
+    if m.get("eps"):
+        return m["eps"]
+    pe = m.get("pe")
+    if not pe or pe <= 0 or not fund_day:
+        return None
+    # 기준일 이하의 마지막 거래일 종가
+    prior = [r for r in s if r[0] <= fund_day]
+    if not prior:
+        return None
+    return prior[-1][3] / pe
+
+
+def main(fetch=None, path=None):
+    """fetch 를 넣으면 야후 대신 그걸 쓴다 — 오프라인 자가진단이 쓴다."""
+    fetch = fetch or yseries
+    path = path or PATH
+    if not os.path.exists(path):
+        print(f"[!] {path} 가 없다 — 부분 갱신은 기존 데이터가 있어야 한다.",
+              file=sys.stderr)
+        return 1
+    D = json.load(open(path, encoding="utf-8"))
+    # 펀더멘털이 언제 것인지. 이미 부분 갱신을 한 번 거친 파일이면 그 값을 잇는다.
+    fund_day = D.get("fund_updated") or D.get("updated")
+
+    spy = fetch("SPY")
+    vix = fetch("^VIX")
+    if not spy:
+        print("[!] SPY 를 못 받았다 — 상대강도를 낼 수 없어 중단한다.", file=sys.stderr)
+        return 1
+    spy_cl = [r[3] for r in spy]
+    spy3, spy6 = ret(spy_cl, 63), ret(spy_cl, 126)
+
+    members = [m for r in D.get("subs", []) for m in r.get("members", [])]
+    print(f"[1/2] 가격층 갱신 — {len(members)}종목 (펀더멘털 기준일 {fund_day})")
+
+    ok = miss = 0
+    for i, m in enumerate(members):
+        s = fetch(m["tk"])
+        if not s:
+            miss += 1
+            # 못 받은 종목은 옛 가격 지표를 지운다. 낡은 RS 를 최신인 척 두면
+            # 선취매 판정이 지난주 가격으로 내려진다.
+            for k in ("rs3", "rs6", "gap", "gaplvl", "from_high", "pe"):
+                m[k] = None
+            continue
+        cl = [r[3] for r in s]
+        r3, r6 = ret(cl, 63), ret(cl, 126)
+        m["rs3"] = round(r3 - spy3, 1) if (r3 is not None and spy3 is not None) else None
+        m["rs6"] = round(r6 - spy6, 1) if (r6 is not None and spy6 is not None) else None
+        gaps = [abs(s[j][2] / s[j - 1][1] - 1) * 100 for j in range(max(1, len(s) - 60), len(s))]
+        g = round(max(gaps), 1) if gaps else None
+        m["gap"] = g
+        m["gaplvl"] = "H" if (g and g > 8) else ("M" if (g and g > 4) else "L")
+        hi = max(cl)
+        m["from_high"] = round((cl[-1] / hi - 1) * 100, 1) if hi > 0 else None
+        e = eps_of(m, s, fund_day)
+        m["eps"] = round(e, 4) if e else None
+        pe = round(cl[-1] / e, 2) if (e and e > 0) else None
+        m["pe"] = pe if (pe and 1.0 <= pe <= 300.0) else None
+        ok += 1
+        if (i + 1) % 50 == 0:
+            print(f"   {i+1}/{len(members)}")
+        time.sleep(0.04)
+
+    print("[2/2] 저장")
+    if vix:
+        v = round(vix[-1][1], 1)
+        D["market"] = {"vix": v,
+                       "vix_state": "저변동(위험선호)" if v < 16 else
+                                    ("중립" if v < 22 else ("경계" if v < 30 else "공포")),
+                       "spy3": round(spy3, 1) if spy3 is not None else None,
+                       "spy6": round(spy6, 1) if spy6 is not None else None}
+    D["updated"] = str(date.today())
+    D["fund_updated"] = fund_day          # 화면이 두 날짜를 다 보여준다
+    D["partial"] = "prices"               # 이번 회차는 가격층만 갱신됐다는 표시
+    json.dump(D, open(path, "w", encoding="utf-8"), ensure_ascii=False)
+    print(f"완료: {path} · 가격 갱신 {ok}종목, 실패 {miss}종목 "
+          f"· 펀더멘털은 {fund_day} 기준 그대로")
+    return 0
+
+
+def selftest():
+    """네트워크 없이 도는 자가진단.
+
+    이 스크립트는 SEC 가 막힌 회차에만 돌기 때문에 평소엔 아무도 안 밟는다.
+    정작 필요한 순간에 처음 실행되는 코드는 믿을 수 없으므로, 가짜 시세로
+    전 경로를 밟아둔다.
+    """
+    import tempfile
+    ok = [True]
+
+    def t(c, msg):
+        print(("  ok   " if c else "  FAIL ") + msg)
+        if not c:
+            ok[0] = False
+
+    # 260 거래일치 가짜 시세. 종목마다 다른 궤적을 준다.
+    D0 = date(2025, 8, 8)
+
+    def mkseries(start, step, days=260):
+        return [((D0.toordinal() + i and date.fromordinal(D0.toordinal() + i)).isoformat(),
+                 start + step * i, start + step * i, start + step * i)
+                for i in range(days)]
+
+    # AAA 는 SPY 와 '같은 궤적' 이어야 RS ≈ 0 이 된다. 같은 절대 증분이 아니라
+    # 같은 비율 증분이어야 한다 — SPY(500 시작, +0.5/일)의 126일 수익률과
+    # 맞추려면 100 시작에서는 +0.1/일이다.
+    SERIES = {
+        "SPY":  mkseries(500.0, 0.5),
+        "^VIX": mkseries(20.0, -0.02),
+        "AAA":  mkseries(100.0, 0.1),   # SPY 와 같은 비율 궤적 → RS ≈ 0
+        "BBB":  mkseries(100.0, 0.5),   # 계속 상승 → 마지막이 최고가 → 고점比 0
+        "CCC":  mkseries(200.0, -0.4),  # 하락 → 고점比 크게 마이너스
+        "DDD":  None,                   # 못 받는 종목
+    }
+    fetch = lambda s: SERIES.get(s, mkseries(100.0, 0.1))
+
+    # 펀더멘털 기준일은 시세 구간 '안'에 두어야 eps 되풀기가 실제로
+    # 중간 거래일을 집는다(구간 밖이면 마지막 행으로 되돌아 자기순환한다).
+    FUND_DAY = "2026-01-15"
+
+    fixture = {
+        "sectors": [], "updated": FUND_DAY, "market": {},
+        "subs": [{"sic": "1", "desc": "X", "ko": "", "gics": "산업재", "med": 1.0, "n": 4,
+                  "members": [
+                      # eps 가 이미 있는 종목 — 그대로 써야 한다
+                      {"tk": "AAA", "nm": "A", "spread": 10.0, "rev": 5.0, "op": 15.0,
+                       "q_spread": 3.0, "accel": 1.0, "q_note": "정상",
+                       "pe": 99.0, "eps": 10.0, "rs6": -99.0, "from_high": -99.0},
+                      # eps 없음 + pe 있음 → 기준일 종가로 되풀어야 한다
+                      {"tk": "BBB", "nm": "B", "spread": 8.0, "rev": 4.0, "op": 12.0,
+                       "q_spread": 2.0, "accel": 0.5, "q_note": "정상",
+                       "pe": 20.0, "rs6": -99.0, "from_high": -99.0},
+                      # eps 도 pe 도 없음 → PER 은 비어야 한다
+                      {"tk": "CCC", "nm": "C", "spread": 6.0, "rev": 3.0, "op": 9.0,
+                       "q_spread": 1.0, "accel": 0.2, "q_note": "정상",
+                       "rs6": -99.0, "from_high": -99.0},
+                      # 시세를 못 받는 종목 → 옛 가격 지표가 남으면 안 된다
+                      {"tk": "DDD", "nm": "D", "spread": 4.0, "rev": 2.0, "op": 6.0,
+                       "q_spread": 0.5, "accel": 0.1, "q_note": "정상",
+                       "pe": 30.0, "rs6": -99.0, "from_high": -99.0, "gaplvl": "H"},
+                  ]}]}
+
+    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False,
+                                     encoding="utf-8") as f:
+        json.dump(fixture, f, ensure_ascii=False)
+        tmp = f.name
+
+    rc = main(fetch=fetch, path=tmp)
+    t(rc == 0, "부분 갱신이 정상 종료")
+    D = json.load(open(tmp, encoding="utf-8"))
+    M = {m["tk"]: m for r in D["subs"] for m in r["members"]}
+
+    print("\n── 펀더멘털은 손대지 않는다 ──")
+    t(M["AAA"]["spread"] == 10.0 and M["AAA"]["q_spread"] == 3.0,
+      "스프레드·분기TTM 그대로")
+    t(M["CCC"]["op"] == 9.0 and M["CCC"]["q_note"] == "정상", "영업이익·비고 그대로")
+
+    print("\n── 날짜를 정직하게 갈라 쓴다 ──")
+    t(D["updated"] == str(date.today()), f"updated = 오늘 ({D['updated']})")
+    t(D["fund_updated"] == FUND_DAY, "fund_updated = 펀더멘털 기준일 유지")
+    t(D["partial"] == "prices", "partial 표시")
+    # 두 번 연속 부분 갱신해도 기준일이 오늘로 밀리면 안 된다
+    main(fetch=fetch, path=tmp)
+    t(json.load(open(tmp, encoding="utf-8"))["fund_updated"] == FUND_DAY,
+      "두 번 돌려도 fund_updated 가 안 밀림")
+
+    print("\n── 가격 지표 ──")
+    t(abs(M["AAA"]["rs6"]) < 0.2, f"SPY 와 같은 비율 궤적이면 RS6M ≈ 0 (실제 {M['AAA']['rs6']})")
+    t(M["BBB"]["from_high"] == 0.0, f"마지막이 최고가면 고점比 0 (실제 {M['BBB']['from_high']})")
+    t(M["CCC"]["from_high"] < -30, f"하락 종목은 고점比 크게 마이너스 (실제 {M['CCC']['from_high']})")
+    t(M["AAA"]["rs6"] != -99.0 and M["CCC"]["from_high"] != -99.0, "옛 값이 남지 않음")
+
+    print("\n── PER 재계산 ──")
+    # AAA: eps 10 이 저장돼 있으므로 그대로 쓴다 → 마지막 종가 ÷ 10
+    exp_aaa = round(SERIES["AAA"][-1][3] / 10.0, 2)
+    t(M["AAA"]["pe"] == exp_aaa,
+      f"저장된 eps 를 그대로 씀 (기대 {exp_aaa}, 실제 {M['AAA']['pe']})")
+    # BBB: eps 없음 → 기준일 종가 ÷ pe(20) 로 되푼 뒤 새 종가로 재계산.
+    #      기준일이 구간 안이므로 되풀린 eps 는 마지막 종가와 무관해야 한다.
+    on_fund = [r for r in SERIES["BBB"] if r[0] <= FUND_DAY][-1][3]
+    exp_eps = round(on_fund / 20.0, 4)
+    exp_bbb = round(SERIES["BBB"][-1][3] / exp_eps, 2)
+    t(M["BBB"]["eps"] == exp_eps,
+      f"eps 없어도 기준일 종가로 되풀림 (기대 {exp_eps}, 실제 {M['BBB']['eps']})")
+    t(M["BBB"]["pe"] == exp_bbb,
+      f"되푼 eps 로 새 PER 계산 (기대 {exp_bbb}, 실제 {M['BBB']['pe']})")
+    t(M["BBB"]["pe"] != 20.0, "주가가 올랐으니 PER 이 옛 값 그대로일 수 없다")
+    t(M["CCC"]["pe"] is None, "eps 도 pe 도 없으면 PER 은 비움(지어내지 않음)")
+
+    print("\n── 시세를 못 받은 종목 ──")
+    t(all(M["DDD"][k] is None for k in ("rs3", "rs6", "gap", "gaplvl", "from_high", "pe")),
+      "낡은 가격 지표를 남기지 않고 전부 비움")
+    t(M["DDD"]["spread"] == 4.0, "그래도 펀더멘털은 유지")
+
+    os.unlink(tmp)
+    print("\n✅ 전부 통과" if ok[0] else "\n❌ 실패")
+    return 0 if ok[0] else 1
+
+
+if __name__ == "__main__":
+    if "--selftest" in sys.argv:
+        sys.exit(selftest())
+    sys.exit(main())

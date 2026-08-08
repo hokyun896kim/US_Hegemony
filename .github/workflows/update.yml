@@ -30,12 +30,33 @@ jobs:
         with:
           python-version: '3.12'
 
+      # yfinance 는 컨센서스 추정치(eps_trend)를 받을 때만 쓴다 — 야후
+      # quoteSummary 가 crumb 인증을 타는데 그 처리를 대신해준다.
+      # 설치가 실패해도 빌더는 추정치만 비우고 계속 돈다.
+      - name: Install deps
+        run: pip install --quiet yfinance || echo "::warning::yfinance 설치 실패 — 컨센서스 추정치는 비웁니다"
+
       - name: Build data
+        id: build
+        # SEC 가 막혀도 회차를 통째로 버리지 않는다 — 아래 단계가 받는다.
+        continue-on-error: true
         env:
           # SEC 는 실제 연락처가 담긴 User-Agent 를 요구한다. 저장소 Secret 에
           # SEC_UA 를 넣으면 쓰이고, 없으면 빌더의 기본값으로 동작한다.
           SEC_UA: ${{ secrets.SEC_UA }}
         run: python build_data.py
+
+      # 18회 중 17회가 SEC 403(공유 출구 IP 가 이미 탄 상태)으로 죽었다.
+      # 우리 속도의 문제가 아니라 대기로도 안 풀린다. 그런데 주간으로 실제
+      # 바뀌는 값은 대부분 가격 쪽(RS·고점比·PER)이고 펀더멘털은 분기에 한 번
+      # 바뀐다. 그래서 전체 빌드가 죽으면 커밋된 펀더멘털을 그대로 두고
+      # 가격층만 새로 받는다. 선취매 판정이 쓰는 값은 최신이 되고, 펀더멘털이
+      # 언제 것인지는 fund_updated 로 화면에 표시된다.
+      - name: SEC 가 막혔으면 가격층만 갱신
+        if: steps.build.outcome == 'failure'
+        run: |
+          echo "::warning::전체 빌드 실패 — 가격층만 부분 갱신합니다(펀더멘털은 직전 값 유지)"
+          python refresh_prices.py
 
       - name: Summarize
         run: |
@@ -45,6 +66,9 @@ jobs:
           mem = [m for s in d['subs'] for m in s['members']]
           def cnt(k): return sum(1 for m in mem if m.get(k) is not None)
           print(f"## US 헤게모니 데이터 · {d['updated']}\n")
+          if d.get('partial') == 'prices':
+              print(f"> ⚠️ **부분 갱신**: SEC 가 막혀 가격층만 새로 받았습니다. "
+                    f"펀더멘털(매출·영업이익·스프레드·분기TTM)은 **{d.get('fund_updated')}** 기준 그대로입니다.\n")
           print(f"- 종목 **{len(mem)}** · 세부산업 **{len(d['subs'])}** · 대섹터 **{len(d['sectors'])}**")
           print(f"- 분기 TTM **{cnt('q_spread')}/{len(mem)}** · 상대강도 **{cnt('rs6')}/{len(mem)}** "
                 f"· PER **{cnt('pe')}/{len(mem)}** · 52주고점比 **{cnt('from_high')}/{len(mem)}**")
@@ -69,5 +93,16 @@ jobs:
           git config user.email "bot@users.noreply.github.com"
           git add data/tree.json
           git diff --staged --quiet && echo "변경 없음" && exit 0
-          git commit -m "auto: update $(date +%Y-%m-%d)"
+          MODE=$(python -c "import json;print('prices' if json.load(open('data/tree.json')).get('partial')=='prices' else 'full')")
+          if [ "$MODE" = "prices" ]; then
+            git commit -m "auto: 가격층만 갱신 $(date +%Y-%m-%d) (SEC 차단 — 펀더멘털 유지)"
+          else
+            git commit -m "auto: update $(date +%Y-%m-%d)"
+          fi
           git push origin "HEAD:${{ github.ref_name }}"
+
+      # 부분 갱신으로 넘어갔더라도 원인은 남긴다 — 조용히 성공한 척하지 않는다.
+      - name: 전체 빌드가 실패했음을 잡 결과에 반영
+        if: steps.build.outcome == 'failure'
+        run: |
+          echo "::warning::이 회차는 부분 갱신입니다. 다음 스케줄(백업 슬롯 포함)이 전체 빌드를 다시 시도합니다."

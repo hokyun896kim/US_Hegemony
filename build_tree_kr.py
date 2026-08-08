@@ -26,6 +26,8 @@ import time
 from datetime import date, datetime, timezone
 from pathlib import Path
 
+import est_trend
+
 OUT = Path(__file__).resolve().parent / "data" / "tree_kr.json"
 BENCH = "^KS11"  # 코스피 종합
 
@@ -392,6 +394,10 @@ def fetch_stock(tk, log=print):
         log(f"  {tk} 재무 실패: {exc}")
         return None
 
+    # 컨센서스 추정치 방향. 한국 종목은 야후가 잘 안 주므로 대부분 None 이
+    # 나온다 — 화면은 그걸 중립으로 처리하니 없다고 문제되지 않는다.
+    est = est_trend.fetch(t)
+
     rev, op = annual_yoy(inc)
     if rev is None or op is None:
         return None
@@ -442,6 +448,8 @@ def fetch_stock(tk, log=print):
             "pe": pe,
             "fpe": num(info.get("forwardPE")),
             "peg": num(info.get("trailingPegRatio") or info.get("pegRatio")),
+            "est30": est.get("est30"),
+            "est90": est.get("est90"),
         },
     }
 
@@ -679,6 +687,9 @@ def build(limit, min_cap, sleep, log=print):
             # 밸류는 info 우선, 없으면 스크리너 값
             for k in ("pe", "fpe", "peg"):
                 m[k] = info.get(k) if info.get(k) is not None else num(r.get(k))
+            # 컨센서스 추정치 방향 — 없으면 None 그대로(화면이 중립 처리)
+            for k in ("est30", "est90"):
+                m[k] = info.get(k)
             members.append(m)
         if i % 25 == 0:
             log(f"  {i}/{len(rows)} (확보 {len(members)})")
@@ -802,6 +813,7 @@ def selftest():
          "industry": "Semiconductors", "rev": 10.0, "op": 40.0, "spread": 30.0,
          "q_rev": 12.0, "q_op": 55.0, "q_spread": 43.0, "accel": 13.0,
          "q_note": "정상", "q_approx": False, "pe": 12.3, "fpe": None, "peg": None,
+         "est30": 4.2, "est90": 9.1,
          "rs3": 4.0, "rs6": -8.0, "gap": 5.0, "gaplvl": "M", "from_high": -14.0,
          "foreign_net": None, "inst_net": None, "foreign_pct": None,
          "supply": None, "d_until": None, "ir": None},
@@ -809,6 +821,7 @@ def selftest():
          "industry": "Semiconductors", "rev": 20.0, "op": 15.0, "spread": -5.0,
          "q_rev": None, "q_op": None, "q_spread": None, "accel": None,
          "q_note": "", "q_approx": True, "pe": None, "fpe": None, "peg": None,
+         "est30": None, "est90": None,
          "rs3": None, "rs6": None, "gap": None, "gaplvl": None,
          "from_high": None, "foreign_net": None, "inst_net": None,
          "foreign_pct": None, "supply": None, "d_until": None, "ir": None},
