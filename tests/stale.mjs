@@ -54,7 +54,11 @@ for (const [file, url] of [['index.html', 'https://x.test/'], ['us.html', 'https
   const D = {
     updated: AS_OF, fund_updated: AS_OF, market: base.market, sectors: [],
     subs: [{ sic: '1', desc: 'X', ko: '테스트', gics: '산업재', med: 12,
-             n: CASES.length, members: CASES.map(c => stock(c[0], c[1], c[2])) }],
+             n: CASES.length + 1,
+             members: [...CASES.map(c => stock(c[0], c[1], c[2])),
+               // 다른 조건은 다 통과하는데 TTM–최신분기 방향이 충돌하는 종목.
+               // 선취매 권역이 아니라 'TTM 검증 실패' 구간에 나와야 한다.
+               stock('CONFL', '2026-06-30', null, { lq_rev: 5, lq_op: -8 })] }],
   };
   const errs = [];
   const dom = new JSDOM(fs.readFileSync(path.join(ROOT, file), 'utf8'),
@@ -108,6 +112,50 @@ for (const [file, url] of [['index.html', 'https://x.test/'], ['us.html', 'https
    const html = w.document.getElementById('radarPanel').innerHTML;
    const iStale = html.indexOf('실적 확인 필요'), p = html.indexOf('>NOQE<');
    t(p < 0 || (iStale >= 0 && p > iStale), 'q_end 없이 막 발표한 종목은 선취매 권역에 없음');}
+
+  {// TTM 충돌 종목: 화면에서 'TTM 검증 실패' 구간으로 내려가 있어야 한다
+   const html = w.document.getElementById('radarPanel').innerHTML;
+   const iC = html.indexOf('TTM 검증 실패'), p = html.indexOf('>CONFL<');
+   t(iC >= 0, 'TTM 검증 실패 구간이 화면에 있다');
+   t(p > iC, 'CONFL 은 선취매 권역이 아니라 그 구간에 나온다');
+   t(/최신 분기가 이미 꺾여도/.test(html), '왜 못 믿는지 설명이 붙어 있다');}
+
+  // ── 금호석유 사례 2건 (실측값 그대로) ──────────────────────────
+  // (a) 연간 매출 역성장 + 연간 스프레드 양수 = 축소형(비용절감) 레버리지.
+  //     분기 매출이 소폭 양수여도 마찬가지다. 단 +5% 이상 재가속은 예외.
+  {
+    const kumho = stock('KUMHO', '2026-06-30', null,
+      { rev: -3.4, op: -0.4, spread: 3.0, q_rev: -3.9, q_op: 12.1, q_spread: 16.0, accel: 13.0 });
+    const hdsteel = stock('HDSTL', '2026-06-30', null,   // 현대제철형: 분기 +1.6% 인데 연간 −
+      { rev: -2.1, spread: 39.5, q_rev: 1.6, q_op: 41.1, q_spread: 39.5, accel: 5.0 });
+    const kctech = stock('KCTEC', '2026-06-30', null,    // KC텍형: 분기 +37.5% 재가속 — 예외
+      { rev: -0.7, spread: 21.1, q_rev: 37.5, q_op: 80.0, q_spread: 42.5, accel: 21.5 });
+    t(E('revClass')(kumho).k === 'shrink', '금호석유형: 분기 매출 음수 → 축소형');
+    t(E('revClass')(hdsteel).k === 'shrink', '연간 역성장 + 스프레드 양수면 분기 +1.6% 여도 축소형');
+    t(/연간/.test(E('revClass')(hdsteel).t), `축소형 사유에 연간 기준을 밝힘 (${E('revClass')(hdsteel).t})`);
+    t(E('revClass')(kctech).k === 'grow', '분기 +5% 이상 재가속은 축소형으로 부르지 않는다');
+    t(E('accelCheck')(hdsteel).why === 'shrink', '새 축소형은 본 후보에서 빠져 턴어라운드로 간다');
+  }
+
+  // (b) TTM–최신분기 방향 충돌 → 후보 진입 금지. TTM 은 4개 분기 합이라
+  //     최신 분기가 꺾여도 두세 분기 더 양수로 남는다(금호석유 TTM +16p).
+  {
+    const ok = { rev: 8, op: 20, spread: 12, q_rev: 9, q_op: 25, q_spread: 16, accel: 4 };
+    const conflictOp = stock('CONOP', '2026-06-30', null, { ...ok, lq_rev: 5, lq_op: -8 });
+    const conflictSp = stock('CONSP', '2026-06-30', null, { ...ok, lq_rev: 10, lq_op: 6 }); // 스프레드만 음수(-4p)
+    const fine = stock('FINE', '2026-06-30', null, { ...ok, lq_rev: 8, lq_op: 30 });
+    const legacy = stock('LEGCY', '2026-06-30', null, ok);   // lq 없음(구 데이터)
+    t(!!E('ttmConflict')(conflictOp), 'TTM 영익 +인데 최신 분기 영익 −면 충돌');
+    t(!!E('ttmConflict')(conflictSp), 'TTM 스프레드 +인데 최신 분기 스프레드 −면 충돌');
+    t(E('ttmConflict')(fine) === null, '방향이 같으면 충돌 아님');
+    t(E('ttmConflict')(legacy) === null, 'lq 가 없으면(구 데이터) 판정하지 않는다 — 지어내지 않는다');
+    t(E('accelCheck')(conflictOp).why === 'ttmconflict', '충돌이면 후보 진입 금지');
+    t(E('accelCheck')(legacy).ok === true, 'lq 없는 구 데이터는 기존과 동일하게 통과');
+    t(E('turnaround')(stock('CONSH', '2026-06-30', null,
+        { ...ok, q_rev: -3.9, lq_rev: 5, lq_op: -8 })) === false,
+      '충돌 종목은 턴어라운드 구간으로도 안 샌다(믿을 수 없는 TTM 이 만든 가속이므로)');
+    t(/진입 금지/.test(E('radarRisk')(conflictOp)), '결격 항목에 진입 금지 표시');
+  }
 
   // 잠정실적으로 최신 분기를 메운 종목 — 한국만 해당한다(미국은 8-K 가 확정치를
   // 바로 준다). 잠정 덕에 2~4주 먼저 보는 대신 확정에서 숫자가 바뀔 수 있으므로,

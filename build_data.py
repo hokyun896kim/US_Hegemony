@@ -250,22 +250,35 @@ def ttm_yoy(s):
     ttm=sum(v for _,v in r[-4:]); prev=sum(v for _,v in r[:4])
     if prev<=0: return None
     return round((ttm/prev-1)*100,1)
+def latest_q_yoy(s):
+    # 최신 분기 '자체'의 YoY. TTM 은 4개 분기 합이라 최신 분기가 이미 꺾여도
+    # 두세 분기 더 양수로 남는다(실측: 금호석유 TTM +16p, 최신 분기는 반대 방향).
+    # 화면의 ttmConflict 가 그 착시를 거를 수 있게 TTM 과 같은 시계열에서 준다.
+    # 전년 동분기는 날짜 창(340~390일 전)으로 찾는다 — 미국은 52/53주 회계연도
+    # 때문에 분기말 '월'이 한 달씩 밀리는 회사가 있어 월 매칭이 짝을 놓친다.
+    if not s: return None
+    e0,v0=s[-1]; d0=date.fromisoformat(e0)
+    prev=next((v for e,v in reversed(s[:-1])
+               if 340<=(d0-date.fromisoformat(e)).days<=390),None)
+    if prev is None or prev<=0: return None
+    v=round((v0/prev-1)*100,1)
+    return None if abs(v)>500 else v          # 단일 분기 기저효과 폭발은 버린다
 def best_rev_ttm(cik):
     best=None;be=""
     for t in REV+["SalesRevenueNet"]:
         s=buildq(*collect_tag(cik,t))
         if len(s)>=8 and s[-1][0]>be: best=s;be=s[-1][0]
-    return ttm_yoy(best) if best else None
+    return (ttm_yoy(best),latest_q_yoy(best)) if best else (None,None)
 def best_op_ttm(cik):
     # 세 번째 값은 이 TTM 이 담고 있는 '마지막 분기말'이다. 화면의 실적반영
     # 지연 판정이 이 날짜를 기준으로 삼는다 — 빌드를 돌린 날짜가 아니라.
     for t in ["OperatingIncomeLoss"]:
         q=buildq(*collect_tag(cik,t)); r=ttm_yoy(q)
-        if r is not None: return r,"정상",q[-1][0]
+        if r is not None: return r,"정상",q[-1][0],latest_q_yoy(q)
     for t in ["IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments","IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest"]:
         q=buildq(*collect_tag(cik,t)); r=ttm_yoy(q)
-        if r is not None: return r,"세전대체",q[-1][0]
-    return None,"영익불가",None
+        if r is not None: return r,"세전대체",q[-1][0],latest_q_yoy(q)
+    return None,"영익불가",None,None
 # --- 상대강도 (Yahoo) ---
 def yseries(sym):
     # (종가, 시가, 수정종가). 수익률·고점比는 수정종가로 계산한다 — 원종가는
@@ -300,8 +313,8 @@ allt=sorted({m["tk"] for r in rows for m in r["members"]})
 for i,t in enumerate(allt):
     cik=tkmap.get(t)
     # 분기TTM
-    qrev=best_rev_ttm(cik) if cik else None
-    qop,qnote,qend=best_op_ttm(cik) if cik else (None,"CIK없음",None)
+    qrev,lq_rev=best_rev_ttm(cik) if cik else (None,None)
+    qop,qnote,qend,lq_op=best_op_ttm(cik) if cik else (None,"CIK없음",None,None)
     qspread=round(qop-qrev,1) if (qrev is not None and qop is not None) else None
     # 컨센서스 추정치 방향 — 야후 quoteSummary 는 crumb 인증을 타므로
     # 그 처리를 대신해주는 yfinance 로만 이 값을 받는다. 실패는 조용히 None.
@@ -334,6 +347,7 @@ for i,t in enumerate(allt):
         for m in r["members"]:
             if m["tk"]==t:
                 m["q_rev"]=qrev;m["q_op"]=qop;m["q_spread"]=qspread;m["q_note"]=qnote;m["q_end"]=qend
+                m["lq_rev"]=lq_rev;m["lq_op"]=lq_op
                 m["accel"]=round(qspread-m["spread"],1) if qspread is not None else None
                 m["rs3"]=rs3;m["rs6"]=rs6;m["gap"]=gap;m["gaplvl"]=gaplvl
                 m["from_high"]=from_high
