@@ -19,9 +19,10 @@ cik2tk={v["cik_str"]:v["ticker"] for v in tkj.values()}
 tkmap={v["ticker"].upper():str(v["cik_str"]).zfill(10) for v in tkj.values()}
 
 print("[2/7] 연간 frames")
-def frame(tag,yr):
-    try: return {d["cik"]:d["val"] for d in getj(f"https://data.sec.gov/api/xbrl/frames/us-gaap/{tag}/USD/CY{yr}.json")["data"]}
+def frame_unit(tag,unit,yr):
+    try: return {d["cik"]:d["val"] for d in getj(f"https://data.sec.gov/api/xbrl/frames/us-gaap/{tag}/{unit}/CY{yr}.json")["data"]}
     except: return {}
+def frame(tag,yr): return frame_unit(tag,"USD",yr)
 rev_c=frame("Revenues",CUR); rev_p=frame("Revenues",PRV)
 for k,v in frame("RevenueFromContractWithCustomerExcludingAssessedTax",CUR).items(): rev_c.setdefault(k,v)
 for k,v in frame("RevenueFromContractWithCustomerExcludingAssessedTax",PRV).items(): rev_p.setdefault(k,v)
@@ -177,6 +178,13 @@ def yseries(sym):
         return [(q["close"][i],q["open"][i]) for i in range(len(ts)) if q["close"][i]]
     except: return None
 def ret(cl,n): return (cl[-1]/cl[-1-n]-1)*100 if len(cl)>n else None
+# --- 후행 PER 재료 (SEC EPS 프레임) ---
+# 데이터에 PER 이 아예 없어서 화면의 스코어러가 411종목 전부에 '밸류 미검증'
+# 감점을 주고 있었다. 야후 quoteSummary 는 인증을 타므로, 이미 쓰고 있는
+# SEC 프레임에서 주당순이익을 받아 (현재가 ÷ EPS) 로 직접 만든다.
+eps_map=frame_unit("EarningsPerShareDiluted","USD-per-shares",CUR)
+for _k,_v in frame_unit("EarningsPerShareBasic","USD-per-shares",CUR).items(): eps_map.setdefault(_k,_v)
+print(f"   EPS 프레임 {len(eps_map)}건 (CY{CUR})")
 spy=yseries("SPY"); spy_cl=[r[0] for r in spy]; spy3=ret(spy_cl,63); spy6=ret(spy_cl,126)
 vix=yseries("^VIX"); vix_now=round(vix[-1][0],1)
 vix_state="저변동(위험선호)" if vix_now<16 else("중립" if vix_now<22 else("경계" if vix_now<30 else "공포"))
@@ -189,7 +197,7 @@ for i,t in enumerate(allt):
     qop,qnote=best_op_ttm(cik) if cik else (None,"CIK없음")
     qspread=round(qop-qrev,1) if (qrev is not None and qop is not None) else None
     # 상대강도
-    s=yseries(t); rs3=rs6=gap=gaplvl=None
+    s=yseries(t); rs3=rs6=gap=gaplvl=from_high=pe=None
     if s:
         cl=[r[0] for r in s]; r3=ret(cl,63); r6=ret(cl,126)
         rs3=round(r3-spy3,1) if r3 is not None else None
@@ -197,6 +205,17 @@ for i,t in enumerate(allt):
         gaps=[abs(s[j][1]/s[j-1][0]-1)*100 for j in range(max(1,len(s)-60),len(s))]
         gap=round(max(gaps),1) if gaps else None
         gaplvl="H" if (gap and gap>8) else("M" if (gap and gap>4) else "L")
+        # 52주 고점 대비 — 가격이 얼마나 반영됐는지 판정하는 재료
+        _hi=max(cl)
+        if _hi>0: from_high=round((cl[-1]/_hi-1)*100,1)
+        # 후행 PER = 현재가 ÷ 직전 회계연도 EPS.
+        # 상식선(1~300)을 벗어나면 계산이 어긋난 것으로 보고 버린다.
+        try:
+            _e=eps_map.get(int(cik)) if cik else None
+            if _e and _e>0:
+                _p=round(cl[-1]/_e,2)
+                if 1.0<=_p<=300.0: pe=_p
+        except Exception: pass
     # 부착
     for r in rows:
         for m in r["members"]:
@@ -204,6 +223,9 @@ for i,t in enumerate(allt):
                 m["q_rev"]=qrev;m["q_op"]=qop;m["q_spread"]=qspread;m["q_note"]=qnote
                 m["accel"]=round(qspread-m["spread"],1) if qspread is not None else None
                 m["rs3"]=rs3;m["rs6"]=rs6;m["gap"]=gap;m["gaplvl"]=gaplvl
+                m["from_high"]=from_high
+                m["pe"]=pe; m["fpe"]=None; m["peg"]=None
+                m["q_approx"]=False   # 미국은 8분기 정식 TTM 이라 근사가 아니다
                 m["ir"]=ir_map.get(t)
     if (i+1)%50==0: print(f"   {i+1}/{len(allt)}")
     time.sleep(0.04)

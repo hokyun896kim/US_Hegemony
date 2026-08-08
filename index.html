@@ -824,9 +824,11 @@ function renderRadar(){
  const all=[]; D.subs.forEach(s=>s.members.forEach(m=>all.push({...m,sec:s.ko||s.desc})));
  const pool=all.filter(m=>m.accel!=null&&Math.abs(m.accel)<=150&&m.q_spread!=null); // 가속 탭 모집단
  const real=pool.filter(realAccel);
- const picks=real.filter(m=>priceIn(m).c==='g')      // 아직 저반영
+ const picksAll=real.filter(m=>priceIn(m).c==='g')   // 아직 저반영
       .sort((a,b)=>{const A=scoreCandidate(a),B=scoreCandidate(b);
                     return (B?B.pts:-999)-(A?A.pts:-999);});
+ // 한눈에 보는 게 목적이라 상한을 둔다. 다만 몇 개를 감췄는지는 반드시 밝힌다.
+ const CAP=6, picks=picksAll.slice(0,CAP);
  const partial=real.filter(m=>priceIn(m).c==='m').sort((a,b)=>b.accel-a.accel).slice(0,3);
 
  // 산업 단위: '가속 중인데 아직 안 깨워진 산업'.
@@ -870,7 +872,7 @@ function renderRadar(){
   <div class="radar-funnel">
    <div class="rf">가속 탭 전체<b>${pool.length}</b></div>
    <div class="rf">→ 진짜 가속<b>${real.length}</b></div>
-   <div class="rf on">→ 아직 저반영<b>${picks.length}</b></div>
+   <div class="rf on">→ 아직 저반영<b>${picksAll.length}</b></div>
   </div>
 
   <div class="radar-sec">산업 — 가속 중인데 시장이 안 깨운 곳</div>
@@ -883,7 +885,7 @@ function renderRadar(){
    </div>`).join('')
    : `<div class="radar-empty">지금은 <b>산업 단위로</b> 가속하면서 저평가된 곳이 없습니다. 산업 전체가 움직이는 국면이 아니라 종목별로 갈리는 장이라는 뜻이니, 아래 종목 단위로 보세요.</div>`}
 
-  <div class="radar-sec">종목 — 선취매 권역</div>
+  <div class="radar-sec">종목 — 선취매 권역${picksAll.length>CAP?` (스코어 상위 ${CAP} · 전체 ${picksAll.length})`:''}</div>
   ${picks.length ? picks.map(m=>card(m,false)).join('')
    : `<div class="radar-empty">지금은 조건을 다 만족하는 종목이 없습니다. 아래 '부분 반영' 쪽을 보시거나, 다음 주 갱신을 기다리세요.</div>`}
 
