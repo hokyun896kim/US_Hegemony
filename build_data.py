@@ -27,7 +27,7 @@ def _throttle(u):
     if dt<0.11: time.sleep(0.11-dt)
     _last_sec=time.time()
 
-def get(u,h=UA_SEC,t=60,tries=2):
+def get(u,h=UA_SEC,t=60,tries=3):
     global _ua_warned
     for i in range(tries):
         _throttle(u)
@@ -48,16 +48,21 @@ def get(u,h=UA_SEC,t=60,tries=2):
                 print(f"\n[!] SEC {e.code} — {why}",file=sys.stderr)
                 print(f"    URL: {u}",file=sys.stderr)
                 if rate:
-                    print("    요청 속도 제한입니다(UA 문제 아님). SEC 는 초당 10건이 상한이고",file=sys.stderr)
-                    print("    넘기면 IP 단위로 10분 안팎 막습니다. 짧은 간격으로 여러 번 돌리면",file=sys.stderr)
-                    print("    차단이 이어지니, 재실행은 충분히 시간을 두고 하세요.",file=sys.stderr)
+                    print("    요청 속도 제한입니다(UA 문제 아님). Actions 공용 러너 IP 는 다른",file=sys.stderr)
+                    print("    크롤러들 때문에 이미 타 있는 경우가 많습니다(실측: 첫 요청부터 403).",file=sys.stderr)
+                    print("    SEC 차단은 IP 당 10분이고 러너 IP 는 이 잡이 독점하므로,",file=sys.stderr)
+                    print("    11분 기다렸다 자동 재시도합니다.",file=sys.stderr)
                 else:
                     print(f'    UA: {h.get("User-Agent")!r}',file=sys.stderr)
                     print('    저장소 Secret 에 SEC_UA="이름 you@example.com" 를 넣어보세요.',file=sys.stderr)
                 print("",file=sys.stderr)
-            # 차단 중에 빠르게 재시도하면 차단만 길어진다. 한 번만, 넉넉히 쉬고.
             if i<tries-1:
-                time.sleep(90 if rate else 5)
+                # 속도 제한: SEC 차단은 IP 당 10분 창이다. 러너를 잡은 순간 그 IP 는
+                # 우리 독점이므로(전 세입자의 초과분만 남아 있음) 11분이면 풀린다.
+                # 90초 재시도는 창 안이라 무의미했다 — 실측으로 확인.
+                w=660 if rate else 5
+                print(f"    … {w}초 대기 후 재시도 ({i+1}/{tries-1})",file=sys.stderr)
+                time.sleep(w)
                 continue
             raise
 def getj(u,h=UA_SEC): return json.loads(get(u,h))
