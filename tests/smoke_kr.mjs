@@ -125,9 +125,13 @@ t(doc.getElementById('tcOut').textContent.includes('진입가'), '역전 입력�
 
 // 7) AI 프롬프트
 const p = window.buildPrompt(allTk[0]);
-t(p.includes('헤게모니 스프레드') && p.includes('dart.fss.or.kr') && p.length > 1500,
+t(p.includes('헤게모니 스프레드') && p.includes('dart.fss.or.kr') && p.length > 500,
   `AI 프롬프트 생성 (${p.length}자)`);
 t(p.includes('수급을 수집하지 않는다'), '프롬프트가 수급 결측을 정직하게 지시');
+// 검증·분석 절차는 지침(GPT_GUIDE) 한 곳에만 — 프롬프트에 중복되면 서로 어긋나기 시작한다
+t(!p.includes('[분석 요청') && !p.includes('[검증 지침'), '프롬프트에 분석 지시 중복 없음(지침으로 일원화)');
+t(p.includes("헤게모니 트리 지침") && p.includes('지침이 설치돼 있지 않다면'),
+  '지침 참조 + 미설치 폴백 포함');
 
 // 8) 워치리스트 — 종목코드 6자리만 넣어도 해석되는지
 tab('watch');
