@@ -371,6 +371,23 @@ def earnings_dates(t):
     return (max(past) if past else None, min(future) if future else None)
 
 
+def align_quarters(qrev, qop):
+    """매출·영업이익을 **같은 분기 집합**으로 맞춘다. (둘 다 최신이 앞)
+
+    매출과 영업이익을 각각 따로 걸러 index 로 자르면, 한쪽에만 값이 있는
+    분기가 하나 끼는 순간 ttm_rev 와 ttm_op 가 서로 다른 4개 분기를 더한다.
+    그러면 스프레드가 '영업이익 YoY − 매출 YoY' 가 아니라 아무 뜻 없는
+    숫자가 되고, 크기는 그럴듯해서 눈에 띄지 않는다.
+
+    DART 는 계정명이 회사마다 달라 한쪽만 못 읽는 경우가 실제로 생긴다
+    (예: 적자 해에만 '영업손실' 로 쓰는 회사). 그래서 여기서 막는다.
+    """
+    days = lambda xs: {str(e)[:10]: v for e, v in xs}
+    R, O = days(qrev), days(qop)
+    common = sorted(set(R) & set(O), reverse=True)
+    return [(e, R[e]) for e in common], [(e, O[e]) for e in common]
+
+
 def quarterly_ttm(qinc, inc, qseries=None):
     """분기 TTM YoY. (q_rev, q_op, q_note, q_approx, q_end) 를 돌려준다.
 
@@ -392,6 +409,7 @@ def quarterly_ttm(qinc, inc, qseries=None):
     else:
         qrev = series_values(pick_row(qinc, REV_ROWS))
         qop = series_values(pick_row(qinc, OP_ROWS))
+    qrev, qop = align_quarters(qrev, qop)
     if len(qrev) < 4 or len(qop) < 4:
         return None, None, "", False, None
 
@@ -966,6 +984,41 @@ def selftest():
                  "Operating Income": {c: 75e8 for c in QCOLS[5:]}})
     check(quarterly_ttm(q3, annual) == (None, None, "", False, None),
           "분기 3개면 TTM·q_end 모두 없음")
+
+    # 매출·영익을 같은 분기로 맞추는가. 한쪽에만 값이 있는 분기가 하나 끼면
+    # ttm_rev 와 ttm_op 가 서로 다른 4개 분기를 더해 스프레드가 뜻을 잃는다.
+    # DART 는 계정명이 회사마다 달라 한쪽만 못 읽는 일이 실제로 생긴다.
+    _QC = ["2026-06-30", "2026-03-31", "2025-12-31", "2025-09-30",
+           "2025-06-30", "2025-03-31", "2024-12-31", "2024-09-30"]
+    _r = [(c, 100.0) for c in _QC]
+    _o = [(c, 10.0) for c in _QC if c != "2025-12-31"]   # 한 분기 영익만 빠짐
+    _ar, _ao = align_quarters(_r, _o)
+    check([c for c, _ in _ar] == [c for c, _ in _ao],
+          "매출·영익이 같은 분기 집합으로 맞춰진다")
+    check("2025-12-31" not in [c for c, _ in _ar],
+          "한쪽에만 있는 분기는 양쪽에서 빠진다")
+    check(len(_ar) == 7, f"공통 분기만 남는다 (실제 {len(_ar)}개)")
+    # 정렬이 흐트러지면 TTM 이 엉뚱한 4개를 더한다
+    check([c for c, _ in _ar] == sorted([c for c, _ in _ar], reverse=True),
+          "최신이 앞 순서를 유지한다")
+
+    # 어긋남이 실제로 틀린 숫자를 만드는지 확인한다. 빠진 분기가 **비교 창
+    # 안쪽**에 있어야 사고가 난다 — 맨 끝이면 양쪽에서 똑같이 잘려 티가 안 난다.
+    # 9분기를 주고 가운데 하나의 영익만 비운다. 정렬이 되면 8분기가 남고,
+    # 매출·영익이 같은 배로 늘었으므로 둘 다 정확히 +100% 여야 한다.
+    _Q9 = ["2026-06-30", "2026-03-31", "2025-12-31", "2025-09-30",
+           "2025-06-30",                       # ← 영익만 빠질 분기(창 안쪽)
+           "2025-03-31", "2024-12-31", "2024-09-30", "2024-06-30"]
+    _rev9 = {c: (200e8 if c >= "2025-09-30" else 100e8) for c in _Q9}
+    _rev9["2025-06-30"] = 9999e8      # 어긋나면 이 값이 분모로 새어 들어간다
+    _op9 = {c: v / 10 for c, v in _rev9.items() if c != "2025-06-30"}
+    _tr, _to, _, _, _ = quarterly_ttm(FakeDF({"Total Revenue": _rev9,
+                                              "Operating Income": _op9}), annual)
+    check(_tr is not None and abs(_tr - 100.0) < 1e-6,
+          f"창 안쪽 분기가 비어도 매출 YoY 가 정확하다 (기대 +100.0, 실제 {_tr})")
+    check(_to is not None and abs(_to - 100.0) < 1e-6,
+          f"영업이익 YoY 도 정확하다 (기대 +100.0, 실제 {_to})")
+    check(abs(_tr - _to) < 1e-6, f"→ 스프레드 0.0 (실제 {_tr - _to:+.4f}p)")
 
     # DART ↔ yfinance 폴백. 이 분기는 DART 키가 있는 회차에만 밟히는 코드라
     # 평소엔 아무도 안 지나간다 — 정작 필요한 순간에 처음 실행되는 코드는
