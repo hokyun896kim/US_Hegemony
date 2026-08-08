@@ -80,9 +80,37 @@ except Exception:
 CUR=date.today().year-1; PRV=CUR-1
 
 print("[1/7] 티커맵")
-tkj=getj("https://www.sec.gov/files/company_tickers.json")
+# 이 한 번의 요청이 www.sec.gov 를 쓰는 유일한 필수 호출인데, 지금까지 빌드
+# 실패는 전부 여기서 났다. 나머지 재무 데이터는 data.sec.gov 에서 오고 —
+# 다른 호스트다 — 거기가 열려 있는지는 한 번도 확인된 적이 없다.
+# 티커맵은 신규상장·상폐 말고는 거의 안 바뀌므로 받아두고 재사용한다.
+TK_CACHE = "data/sec_tickers.json"
+def _probe_data_sec():
+    """www.sec.gov 가 막혔을 때 data.sec.gov 도 막혔는지 한 번만 확인한다.
+    두 호스트의 차단이 별개인지를 로그에 남기기 위한 진단이다."""
+    try:
+        get(f"https://data.sec.gov/api/xbrl/frames/us-gaap/Revenues/USD/CY{CUR}.json", t=30, tries=1)
+        print("    [진단] data.sec.gov 는 응답합니다 — 두 호스트의 차단이 별개입니다.", file=sys.stderr)
+        return True
+    except Exception as e:
+        print(f"    [진단] data.sec.gov 도 막혔습니다({e}) — SEC 전체가 이 출구를 거부합니다.", file=sys.stderr)
+        return False
+
+try:
+    tkj = getj("https://www.sec.gov/files/company_tickers.json")
+    os.makedirs("data", exist_ok=True)
+    json.dump(tkj, open(TK_CACHE, "w"), ensure_ascii=False)   # 다음 회차를 위해 남긴다
+except Exception as e:
+    if not os.path.exists(TK_CACHE):
+        print(f"\n[!] 티커맵을 못 받았고 캐시도 없습니다: {e}", file=sys.stderr)
+        _probe_data_sec()
+        raise
+    tkj = json.load(open(TK_CACHE, encoding="utf-8"))
+    print(f"    www.sec.gov 차단({e}) — 저장해둔 티커맵 {len(tkj)}건으로 계속합니다.", file=sys.stderr)
+    _probe_data_sec()
 cik2tk={v["cik_str"]:v["ticker"] for v in tkj.values()}
 tkmap={v["ticker"].upper():str(v["cik_str"]).zfill(10) for v in tkj.values()}
+print(f"   티커 {len(tkmap)}건")
 
 print("[2/7] 연간 frames")
 def frame_unit(tag,unit,yr):
