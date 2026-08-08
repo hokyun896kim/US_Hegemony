@@ -17,17 +17,28 @@ DART 는 보고서가 접수되는 즉시 정형 데이터로 준다. 그 1~3주
 opendart.fss.or.kr 에서 무료 발급. 환경변수 DART_KEY 로 넘긴다.
 키가 없으면 이 모듈은 조용히 비활성이고 빌더는 yfinance 로 돈다.
 
+확인된 사항 (2026-08-08, Actions 프로브 실측 · 005930)
+------------------------------------------------------
+    고유번호   corpCode.xml 정상 · 상장사 3,925건 · 005930 → 00126380
+    단위       **원** (네이버는 억원 — 정확히 1e8 배)
+    최신 분기  2026-03-31 (1분기까지) ← 2분기는 아직 안 준다. 그게 이 API 의 한계다.
+
+  **엔드포인트에 확장자가 필요하다.** `.json` 없이 부르면 status 101 로 전부
+  거절당한다. 그런데 그 실패가 조용해서(빌더가 종목마다 yfinance 로 떨어진다)
+  키를 넣고도 DART 가 한 번도 안 쓰인 채 빌드가 성공한 적이 있다. 프로브를
+  돌려서야 알았다. 지금은 _url() 이 확장자를 붙이고, 자가진단이 매번 확인하며,
+  한 건도 정상(000)이 아니면 빌더가 경고를 띄운다(healthy/status_report).
+
 검증
 ----
-이 모듈을 만든 환경에서는 DART 에 네트워크가 닿지 않아 응답 형태를 눈으로
-확인할 수 없었다. 그래서 두 가지를 했다.
-  · 파싱을 방어적으로 — 계정명·금액 필드명이 조금 달라도 견디고, 못 읽으면
-    None 을 돌려 빌더가 yfinance 로 떨어지게 한다.
-  · `python dart.py --probe 005930` 로 실제 응답을 그대로 찍어볼 수 있게 했다.
-    Actions 에서 한 번 돌려 실제 형태를 확인한 뒤에 믿는다.
+개발 환경에서는 DART 에 네트워크가 닿지 않아(프록시 403) 응답을 못 봤다.
+그래서 파싱을 방어적으로 쓰고 — 계정명·금액 형식이 조금 달라도 견디고,
+못 읽으면 None 을 돌려 yfinance 로 떨어진다 — 프로브로 실물을 본 뒤에 믿는다.
+위 '확인된 사항' 이 그 결과다.
 
   python dart.py --selftest        # 네트워크 없이 파싱 로직 검증
   python dart.py --probe 005930    # 실제 응답 구조 확인 (키 필요)
+  # Actions → Update KR Hegemony Data → Run workflow → probe 에 종목코드
 """
 from __future__ import annotations
 
@@ -253,6 +264,13 @@ def quarters(stock_code: str, corp: str, today: date | None = None, log=print):
     for yr in (today.year - 2, today.year - 1, today.year):
         amt, add = {}, {}
         for rpt in ("Q1", "H1", "Q3", "FY"):
+            # 아직 끝나지도 않은 기간의 보고서는 존재할 수 없다. 그런데도 부르면
+            # CFS·OFS 두 번 왕복하고 013 을 받는다 — 종목당 4건, 300종목이면
+            # 1,200건이 순전히 낭비다(무료 키는 하루 20,000건).
+            # '끝났지만 아직 공시 전'은 건너뛰지 않는다 — 일찍 내는 회사를
+            # 놓치면 이 도구의 목적 자체가 흔들린다.
+            if _qend(yr, rpt) > today.isoformat():
+                continue
             a, c = statement(corp, yr, rpt, log)
             if any(v is not None for v in a + c):
                 amt[rpt], add[rpt] = a, c
@@ -425,7 +443,19 @@ def selftest() -> int:
         g = qmap()
         t("2026-06-30" not in g, f"상식 검사에 걸린 분기는 목록에서 빠진다 ({g})")
 
-        # (5) 아직 안 끝난 분기는 나오면 안 된다
+        # (5) 있을 수 없는 보고서를 부르지 않는가 — 무료 키는 하루 20,000건이다
+        calls = []
+        mod.statement = lambda corp, yr, rpt, log=print: (calls.append((yr, rpt)) or (N, N))
+        quarters("005930", "00126380", today=date(2026, 8, 8), log=lambda *a: None)
+        future = [(y, r) for y, r in calls
+                  if _qend(y, r) > "2026-08-08"]
+        t(not future, f"끝나지도 않은 기간의 보고서는 안 부른다 (부른 것: {future})")
+        t(("2026", "Q3") not in [(str(y), r) for y, r in calls], "2026 3분기(9/30)는 안 부른다")
+        t((2026, "H1") in calls,
+          "2026 반기(6/30)는 부른다 — 끝났으면 일찍 낸 회사가 있을 수 있다")
+        t(len(calls) == 10, f"3년치 중 실제로 있을 수 있는 10건만 부른다 (실제 {len(calls)})")
+
+        # (6) 아직 안 끝난 분기는 나오면 안 된다
         mock({("Q1", 2026): ((100.0, 10.0), (100.0, 10.0)),
               ("H1", 2026): ((150.0, 16.0), (250.0, 26.0)),
               ("Q3", 2026): ((170.0, 19.0), (420.0, 45.0)),
@@ -433,7 +463,7 @@ def selftest() -> int:
         ends = sorted(qmap(today=date(2026, 8, 8)))
         t(all(e <= "2026-08-08" for e in ends), f"미래 분기 제외 (마지막 {ends[-1] if ends else '없음'})")
 
-        # (6) 중간 보고서가 통째로 없을 때 — 3개월 컬럼이 있으면 그것만으로 살아남는다
+        # (7) 중간 보고서가 통째로 없을 때 — 3개월 컬럼이 있으면 그것만으로 살아남는다
         mock({("Q1", 2026): ((100.0, 10.0), (100.0, 10.0)),
               ("Q3", 2026): ((170.0, 19.0), (420.0, 45.0))})   # 반기보고서 없음
         g = qmap()
