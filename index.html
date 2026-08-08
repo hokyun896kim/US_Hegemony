@@ -1019,9 +1019,16 @@ function revClass(m){
 function ttmConflict(m){
  const lr=m.lq_rev, lo=m.lq_op;
  if(lo==null) return null;
- if(m.q_op!=null && m.q_op>0 && lo<0)
+ // '옛 분기가 만든 숫자'라는 판정은 최신 분기가 실제로 약할 때만 참이다.
+ // (1) 영익이 꺾였다 — TTM 은 +인데 최신 분기 영익이 −MIN_QTTM 이하.
+ if(m.q_op!=null && m.q_op>0 && lo<=-GATE.MIN_QTTM)
    return {t:`TTM 영익 +${m.q_op}% 인데 최신 분기는 ${lo}% — 옛 분기가 만든 숫자`};
- if(m.q_spread!=null && m.q_spread>0 && lr!=null && (lo-lr)<0)
+ // (2) 헤게모니(스프레드)가 최신 분기에 뒤집혔다. 단 최신 영익이 아직
+ //     튼튼하면(+MIN_QTTM↑) 옛 분기 탓이 아니라 이번 분기 매출이 더 빨랐던
+ //     것뿐이므로 하드 게이트로 막지 않는다 — 실측: APR 영익 +110%, SK가스
+ //     +23% 가 스프레드 부호만으로 금지됐다(둘 다 최고의 성장주다).
+ if(m.q_spread!=null && m.q_spread>0 && lr!=null
+    && (lo-lr)<=-GATE.MIN_QTTM && lo<GATE.MIN_QTTM)
    return {t:`TTM 스프레드 +${m.q_spread}p 인데 최신 분기는 ${(lo-lr).toFixed(1)}p — 방향 충돌`};
  return null;
 }

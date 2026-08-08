@@ -153,11 +153,19 @@ for (const [file, url] of [['index.html', 'https://x.test/'], ['us.html', 'https
   {
     const ok = { rev: 8, op: 20, spread: 12, q_rev: 9, q_op: 25, q_spread: 16, accel: 4 };
     const conflictOp = stock('CONOP', '2026-06-30', null, { ...ok, lq_rev: 5, lq_op: -8 });
-    const conflictSp = stock('CONSP', '2026-06-30', null, { ...ok, lq_rev: 10, lq_op: 6 }); // 스프레드만 음수(-4p)
+    // 스프레드가 뒤집혔고(−9p) 최신 영익도 약함(+3%) → 옛 분기가 만든 숫자
+    const conflictSp = stock('CONSP', '2026-06-30', null, { ...ok, lq_rev: 12, lq_op: 3 });
+    // 스프레드는 −10p 로 뒤집혔지만 최신 영익이 튼튼(+15%) → 충돌 아님(APR 실측 패턴).
+    // 이번 분기 매출이 더 빨랐던 것뿐, 옛 분기가 만든 숫자가 아니다.
+    const strongOp = stock('STRONG', '2026-06-30', null, { ...ok, lq_rev: 25, lq_op: 15 });
+    // 스프레드가 머리카락(−3p)만 음수 → 사각지대, 충돌 아님
+    const hairline = stock('HAIR', '2026-06-30', null, { ...ok, lq_rev: 8, lq_op: 5 });
     const fine = stock('FINE', '2026-06-30', null, { ...ok, lq_rev: 8, lq_op: 30 });
     const legacy = stock('LEGCY', '2026-06-30', null, ok);   // lq 없음(구 데이터)
     t(!!E('ttmConflict')(conflictOp), 'TTM 영익 +인데 최신 분기 영익 −면 충돌');
-    t(!!E('ttmConflict')(conflictSp), 'TTM 스프레드 +인데 최신 분기 스프레드 −면 충돌');
+    t(!!E('ttmConflict')(conflictSp), '스프레드 뒤집힘 + 최신 영익 약하면 충돌');
+    t(E('ttmConflict')(strongOp) === null, '스프레드 −라도 최신 영익 튼튼하면 충돌 아님(APR 패턴)');
+    t(E('ttmConflict')(hairline) === null, '스프레드가 사각지대(±5p) 안이면 충돌 아님');
     t(E('ttmConflict')(fine) === null, '방향이 같으면 충돌 아님');
     t(E('ttmConflict')(legacy) === null, 'lq 가 없으면(구 데이터) 판정하지 않는다 — 지어내지 않는다');
     t(E('accelCheck')(conflictOp).why === 'ttmconflict', '충돌이면 후보 진입 금지');
