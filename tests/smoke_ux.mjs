@@ -42,7 +42,6 @@ for (const [file,dataFile,mk,otherHref] of [
   t(sw && sw.getAttribute('href')===otherHref, `시장 전환 버튼 → ${otherHref} (실제 ${sw&&sw.getAttribute('href')})`);
   // 5) 웹앱 메타 + 실제 파일 존재
   const need=[['meta[name="apple-mobile-web-app-capable"]','content','yes'],
-              ['meta[name="apple-mobile-web-app-title"]','content',null],
               ['meta[name="theme-color"]','content','#080c16']];
   need.forEach(([sel,attr,val])=>{
     const el=d.querySelector(sel);
@@ -54,6 +53,17 @@ for (const [file,dataFile,mk,otherHref] of [
     t(exists, `${sel} → ${p} 파일 실재`);
   }
   t(d.querySelector('meta[name="viewport"]').getAttribute('content').includes('viewport-fit=cover'), '노치 대응 viewport-fit');
+  // iOS 홈 화면 라벨은 짧게 잘린다. 시장 코드가 뒤에 있으면 둘 다 "헤게모니…"
+  // 로 잘려 구분이 안 되므로, 반드시 앞에 와야 한다.
+  {
+    const title=d.querySelector('meta[name="apple-mobile-web-app-title"]').getAttribute('content');
+    const man=JSON.parse(fs.readFileSync(path.join(ROOT,`app-${mk}.webmanifest`),'utf8'));
+    const up=mk.toUpperCase();
+    t(title.startsWith(up), `홈 화면 라벨이 ${up} 로 시작 (${title})`);
+    t(man.short_name.startsWith(up), `매니페스트 short_name 이 ${up} 로 시작 (${man.short_name})`);
+    t(man.short_name.length<=12, `short_name 길이 ${man.short_name.length}자 — 홈 화면에서 안 잘림`);
+    t(man.start_url===(mk==='kr'?'./':'./us.html'), `start_url ${man.start_url}`);
+  }
   // 6) 레이더·TOP5 여전히 정상
   t(d.getElementById('radarPanel').innerHTML.includes('선취매 레이더'), '선취매 레이더 정상');
   t(d.getElementById('top5Panel').innerHTML.includes('TOP5'), 'TOP5 정상');
