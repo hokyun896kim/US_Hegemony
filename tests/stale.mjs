@@ -78,10 +78,25 @@ for (const [file, url] of [['index.html', 'https://x.test/'], ['us.html', 'https
    t(gate.why === 'stale', `지연이 축소형보다 먼저 걸린다 (실제 ${gate.why})`);
    t(E('turnaround')(m) === false, '지연 종목이 턴어라운드 구간으로도 안 샌다');}
 
+  // 지연 종목은 '선취매 권역'에서 빠지되, 삭제되지 않고 별도 구간에 남아야 한다.
+  // 통째로 지우면 어닝시즌마다 화면이 비고, 사용자는 왜 비었는지 알 수 없다.
+  {const secs=[...w.document.querySelectorAll('#radarPanel .radar-sec')].map(x=>x.textContent);
+   const hasStaleSec = secs.some(x=>/실적 확인 필요/.test(x));
+   t(hasStaleSec, `실적 미반영 종목을 별도 구간으로 표시 (구간: ${secs.length}개)`);
+   const note=[...w.document.querySelectorAll('#radarPanel .radar-note')].map(x=>x.textContent).join(' ');
+   t(!hasStaleSec || /분기까지/.test(note), '어느 분기까지의 숫자인지 밝힘');
+   t(!hasStaleSec || /(DART|10-Q)/.test(note), '어디서 확인할지 안내');}
+
   // 지연 종목은 실제로 레이더에서 빠져야 한다 — 판정만 맞고 화면에 남으면 소용없다
-  const shown = [...w.document.querySelectorAll('#radarPanel .rc-tk')].map(x => x.textContent);
-  t(!shown.includes('STALE') && !shown.includes('OLD') && !shown.includes('B130'),
-    `지연 종목이 레이더에 안 뜸 (표시된 것: ${shown.join(',') || '없음'})`);
+  {const html = w.document.getElementById('radarPanel').innerHTML;
+   const iStale = html.indexOf('실적 확인 필요');
+   const posOf = tk => html.indexOf('>' + tk + '<');
+   // 지연 종목이 화면에 있다면 반드시 '실적 확인 필요' 구간 뒤여야 한다
+   for (const tk of ['STALE', 'OLD', 'B130']) {
+     const p = posOf(tk);
+     t(p < 0 || (iStale >= 0 && p > iStale),
+       `${tk} 는 선취매 권역에 없음 (${p < 0 ? '미표시' : '실적 확인 필요 구간'})`);
+   }}
   // 막은 개수를 밝히는가 — 조용한 절삭 금지
   const funnel = w.document.querySelector('.radar-funnel')?.textContent || '';
   t(/실적 미반영/.test(w.document.querySelector('#radarPanel')?.innerHTML || '') || funnel.length > 0,
@@ -89,7 +104,10 @@ for (const [file, url] of [['index.html', 'https://x.test/'], ['us.html', 'https
   // 발표 임박은 막지 않되 알려야 한다
   t(/발표.*임박|임박·진행/.test(E('radarRisk')(M['DUE'])), 'DUE 종목에 발표 임박 경고');
   t(/미확인/.test(E('radarRisk')(M['NOQNIL'])), 'q_end·공시일 없는 종목에 미확인 경고');
-  t(!shown.includes('NOQE'), 'q_end 없이 막 발표한 종목은 후보에서 빠짐');
+  {// q_end 없이 막 발표한 종목도 선취매 권역에는 없어야 한다
+   const html = w.document.getElementById('radarPanel').innerHTML;
+   const iStale = html.indexOf('실적 확인 필요'), p = html.indexOf('>NOQE<');
+   t(p < 0 || (iStale >= 0 && p > iStale), 'q_end 없이 막 발표한 종목은 선취매 권역에 없음');}
 }
 
 console.log(ok ? '\n✅ 실적 반영 지연 판정 통과' : '\n❌ 실패');
