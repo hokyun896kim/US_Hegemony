@@ -738,7 +738,7 @@ const QLABEL={high:'🟢고품질',mid:'🟡보통',low:'🔴저품질',margin:'
 // ── 개선된 스코어러: 유기적 성장(매출 동반) + 지속성 + 합리적 밸류 + 미반영을 보상,
 //    기저효과/일회성/비용절감/고평가/피크아웃은 강하게 감점 → '실질 매매' 후보만 상위로 ──
 function scoreCandidate(m){
- const sp=m.spread,qsp=m.q_spread,acc=m.accel,rs6=m.rs6,gap=m.gap;
+ const sp=m.spread,qsp=m.q_spread,acc=m.accel,gap=m.gap;
  if(sp==null||sp<=0)return null;
  const q=spreadQuality(m);
  let pts=0; const reasons=[];
@@ -856,7 +856,10 @@ function radarWhy(m){
  w.push(`분기 <b>+${m.q_spread}p</b>(가속 +${m.accel}p)`);
  if(m.from_high!=null&&m.from_high<=-15) w.push(`고점比 ${m.from_high}%`);
  if(falling(m).c==='g') w.push('<b>하락 멈춤</b>');
- if(m.pe!=null&&m.pe>0&&m.pe<15) w.push(`PER ${m.pe.toFixed(0)}`);
+ // 근거 쪽은 후행 PER 만 본다 — 선행(fpe)은 추정치라 '싸다'의 증거로 쓰지 않는다.
+ // (반대로 radarRisk 의 '비싸다' 경고에는 선행도 쓴다. 경고는 넓게, 근거는 좁게)
+ const val=(m.pe!=null&&m.pe>0)?m.pe:null;
+ if(val!=null&&val<15) w.push(`PER ${val.toFixed(0)}`);
  return w.join(' · ');
 }
 function radarRisk(m){
@@ -876,6 +879,17 @@ function gotoIndustry(name){
  const box=document.getElementById('q');
  if(box){box.value=name;q=name;renderFlat();box.scrollIntoView({behavior:'smooth',block:'center'});}
 }
+// 산업이 아니라 '분류 못 한 것들을 담은 자루'인 버킷. 여기 중앙값은
+// 수요 사이클이 공유되지 않는 회사들의 평균이라 아무 뜻이 없고,
+// 자루일수록 구성원이 많아 통과 문턱만 쉽게 넘는다.
+//  · SIC 7389 = Services-Business Services, NEC → 비자·마스터카드·우버·액센츄어·
+//    알리바바가 한 칸에 들어간다. 미국 데이터에서 가장 큰 버킷(21종목)이라
+//    중앙값만 양수로 뒤집히면 곧장 '유망 산업'으로 올라온다.
+//  · 나머지 NEC(3577 주변기기, 8062 병원, 7359 렌탈, 5990 리테일)는 업종이
+//    실제로 붙어 있어서 남긴다 — NEC 를 통째로 버리면 진짜 신호를 버린다.
+const BAG_SIC=new Set(['7389']);
+const isBag=s=>{const d=(s.desc||'').trim();
+  return !d || d==='Unknown' || BAG_SIC.has(String(s.sic));};
 function renderRadar(){
  const panel=document.getElementById('radarPanel');
  if(!panel)return;
@@ -899,7 +913,8 @@ function renderRadar(){
        qsp:medOf(clean.map(m=>m.q_spread)),
        rs :medOf(clean.map(m=>m.rs6))};
    })
-   .filter(x=>x.clean.length>=2 && x.hits.length>=1
+   .filter(x=>!isBag(x.s)
+            && x.clean.length>=2 && x.hits.length>=1
             && x.acc!=null&&x.acc>0 && x.qsp!=null&&x.qsp>0 && x.rs!=null&&x.rs<10)
    .sort((a,b)=>b.acc-a.acc).slice(0,4);
 

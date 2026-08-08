@@ -104,11 +104,21 @@ python -m http.server 8000             # file:// 로 열면 CORS로 막힌다
 ```bash
 python build_tree_kr.py --selftest     # 빌더 로직 + 출력 스키마
 
-cd tests && npm install && npm test    # index.html 을 실제로 띄워 전 기능 클릭
+cd tests && npm install && npm test    # 두 페이지를 실제로 띄워 전 기능 클릭 + 파리티
 ```
 
-스모크 테스트는 결측(분기 없음·PER 없음·RS 없음)과 한글 매핑 없는 산업을 일부러
-섞은 합성 데이터로 돌려서, 빈 값을 만나도 화면이 깨지지 않는지 확인한다.
+`npm test` 는 세 가지를 돈다.
+
+- **smoke_kr** — 결측(분기 없음·PER 없음·RS 없음)과 한글 매핑 없는 산업을 일부러
+  섞은 합성 데이터로 돌려서, 빈 값을 만나도 화면이 깨지지 않는지 확인한다.
+- **smoke_ux** — 두 페이지를 커밋된 실데이터로 띄워 팝업·설명·시장 전환·홈 화면
+  추가·GPT 지침 일치를 확인한다.
+- **parity** — 한국판과 미국판의 **판정 로직이 갈라지지 않았는지** 확인한다.
+  `priceIn`·`realAccel` 같은 시장 무관 함수는 주석을 뺀 본문이 완전히 같아야 하고,
+  `scoreCandidate` 처럼 1차 자료 이름(DART vs 8-K)이 시장마다 달라야 하는 함수는
+  문자열을 걷어낸 **문턱값·가감점 57개**가 같아야 한다. 한쪽만 고치고 다른 쪽을
+  잊는 사고가 실제로 났기 때문에 붙였다(산업 레이더의 자루 버킷 제외가 한국판에만
+  들어가 있었다). CI 는 `.github/workflows/tests.yml` 에서 같은 것을 돌린다.
 
 ## 면책
 

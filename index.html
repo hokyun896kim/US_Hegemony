@@ -909,8 +909,15 @@ function gotoIndustry(ko){
  const box=document.getElementById('q');
  if(box){box.value=ko;q=ko;renderFlat();box.scrollIntoView({behavior:'smooth',block:'center'});}
 }
+// 산업이 아니라 '분류 못 한 것들을 담은 자루'인 버킷. 여기 중앙값은
+// 수요 사이클이 공유되지 않는 회사들의 평균이라 아무 뜻이 없고,
+// 자루일수록 구성원이 많아 통과 문턱만 쉽게 넘는다.
+// 한국은 야후 분류가 빠진 종목이 통째로 'Unknown' 한 칸에 들어간다(21종목).
+const isBag=s=>{const d=(s.desc||'').trim();
+  return !d || d==='Unknown' || s.gics==='Unknown';};
 function renderRadar(){
  const panel=document.getElementById('radarPanel');
+ if(!panel)return;
  const all=[]; D.subs.forEach(s=>s.members.forEach(m=>all.push({...m,sec:s.ko||s.desc})));
  const pool=all.filter(m=>m.accel!=null&&Math.abs(m.accel)<=150&&m.q_spread!=null); // 가속 탭 모집단
  const real=pool.filter(realAccel);
@@ -933,9 +940,7 @@ function renderRadar(){
        qsp:medOf(clean.map(m=>m.q_spread)),
        rs :medOf(clean.map(m=>m.rs6))};
    })
-   // Unknown 은 산업이 아니라 야후 분류가 빠진 종목들을 담은 자루다.
-   // 여길 '유망 산업'으로 띄우면 없는 신호를 만들어내는 셈이라 뺀다.
-   .filter(x=>x.s.desc!=='Unknown' && x.s.gics!=='Unknown'
+   .filter(x=>!isBag(x.s)
             && x.clean.length>=2 && x.hits.length>=1
             && x.acc!=null&&x.acc>0 && x.qsp!=null&&x.qsp>0 && x.rs!=null&&x.rs<10)
    .sort((a,b)=>b.acc-a.acc).slice(0,4);
