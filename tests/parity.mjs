@@ -112,6 +112,10 @@ for (const [label, s] of [['KR', KR], ['US', US]]) {
   if (!radar) continue;
   // 자루 버킷 제외 — 이번에 실제로 US 에만 빠져 있던 것
   t(/isBag\(/.test(strip(radar)), `${label} 산업 레이더가 자루 버킷을 걸러냄 (isBag)`);
+  // 발표된 실적이 아직 안 들어간 종목을 후보로 올리면 안 된다
+  const ac = fnBody(s, 'accelCheck');
+  t(ac && /staleness\(m\)\.s==='stale'/.test(strip(ac)), `${label} 실적 미반영 종목을 후보에서 제외`);
+  t(/STALE\s*=\s*\{/.test(strip(s)), `${label} STALE 문턱 상수 정의`);
   t(/isBag\s*=/.test(strip(s)), `${label} isBag 정의 존재`);
   // 산업 중앙값은 기저효과 종목을 뺀 구성원으로만 낸다
   t(/spreadQuality\(m\)!=='base'/.test(strip(radar)), `${label} 산업 중앙값이 기저효과 종목을 제외`);
