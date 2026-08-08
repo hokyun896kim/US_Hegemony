@@ -1,21 +1,39 @@
 #!/usr/bin/env python3
 """미국 헤게모니 트리 — 통합 데이터 빌더 (GitHub Actions용)
-   SEC(연간 frames + 분기TTM + 비12월결산 보강 + IR) + Yahoo(상대강도) → data/tree.json
-   ★ 27행 UA 이메일만 본인 것으로 교체. 나머지 수정 불필요."""
-import urllib.request, json, time, os, statistics, re
+   SEC(연간 frames + 분기TTM + 비12월결산 보강 + IR + EPS) + Yahoo(시세) → data/tree.json
+
+   그대로 두면 돌아간다. 다만 SEC 에 본인 연락처를 밝히려면 저장소 Secret 에
+   SEC_UA 를 넣으면 된다(아래 UA_SEC 참고)."""
+import urllib.request, urllib.error, json, time, os, sys, statistics, re
 from datetime import date
 
-# SEC 는 공정접근 정책상 실제 연락처가 담긴 User-Agent 를 요구하며, 없으면
-# 차단할 수 있다. 공개 레포에 개인 이메일을 적지 않도록 환경변수로 뺐다 —
-# GitHub Actions 라면 저장소 Secret 에 SEC_UA 를 넣으면 그대로 쓰인다.
+# SEC 는 UA 에 '이름 + 연락 이메일' 형태를 요구하고, 이메일이 없으면 403 을 준다
+# (실측: 이메일 없는 UA 로 바꿨더니 [1/7] 티커맵에서 바로 막혔다).
+# 개인 메일을 공개 저장소에 박지 않으려고 기본값은 GitHub noreply 주소를 쓴다.
+# 본인 연락처를 쓰려면 저장소 Secret 에 SEC_UA 를 넣으면 그쪽이 우선한다.
 #   예: SEC_UA="Hong Gildong hong@example.com"
-# Secret 미설정 시 Actions 는 빈 문자열을 넘기므로 get(...,기본값) 로는 못 막는다.
+# 주의: Secret 미설정 시 Actions 는 빈 문자열을 넘기므로 get(...,기본값) 으로는
+# 못 막는다. 빈 문자열·공백까지 걸러 기본값으로 떨어뜨린다.
 UA_SEC={"User-Agent":(os.environ.get("SEC_UA") or "").strip()
-        or "US-Hegemony-Tree/1.0 (personal research; contact via GitHub)"}
+        or "US-Hegemony-Tree hokyun896kim@users.noreply.github.com"}
 UA_YH ={"User-Agent":"Mozilla/5.0 (Macintosh) research"}
+_ua_warned=False
 def get(u,h=UA_SEC,t=60):
+    global _ua_warned
     r=urllib.request.Request(u,headers=h)
-    with urllib.request.urlopen(r,timeout=t) as x: return x.read().decode("utf-8","ignore")
+    try:
+        with urllib.request.urlopen(r,timeout=t) as x: return x.read().decode("utf-8","ignore")
+    except urllib.error.HTTPError as e:
+        # 이 실패가 트레이스백만 남기면 원인을 찾는 데 오래 걸린다. 한 번은
+        # 사람이 읽을 수 있는 안내를 남기고, 예외는 그대로 올려보낸다
+        # (호출부의 except 동작을 바꾸지 않기 위해).
+        if e.code==403 and "sec.gov" in u and not _ua_warned:
+            _ua_warned=True
+            print("\n[!] SEC 가 403 을 돌려줬습니다 — User-Agent 거부입니다.",file=sys.stderr)
+            print(f"    현재 UA: {h.get('User-Agent')!r}",file=sys.stderr)
+            print("    SEC 는 '이름 + 연락 이메일' 형태를 요구합니다(이메일이 없으면 막습니다).",file=sys.stderr)
+            print('    저장소 Secret 에 SEC_UA 를 넣으세요. 예: SEC_UA="Hong Gildong hong@example.com"\n',file=sys.stderr)
+        raise
 def getj(u,h=UA_SEC): return json.loads(get(u,h))
 CUR=date.today().year-1; PRV=CUR-1
 
