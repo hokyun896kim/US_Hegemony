@@ -14,6 +14,8 @@ on:
       - '*.webmanifest'
       - 'refresh_prices.py'
       - 'build_tree_kr.py'
+      - 'build_data.py'
+      - 'est_trend.py'
       - '.github/workflows/tests.yml'
   pull_request:
     paths: *paths
@@ -53,3 +55,8 @@ jobs:
         run: |
           python refresh_prices.py --selftest
           python build_tree_kr.py --selftest
+          python est_trend.py --selftest
+          # build_data.py 는 첫 줄부터 네트워크를 타서 자가진단을 못 붙인다.
+          # 최소한 문법은 본다 — 이게 없어서 파이썬만 고친 커밋에 CI 가
+          # 아예 안 돌던 적이 있다.
+          python -m py_compile build_data.py refresh_prices.py build_tree_kr.py est_trend.py
