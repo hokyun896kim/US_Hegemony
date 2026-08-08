@@ -17,23 +17,41 @@ from datetime import date
 UA_SEC={"User-Agent":(os.environ.get("SEC_UA") or "").strip()
         or "US-Hegemony-Tree hokyun896kim@users.noreply.github.com"}
 UA_YH ={"User-Agent":"Mozilla/5.0 (Macintosh) research"}
-_ua_warned=False
-def get(u,h=UA_SEC,t=60):
+_ua_warned=False; _last_sec=0.0
+def _throttle(u):
+    # SEC 공정접근 정책은 초당 10건이 상한이다. 넘기면 IP 단위로 막힌다.
+    # 이 빌더는 종목당 여러 번 부르므로 전역으로 간격을 강제한다.
+    global _last_sec
+    if "sec.gov" not in u: return
+    dt=time.time()-_last_sec
+    if dt<0.11: time.sleep(0.11-dt)
+    _last_sec=time.time()
+
+def get(u,h=UA_SEC,t=60,tries=3):
     global _ua_warned
-    r=urllib.request.Request(u,headers=h)
-    try:
-        with urllib.request.urlopen(r,timeout=t) as x: return x.read().decode("utf-8","ignore")
-    except urllib.error.HTTPError as e:
-        # 이 실패가 트레이스백만 남기면 원인을 찾는 데 오래 걸린다. 한 번은
-        # 사람이 읽을 수 있는 안내를 남기고, 예외는 그대로 올려보낸다
-        # (호출부의 except 동작을 바꾸지 않기 위해).
-        if e.code==403 and "sec.gov" in u and not _ua_warned:
-            _ua_warned=True
-            print("\n[!] SEC 가 403 을 돌려줬습니다 — User-Agent 거부입니다.",file=sys.stderr)
-            print(f"    현재 UA: {h.get('User-Agent')!r}",file=sys.stderr)
-            print("    SEC 는 '이름 + 연락 이메일' 형태를 요구합니다(이메일이 없으면 막습니다).",file=sys.stderr)
-            print('    저장소 Secret 에 SEC_UA 를 넣으세요. 예: SEC_UA="Hong Gildong hong@example.com"\n',file=sys.stderr)
-        raise
+    for i in range(tries):
+        _throttle(u)
+        try:
+            r=urllib.request.Request(u,headers=h)
+            with urllib.request.urlopen(r,timeout=t) as x: return x.read().decode("utf-8","ignore")
+        except urllib.error.HTTPError as e:
+            sec=("sec.gov" in u)
+            if sec and e.code in (403,429):
+                if not _ua_warned:
+                    _ua_warned=True
+                    # SEC 는 거부 사유를 응답 본문에 담아준다. 추측하지 말고 그대로 읽는다.
+                    try: body=e.read().decode("utf-8","ignore")[:400].replace("\n"," ").strip()
+                    except Exception: body="(본문 읽기 실패)"
+                    print(f"\n[!] SEC {e.code} — 요청이 거부됐습니다.",file=sys.stderr)
+                    print(f"    UA   : {h.get('User-Agent')!r}",file=sys.stderr)
+                    print(f"    URL  : {u}",file=sys.stderr)
+                    print(f"    사유 : {body}",file=sys.stderr)
+                    print('    UA 문제라면 저장소 Secret 에 SEC_UA="이름 you@example.com" 를 넣으세요.',file=sys.stderr)
+                    print("    속도 문제라면 잠시 뒤 재실행하면 풀립니다.\n",file=sys.stderr)
+                if i<tries-1:
+                    time.sleep(5*(i+1))   # 일시적 차단이면 기다렸다 다시
+                    continue
+            raise
 def getj(u,h=UA_SEC): return json.loads(get(u,h))
 CUR=date.today().year-1; PRV=CUR-1
 
