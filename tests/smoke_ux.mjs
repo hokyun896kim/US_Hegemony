@@ -64,6 +64,23 @@ for (const [file,dataFile,mk,otherHref] of [
     t(man.short_name.length<=12, `short_name 길이 ${man.short_name.length}자 — 홈 화면에서 안 잘림`);
     t(man.start_url===(mk==='kr'?'./':'./us.html'), `start_url ${man.start_url}`);
   }
+  // 5.5) GPT 상주 지침 — 페이지 상수와 docs 문서가 어긋나면 실패
+  {
+    const g=w.eval('GPT_GUIDE');
+    t(typeof g==='string' && g.includes('[역할]') && g.includes('절대 규칙') && g.includes('헤게모니 스프레드'),
+      'GPT_GUIDE 상수 존재·핵심 섹션 포함');
+    const md=fs.readFileSync(path.join(ROOT,'docs/gpt-instructions.md'),'utf8');
+    const doc=md.split('<!-- GUIDE:START -->')[1].split('<!-- GUIDE:END -->')[0].trim();
+    t(doc===g.trim(), 'docs/gpt-instructions.md 와 페이지 지침 동일(드리프트 방지)');
+    const tk=d.querySelector('.rc') ? null : null;
+    const D2=w.eval('D'); const first=D2.subs[0].members[0].tk;
+    w.openTrade(first);
+    const body=d.getElementById('tcBody').innerHTML;
+    t(body.includes('GPT 지침 복사'), '트레이드 카드에 지침 복사 버튼 노출');
+    t(body.includes("copyPrompt('"+first+"',this)"), 'copyPrompt 가 this 전달(전역 event 미의존)');
+    d.getElementById('tradeModal').classList.remove('show');
+  }
+
   // 6) 레이더·TOP5 여전히 정상
   t(d.getElementById('radarPanel').innerHTML.includes('선취매 레이더'), '선취매 레이더 정상');
   t(d.getElementById('top5Panel').innerHTML.includes('TOP5'), 'TOP5 정상');

@@ -187,6 +187,9 @@ h1{font-size:clamp(24px,5.6vw,42px);font-weight:800;line-height:1.05;margin:8px 
 .tc-ai-copy.done{background:var(--grn);color:#fff}
 .prompt-preview{margin-top:10px;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:11px;font-size:10.5px;line-height:1.6;color:#9aa7bd;white-space:pre-wrap;max-height:200px;overflow-y:auto;display:none;font-family:ui-monospace,monospace}
 .prompt-preview.show{display:block}
+.tc-ai-copy.alt{background:var(--panel3);color:var(--gold2);border:1px solid var(--line);margin-top:8px}
+.tc-ai-copy.alt:hover{background:var(--panel2);color:var(--gold2)}
+
 
 .tc-news{background:var(--panel3);border:1px solid var(--line);border-radius:12px;padding:14px;margin:14px 0 0}
 .tc-news h4{font-size:12px;color:var(--gold2);margin:0 0 4px;letter-spacing:.04em}
@@ -744,8 +747,9 @@ function openTrade(tk){
   </div>
   <div class="tc-ai">
    <h4>🤖 AI 분석 프롬프트 (복사해서 GPT·Claude에 붙여넣기)</h4>
-   <div class="nsub">아래 버튼을 누르면 이 종목 데이터 + <b>DART·네이버 1차 자료 링크 + 웹검색 병행 지시</b>가 채워진 심화 프롬프트가 복사됩니다. GPT·Claude에 던지면 스프레드 청결도·해자·베어케이스·반증조건까지 깊게 분석합니다.</div>
+   <div class="nsub">아래 버튼을 누르면 이 종목 데이터 + <b>DART·네이버 1차 자료 링크 + 웹검색 병행 지시</b>가 채워진 심화 프롬프트가 복사됩니다. GPT·Claude에 던지면 스프레드 청결도·해자·베어케이스·반증조건까지 깊게 분석합니다. <b>지침</b>은 맞춤 GPT(또는 Claude 프로젝트)에 한 번만 넣어두는 상주 규칙 — 넣어두면 종목 프롬프트만 붙여도 같은 품질로 분석합니다.</div>
    <button class="tc-ai-copy" onclick="copyPrompt('${m.tk}',this)">📋 분석 프롬프트 복사</button>
+   <button class="tc-ai-copy alt" onclick="copyGptGuide(this)">🧭 GPT 지침 복사 — 맞춤 GPT에 최초 1회</button>
    <div id="promptPreview" class="prompt-preview"></div>
   </div>
   <div class="tc-disc">⚠️ 이 카드는 매수·매도 신호가 아닙니다. 형님 본인 룰(R-multiple·Kelly)을 계산하고 강세·약세 논거를 양면으로 정리하는 <b>판단 보조 도구</b>입니다. 손절가는 형님이 직접 판단해 입력하며, 최종 결정과 책임은 형님에게 있습니다. 데이터는 주간 스냅샷입니다.</div>
@@ -1217,6 +1221,17 @@ D. RS 해석: 6개월 약세인데 3개월 급등이면 '이미 절반 반영(�
 7. 결론: 관찰 / 분할매수 검토 / 보류 중 택1 + (4번 판정과 연결해) 지금이 '먼저 들어갈 자리'인지 '추격 위험 자리'인지 + 진입 전 체크리스트 + 다음 실적에서 확인할 핵심 1~2개 + 확신도(상/중/하)와 근거.
 
 매수·매도를 단정하지 말고, 내가 직접 판단할 재료를 깊고 균형 있게 정리하는 데 집중해라. 특히 4번(가격 반영도/선취매)을 가장 비중 있게 다뤄라.`;
+}
+
+// ── GPT 상주 지침 (docs/gpt-instructions.md 와 동일 — 테스트가 일치를 강제) ──
+// 종목 프롬프트는 매번 바뀌는 질문이고, 이건 GPT 에 한 번만 넣어두는 규칙이다.
+const GPT_GUIDE="[역할]\n너는 \"헤게모니 트리\" 스크리너와 짝을 이루는 주식 펀더멘털 분석가다. 사용자는 한국(코스피·코스닥) 또는 미국 증시 종목의 스냅샷 데이터를 붙여넣는다. 너의 일은 그 숫자를 검증하고 맥락을 붙여, 사용자가 스스로 판단할 재료를 정리하는 것이다. 매수·매도 명령을 내리는 것이 아니다.\n\n[데이터 사전 — 붙여넣기에 나오는 용어]\n- 헤게모니 스프레드 = 영업이익 YoY% − 매출 YoY%. 양수면 이익이 매출보다 빨리 늘어 이익 레버리지(가격결정력·고정비 효과)가 작동 중.\n- 분기TTM 스프레드 = 최근 4분기 합산 기준 스프레드. 연간보다 최신 상태.\n- 가속 = 분기TTM − 연간. 양수면 레버리지가 최근 더 강해지는 중.\n- RS3M / RS6M = 벤치마크(한국은 코스피, 미국은 S&P500) 대비 3·6개월 상대수익률. 차트 지표가 아니라 원시 수익률 차이다.\n- 52주 고점比 = 현재가가 52주 고점 대비 몇 % 아래인가.\n- 갭위험 = 최근 60거래일의 시가 갭 최대치. H 면 실적 전후 변동이 크다.\n- PER 뒤의 F = 후행 PER 이 없어 선행(Forward) PER 로 대체된 값. 서로 다른 지표이므로 비교 시 감안하라.\n- \"근사치\"(q_approx) = 분기 자료가 8분기 미만이라 TTM 을 직전 연간과 비교한 근사값. 한국 종목 대부분이 이 모드다.\n\n[스크리너의 알려진 맹점 — 숫자를 그대로 믿지 말 것]\n1. 기저효과: 전년 이익이 바닥이면 스프레드가 폭발한다. 영업이익 YoY +80% 이상이거나 가속이 ±60p 를 넘으면 흑자전환·일회성(자산처분익, 지분법, 환율)을 의심하고 원문 공시로 분해하라.\n2. 출처 정의 차이: 숫자는 야후·SEC 프레임 기반이라 한국 K-IFRS 연결 영업이익, 미국 US-GAAP 세그먼트 기준과 어긋날 수 있다. 1차 자료(DART / SEC 8-K·10-Q)와 대조하라.\n3. 한국판은 외국인·기관 수급을 수집하지 않는다. 네이버 금융 '투자자별 매매동향'과 공매도·대차잔고를 웹검색으로 반드시 보강하라.\n4. 주간 스냅샷이다. 붙여넣기 이후에 나온 실적 발표·공시가 있는지 날짜부터 확인하라.\n5. RS 가 깊게 빠진 것(-30% 이하)은 \"시장이 아직 못 본 것\"과 \"이유 있는 투매\"를 구분하지 못한다. 왜 싼지를 밝히는 게 네 몫이다.\n\n[작업 순서]\n1. 붙여넣은 숫자를 표로 요약한다. 원문 그대로, 각색 금지.\n2. 웹검색으로 검증·보강한다: 최근 실적·공시(한국 DART, 미국 SEC), 증권사 컨센서스와 목표가, 업황·정책 뉴스, (한국) 외국인·기관 순매수, 다음 실적 발표일. 출처를 단다.\n3. 분석한다: 스프레드 청결도(유기적 성장 / 기저효과 / 일회성 오염) → 산업 사이클과 해자 → 밸류에이션의 역사적 위치 → 가격 반영도.\n4. 스틸맨 베어케이스(사면 안 되는 가장 강한 논거)와 반증 조건(논제가 틀렸음을 입증할 단 하나의 관찰값)을 반드시 만든다.\n\n[출력 형식]\n붙여넣기에 번호 달린 \"분석 요청\"이 있으면 그 구조를 따른다. 없으면 아래 순서로 쓴다.\n① 스냅샷 요약(표)\n② 검증 결과 — 원문과 다른 숫자가 있으면 명시\n③ 헤게모니 진위 판정(깨끗 / 기저효과 / 일회성)\n④ 가격 반영도 판정 — [잠복·선취매 / 초기 반영 / 점화 직후(절반 반영) / 정점 통과·냉각 / 고점권 과반영] 중 하나 + 근거\n⑤ 베어 케이스(가장 세게)\n⑥ 반증 조건 1개\n⑦ 결론 — 관찰 / 분할매수 검토 / 보류 중 택1, 확신도(상/중/하)와 근거, 다음 실적에서 확인할 체크포인트 1~2개\n\n[절대 규칙]\n- 매수·매도를 단정하지 마라. 지시가 아니라 판단 재료를 정리하라.\n- 차트 기술지표(이동평균·RSI·볼린저·거래량 패턴 등)는 쓰지 마라. 펀더멘털·수급·일정만 다룬다.\n- 확인하지 못한 것은 \"미확인\"으로 표시하라. 숫자를 지어내지 마라.\n- 외부 사실에는 출처를 달아라. 검색이 안 되면 안 된다고 말하라.\n- 목표가를 찍지 마라. 대신 논제가 깨지는 조건을 줘라. 손절가와 비중은 사용자가 R-멀티플로 직접 정한다.\n- 한국어로 답하고, 용어는 위 데이터 사전의 정의대로 쓴다.";
+function copyGptGuide(btn){
+ const prev=document.getElementById('promptPreview');
+ if(prev){prev.textContent=GPT_GUIDE;prev.classList.add('show');}
+ const done=()=>{btn.textContent='✅ 복사됨! GPT의 Instructions(지침) 칸에 붙여넣으세요';btn.classList.add('done');setTimeout(()=>{btn.textContent='🧭 GPT 지침 복사 — 맞춤 GPT에 최초 1회';btn.classList.remove('done');},2600);};
+ if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(GPT_GUIDE).then(done).catch(()=>{fallbackCopy(GPT_GUIDE);done();});}
+ else{fallbackCopy(GPT_GUIDE);done();}
 }
 function copyPrompt(tk,btn){
  const txt=buildPrompt(tk);
