@@ -12,8 +12,8 @@ on:
         description: '결과를 커밋할지 여부'
         type: boolean
         default: true
-      dart_probe:
-        description: 'DART 응답 구조만 확인하고 끝낼 종목코드 (예: 005930). 비우면 평소대로 빌드'
+      probe:
+        description: '데이터 소스 응답 구조만 확인하고 끝낼 종목코드 (예: 005930). 비우면 평소대로 빌드'
         default: ''
   push:
     # 개발 브랜치에서 빌더를 고치면 커밋 없이 소규모 스모크 빌드로 검증만 한다
@@ -21,6 +21,7 @@ on:
     paths:
       - 'build_tree_kr.py'
       - 'dart.py'
+      - 'naver.py'
       - 'index.html'
       - '.github/workflows/update_kr.yml'
 
@@ -45,26 +46,37 @@ jobs:
         run: |
           python build_tree_kr.py --selftest
           python dart.py --selftest
+          python naver.py --selftest
 
-      # DART 파싱은 '응답이 내가 가정한 모양인가' 에 통째로 기대고 있는데,
-      # 이 코드를 쓴 환경에서는 DART 에 네트워크가 닿지 않아 눈으로 못 봤다.
-      # 그래서 키를 넣은 뒤 여기서 한 번 찍어보고 믿는다. 빌드는 하지 않는다.
-      - name: DART 응답 구조 확인
-        if: inputs.dart_probe != ''
+      # 두 소스의 파싱은 '응답이 내가 가정한 모양인가' 에 통째로 기대고 있는데,
+      # 이 코드를 쓴 환경에서는 DART·네이버 어느 쪽에도 네트워크가 닿지 않아
+      # 눈으로 못 봤다. 실제로 DART 에서 그 가정이 틀려 '기간이 다른 두 컬럼을
+      # 빼서 매출이 음수인 분기'를 만든 적이 있다. 그래서 믿기 전에 여기서
+      # 한 번 찍어본다. 빌드는 하지 않는다.
+      - name: 데이터 소스 응답 구조 확인
+        if: inputs.probe != ''
         env:
           DART_KEY: ${{ secrets.DART_KEY }}
+          CODE: ${{ inputs.probe }}
         run: |
-          if [ -z "${DART_KEY:-}" ]; then
-            echo "::error::DART_KEY 저장소 Secret 이 없습니다. Settings → Secrets and variables → Actions 에서 추가하세요."
-            exit 1
-          fi
-          python dart.py --probe "${{ inputs.dart_probe }}" | tee /tmp/probe.txt
           {
-            echo '## DART 응답 구조 확인'
+            echo "## 데이터 소스 응답 구조 확인 · 종목 $CODE"
+            echo
+            echo '### DART (확정 실적)'
             echo '```'
-            cat /tmp/probe.txt
+            if [ -z "${DART_KEY:-}" ]; then
+              echo "DART_KEY 저장소 Secret 이 없습니다 — 건너뜁니다."
+              echo "Settings → Secrets and variables → Actions 에서 추가하세요."
+            else
+              python dart.py --probe "$CODE" 2>&1 || echo "(프로브 실패)"
+            fi
             echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+            echo
+            echo '### 네이버 (잠정 포함)'
+            echo '```'
+            python naver.py --probe "$CODE" 2>&1 || echo "(프로브 실패)"
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Decide run mode
         id: mode
@@ -86,7 +98,7 @@ jobs:
           fi
 
       - name: Build data
-        if: inputs.dart_probe == ''
+        if: inputs.probe == ''
         env:
           # 분기 재무를 DART 에서 받는다 — yfinance 보다 1~3주 빠르다.
           # 키가 없으면 빌더가 조용히 yfinance 로 떨어지므로 없어도 돈다.
@@ -94,7 +106,7 @@ jobs:
         run: python build_tree_kr.py --limit ${{ steps.mode.outputs.limit }}
 
       - name: Summarize
-        if: inputs.dart_probe == ''
+        if: inputs.probe == ''
         run: |
           python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import json
@@ -125,14 +137,14 @@ jobs:
           PY
 
       - name: Upload artifact
-        if: inputs.dart_probe == ''
+        if: inputs.probe == ''
         uses: actions/upload-artifact@v4
         with:
           name: tree_kr-${{ github.run_number }}
           path: data/tree_kr.json
 
       - name: Commit
-        if: steps.mode.outputs.commit == 'true' && inputs.dart_probe == ''
+        if: steps.mode.outputs.commit == 'true' && inputs.probe == ''
         run: |
           git config user.name  "hegemony-bot"
           git config user.email "bot@users.noreply.github.com"

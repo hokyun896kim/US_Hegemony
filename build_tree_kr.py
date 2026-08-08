@@ -794,6 +794,17 @@ def build(limit, min_cap, sleep, log=print):
     if not members:
         raise SystemExit("재무를 하나도 못 받았습니다.")
 
+    # DART 를 켜놓고 한 건도 못 받았으면 반드시 시끄럽게 알린다.
+    # 이 실패는 조용하다 — 종목마다 yfinance 로 떨어지므로 빌드는 멀쩡히 끝난다.
+    # 실제로 URL 에 .json 확장자를 빼먹어 모든 요청이 101 로 거절당하면서도
+    # 아무 일 없는 것처럼 성공한 적이 있다(프로브를 돌려서야 알았다).
+    if DART_CORP:
+        n_dart = sum(1 for m in members if m.get("q_src") == "DART")
+        log(f"  DART 로 분기를 받은 종목 {n_dart}/{len(members)} · {dart.status_report()}")
+        if not dart.healthy():
+            log("  ⚠️ DART 응답이 한 건도 정상(000)이 아닙니다 — 전부 yfinance 로 떨어졌습니다.")
+            log("     python dart.py --probe 005930 (또는 Actions 의 probe 입력)으로 원인을 보세요.")
+
     # 분류가 안 붙으면 트리 전체가 한 덩어리가 되어 도구가 무의미해진다.
     known = sum(1 for m in members if m["sector"] != "Unknown")
     log(f"  섹터 분류 확보 {known}/{len(members)}")

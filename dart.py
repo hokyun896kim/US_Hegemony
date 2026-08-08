@@ -54,7 +54,36 @@ MONTHS = {"Q1": 3, "H1": 6, "Q3": 9, "FY": 12}
 REV_NAMES = ("매출액", "수익(매출액)", "영업수익", "매출", "수익")
 OP_NAMES = ("영업이익", "영업이익(손실)", "영업손실")
 
+# DART 응답 status 별 횟수. 전부 실패했는데 조용히 yfinance 로 떨어지는 일을
+# 막으려고 센다 — 실제로 .json 확장자를 빼먹어 모든 요청이 101 로 거절당하면서도
+# 빌드는 멀쩡히 끝나고 아무도 눈치채지 못한 적이 있다.
+STATUS: dict[str, int] = {}
+
+# 000 정상 / 013 조회된 데이터 없음(정상적으로 흔하다 — 아직 안 나온 분기).
+# 나머지는 우리 잘못이거나 키 문제다.
+OK_STATUS = {"000", "013"}
+STATUS_MSG = {
+    "010": "등록되지 않은 키", "011": "사용할 수 없는 키", "012": "접근할 수 없는 IP",
+    "013": "조회된 데이터 없음", "020": "요청 제한 초과", "021": "조회 가능한 회사 개수 초과",
+    "100": "부적절한 값", "101": "부적절한 접근(확장자 누락 등)",
+    "800": "시스템 점검 중", "900": "정의되지 않은 오류", "901": "사용자 계정의 개인정보보호 위반",
+}
+
 _last = 0.0
+
+
+def status_report() -> str:
+    """이번 실행에서 본 응답 status 분포. 빌더가 로그에 남긴다."""
+    if not STATUS:
+        return "DART 요청 없음"
+    parts = [f"{k}({STATUS_MSG.get(k, '?')}) {v}건"
+             for k, v in sorted(STATUS.items(), key=lambda x: -x[1])]
+    return " · ".join(parts)
+
+
+def healthy() -> bool:
+    """한 번이라도 제대로 받았는가. 전부 실패면 빌더가 경고를 띄운다."""
+    return STATUS.get("000", 0) > 0
 
 
 def _throttle(sec: float = 0.12) -> None:
@@ -66,10 +95,25 @@ def _throttle(sec: float = 0.12) -> None:
     _last = time.time()
 
 
+def _url(path: str, params: dict, key: str) -> str:
+    """요청 URL. 확장자가 없으면 .json 을 붙인다.
+
+    DART 는 확장자 없는 경로를 status 101 로 거절한다:
+      "잘못된 URL입니다. URL은 .xml 또는 .json 확장자만 허용됩니다"
+
+    실측으로 알아냈다. 그리고 이 실패는 **조용하다** — statement() 가
+    status != 000 을 그냥 빈 값으로 돌려주고 빌더는 yfinance 로 떨어지므로,
+    키를 넣어도 DART 가 한 번도 안 쓰이면서 아무도 눈치채지 못한다.
+    그래서 URL 조립을 따로 떼어 자가진단에서 매번 확인한다.
+    """
+    if "." not in path:
+        path += ".json"
+    return f"{BASE}/{path}?" + urllib.parse.urlencode({**params, "crtfc_key": key})
+
+
 def _get(path: str, params: dict, key: str, raw: bool = False, timeout: int = 30):
     _throttle()
-    q = urllib.parse.urlencode({**params, "crtfc_key": key})
-    req = urllib.request.Request(f"{BASE}/{path}?{q}", headers=UA)
+    req = urllib.request.Request(_url(path, params, key), headers=UA)
     with urllib.request.urlopen(req, timeout=timeout) as r:
         body = r.read()
     return body if raw else json.loads(body.decode("utf-8", "ignore"))
@@ -172,8 +216,11 @@ def statement(corp: str, year: int, rpt: str, log=print):
                      {"corp_code": corp, "bsns_year": str(year),
                       "reprt_code": RPT[rpt], "fs_div": fs}, _key())
         except Exception:
+            STATUS["net"] = STATUS.get("net", 0) + 1
             continue
-        if str(d.get("status")) != "000":
+        st = str(d.get("status"))
+        STATUS[st] = STATUS.get(st, 0) + 1
+        if st != "000":
             continue
         rows = [r for r in (d.get("list") or []) if r.get("sj_div") in ("IS", "CIS", None)]
         if not rows:
@@ -281,7 +328,30 @@ def selftest() -> int:
         if not c:
             ok[0] = False
 
-    print("── 금액 파싱 ──")
+    print("── 요청 URL (실측으로 물린 곳) ──")
+    # DART 는 확장자 없는 경로를 101 로 거절한다. 그런데 그 실패가 조용해서
+    # (빌더가 yfinance 로 떨어짐) 키를 넣고도 DART 가 한 번도 안 쓰인 채
+    # 빌드가 성공한 적이 있다. 그래서 URL 조립을 여기서 매번 확인한다.
+    u = _url("fnlttSinglAcntAll", {"corp_code": "00126380"}, "K")
+    t(u.split("?")[0].endswith(".json"),
+      f"확장자 없는 경로에 .json 을 붙인다 ({u.split('?')[0]})")
+    t("crtfc_key=K" in u, "인증키가 쿼리에 들어간다")
+    t("corp_code=00126380" in u, "파라미터가 들어간다")
+    u2 = _url("corpCode.xml", {}, "K")
+    t(u2.split("?")[0].endswith("corpCode.xml"),
+      f"이미 확장자가 있으면 덧붙이지 않는다 ({u2.split('?')[0]})")
+
+    print("\n── 실패를 조용히 넘기지 않는가 ──")
+    STATUS.clear()
+    t(healthy() is False, "요청 전에는 정상 아님")
+    STATUS["101"] = 3
+    t(healthy() is False, "101 만 잔뜩이면 정상 아님 — 경고 대상")
+    t("부적절한 접근" in status_report(), f"status 를 사람 말로 푼다 ({status_report()})")
+    STATUS["000"] = 1
+    t(healthy() is True, "한 번이라도 000 이면 정상")
+    STATUS.clear()
+
+    print("\n── 금액 파싱 ──")
     for s, want in [("1,234,567", 1234567.0), ("-1,234", -1234.0), ("(1,234)", -1234.0),
                     ("", None), ("-", None), (None, None), ("12", 12.0), ("abc", None)]:
         t(_num(s) == want, f"{s!r} → {want}")
