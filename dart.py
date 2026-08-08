@@ -204,7 +204,7 @@ def _pick(rows, names, field):
     return None
 
 
-def statement(corp: str, year: int, rpt: str, log=print):
+def statement(corp: str, year: int, rpt: str, log=print, fs_div=None):
     """한 회사·한 보고서의 손익 **두 컬럼**을 그대로 돌려준다.
 
     반환: (amt, add) — 각각 (매출, 영업이익) 짝. 못 받으면 둘 다 (None, None).
@@ -220,8 +220,14 @@ def statement(corp: str, year: int, rpt: str, log=print):
     이 도구에서 제일 나쁜 종류의 오류라서 구조로 막는다.
 
     fs_div: 연결(CFS) 우선, 없으면 별도(OFS). 한국은 연결이 기본이다.
+    **한 회사 안에서는 반드시 하나로 고정해야 한다.** 분기마다 따로 고르면
+    최근은 연결, 예전은 별도가 되어 TTM YoY 가 '연결 ÷ 별도' 가 된다.
+    지주회사에서는 몇 배 차이가 나므로 스프레드가 통째로 거짓이 된다.
+    그래서 호출부(quarters)가 처음 성공한 fs 를 잠그고 이후 계속 넘긴다.
+
+    반환에 어느 fs 를 썼는지(fs)도 함께 돌려준다.
     """
-    for fs in ("CFS", "OFS"):
+    for fs in ((fs_div,) if fs_div else ("CFS", "OFS")):
         try:
             d = _get("fnlttSinglAcntAll",
                      {"corp_code": corp, "bsns_year": str(year),
@@ -241,8 +247,8 @@ def statement(corp: str, year: int, rpt: str, log=print):
         add = (_pick(rows, REV_NAMES, "thstrm_add_amount"),
                _pick(rows, OP_NAMES, "thstrm_add_amount"))
         if any(v is not None for v in amt + add):
-            return amt, add
-    return (None, None), (None, None)
+            return amt, add, fs
+    return (None, None), (None, None), None
 
 
 def _sub(a, b):
@@ -261,7 +267,15 @@ def quarters(stock_code: str, corp: str, today: date | None = None, log=print):
     """
     today = today or date.today()
     out = []
-    for yr in (today.year - 2, today.year - 1, today.year):
+    # 연결/별도는 회사마다 하나로 고정한다. 분기마다 따로 고르면 최근은 연결,
+    # 예전은 별도가 되어 TTM YoY 가 '연결 ÷ 별도' 가 된다 — 지주회사에서는
+    # 몇 배 차이라 스프레드가 통째로 거짓이 된다. 최신 연도부터 훑어 처음
+    # 성공한 쪽으로 잠그고, 그 뒤로는 그것만 쓴다.
+    # 최신 연도부터 도는 이유: 잠금이 '지금 시장이 보는 기준'에서 정해져야 한다.
+    # 오래된 연도부터 잠그면, 최근에야 연결을 내기 시작한 회사가 별도로 묶인다.
+    # 결과는 아래에서 어차피 날짜순 정렬하므로 도는 순서는 상관없다.
+    lock = None
+    for yr in (today.year, today.year - 1, today.year - 2):
         amt, add = {}, {}
         for rpt in ("Q1", "H1", "Q3", "FY"):
             # 아직 끝나지도 않은 기간의 보고서는 존재할 수 없다. 그런데도 부르면
@@ -271,9 +285,10 @@ def quarters(stock_code: str, corp: str, today: date | None = None, log=print):
             # 놓치면 이 도구의 목적 자체가 흔들린다.
             if _qend(yr, rpt) > today.isoformat():
                 continue
-            a, c = statement(corp, yr, rpt, log)
+            a, c, fs = statement(corp, yr, rpt, log, fs_div=lock)
             if any(v is not None for v in a + c):
                 amt[rpt], add[rpt] = a, c
+                lock = lock or fs
 
         # 각 보고서의 '누적' 기간 값. Q1 은 3개월=누적이라 3개월 컬럼으로 대신할 수
         # 있고, 사업보고서는 3개월 컬럼이 없어 amt 가 곧 연간 누적이다.
@@ -393,7 +408,8 @@ def selftest() -> int:
 
     def mock(calls):
         """calls: {(보고서, 연도): ((3개월매출,3개월영익), (누적매출,누적영익))}"""
-        mod.statement = lambda corp, yr, rpt, log=print: calls.get((rpt, yr), (N, N))
+        mod.statement = lambda corp, yr, rpt, log=print, fs_div=None: (
+            calls.get((rpt, yr), (N, N)) + ("CFS",))
 
     def qmap(today=date(2027, 3, 1)):
         qs = quarters("005930", "00126380", today=today, log=lambda *a: None)
@@ -445,7 +461,8 @@ def selftest() -> int:
 
         # (5) 있을 수 없는 보고서를 부르지 않는가 — 무료 키는 하루 20,000건이다
         calls = []
-        mod.statement = lambda corp, yr, rpt, log=print: (calls.append((yr, rpt)) or (N, N))
+        mod.statement = lambda corp, yr, rpt, log=print, fs_div=None: (
+            calls.append((yr, rpt)) or (N, N, None))
         quarters("005930", "00126380", today=date(2026, 8, 8), log=lambda *a: None)
         future = [(y, r) for y, r in calls
                   if _qend(y, r) > "2026-08-08"]
@@ -462,6 +479,24 @@ def selftest() -> int:
               ("FY", 2026): ((600.0, 60.0), (600.0, 60.0))})
         ends = sorted(qmap(today=date(2026, 8, 8)))
         t(all(e <= "2026-08-08" for e in ends), f"미래 분기 제외 (마지막 {ends[-1] if ends else '없음'})")
+
+        # (6b) 연결/별도를 회사 안에서 하나로 고정하는가.
+        #      분기마다 따로 고르면 최근은 연결, 예전은 별도가 되어 TTM YoY 가
+        #      '연결 ÷ 별도' 가 된다. 지주회사는 몇 배 차이라 스프레드가 통째로
+        #      거짓이 되는데, 값이 그럴듯해서 눈에 안 띈다.
+        seen = []
+
+        def _fs_mock(corp, yr, rpt, log=print, fs_div=None):
+            fs = fs_div or ("OFS" if yr == date.today().year else "CFS")
+            seen.append((yr, rpt, fs))
+            return ((100.0, 10.0), (100.0, 10.0), fs)
+
+        mod.statement = _fs_mock
+        quarters("005930", "00126380", today=date(2026, 8, 8), log=lambda *a: None)
+        used = {fs for _, _, fs in seen}
+        t(len(used) == 1, f"한 회사 안에서 연결/별도를 섞지 않는다 (쓴 구분: {used})")
+        t(used == {"OFS"}, f"최신 연도에서 잡힌 구분으로 잠근다 (실제 {used})")
+        t(seen[0][0] == 2026, f"최신 연도부터 훑는다 (첫 호출 {seen[0][0]})")
 
         # (7) 중간 보고서가 통째로 없을 때 — 3개월 컬럼이 있으면 그것만으로 살아남는다
         mock({("Q1", 2026): ((100.0, 10.0), (100.0, 10.0)),
@@ -521,7 +556,8 @@ def probe(code: str) -> int:
                 print("   ", {k: r.get(k) for k in
                               ("sj_div", "account_nm", "thstrm_amount",
                                "thstrm_add_amount", "frmtrm_amount")})
-        amt, add = statement(corp, yr, rpt)
+        amt, add, fs = statement(corp, yr, rpt)
+        print(f"  → 재무제표 구분: {fs}")
         print(f"  → 3개월 컬럼 (매출, 영익): {amt}")
         print(f"  → 누적   컬럼 (매출, 영익): {add}")
         # 여기가 이 진단의 핵심이다. 분기·반기 보고서라면 3개월 컬럼이 차 있어야
