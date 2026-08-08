@@ -68,6 +68,9 @@ jobs:
       # 셸 문법이 틀리면 워크플로가 아예 안 돌거나 첫 줄에서 죽는다.
       - name: 워크플로 YAML·셸 문법
         run: |
+          # 이 러너에는 파이썬만 깔려 있고 PyYAML 은 없다. 로컬에 마침 있어서
+          # 통과하는 걸 보고 올렸다가 CI 에서 ModuleNotFoundError 로 죽었다.
+          pip install --quiet pyyaml
           python - <<'PY'
           import yaml, pathlib, sys
           bad = 0
