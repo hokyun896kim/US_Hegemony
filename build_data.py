@@ -5,7 +5,13 @@
 import urllib.request, json, time, os, statistics, re
 from datetime import date
 
-UA_SEC={"User-Agent":"YourName your@email.com"}   # ★★★ 교체 필수 ★★★
+# SEC 는 공정접근 정책상 실제 연락처가 담긴 User-Agent 를 요구하며, 없으면
+# 차단할 수 있다. 공개 레포에 개인 이메일을 적지 않도록 환경변수로 뺐다 —
+# GitHub Actions 라면 저장소 Secret 에 SEC_UA 를 넣으면 그대로 쓰인다.
+#   예: SEC_UA="Hong Gildong hong@example.com"
+# Secret 미설정 시 Actions 는 빈 문자열을 넘기므로 get(...,기본값) 로는 못 막는다.
+UA_SEC={"User-Agent":(os.environ.get("SEC_UA") or "").strip()
+        or "US-Hegemony-Tree/1.0 (personal research; contact via GitHub)"}
 UA_YH ={"User-Agent":"Mozilla/5.0 (Macintosh) research"}
 def get(u,h=UA_SEC,t=60):
     r=urllib.request.Request(u,headers=h)
@@ -172,10 +178,21 @@ def best_op_ttm(cik):
     return None,"영익불가"
 # --- 상대강도 (Yahoo) ---
 def yseries(sym):
+    # (종가, 시가, 수정종가). 수익률·고점比는 수정종가로 계산한다 — 원종가는
+    # 배당·분할이 반영되지 않아 배당주가 하락한 것처럼 보인다(실측: 고점比
+    # -67% 인데 6개월 상대강도 +201% 인 모순 사례). 갭은 실제 시가/종가 괴리를
+    # 보는 값이라 원종가를 그대로 쓴다.
     try:
         d=json.loads(get(f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?range=1y&interval=1d",UA_YH,30))
         res=d["chart"]["result"][0];ts=res["timestamp"];q=res["indicators"]["quote"][0]
-        return [(q["close"][i],q["open"][i]) for i in range(len(ts)) if q["close"][i]]
+        try: adj=res["indicators"]["adjclose"][0]["adjclose"]
+        except Exception: adj=q["close"]
+        out=[]
+        for i in range(len(ts)):
+            if not q["close"][i]: continue
+            a=adj[i] if (i<len(adj) and adj[i]) else q["close"][i]
+            out.append((q["close"][i],q["open"][i],a))
+        return out
     except: return None
 def ret(cl,n): return (cl[-1]/cl[-1-n]-1)*100 if len(cl)>n else None
 # --- 후행 PER 재료 (SEC EPS 프레임) ---
@@ -185,7 +202,7 @@ def ret(cl,n): return (cl[-1]/cl[-1-n]-1)*100 if len(cl)>n else None
 eps_map=frame_unit("EarningsPerShareDiluted","USD-per-shares",CUR)
 for _k,_v in frame_unit("EarningsPerShareBasic","USD-per-shares",CUR).items(): eps_map.setdefault(_k,_v)
 print(f"   EPS 프레임 {len(eps_map)}건 (CY{CUR})")
-spy=yseries("SPY"); spy_cl=[r[0] for r in spy]; spy3=ret(spy_cl,63); spy6=ret(spy_cl,126)
+spy=yseries("SPY"); spy_cl=[r[2] for r in spy]; spy3=ret(spy_cl,63); spy6=ret(spy_cl,126)
 vix=yseries("^VIX"); vix_now=round(vix[-1][0],1)
 vix_state="저변동(위험선호)" if vix_now<16 else("중립" if vix_now<22 else("경계" if vix_now<30 else "공포"))
 
@@ -199,7 +216,7 @@ for i,t in enumerate(allt):
     # 상대강도
     s=yseries(t); rs3=rs6=gap=gaplvl=from_high=pe=None
     if s:
-        cl=[r[0] for r in s]; r3=ret(cl,63); r6=ret(cl,126)
+        cl=[r[2] for r in s]; r3=ret(cl,63); r6=ret(cl,126)
         rs3=round(r3-spy3,1) if r3 is not None else None
         rs6=round(r6-spy6,1) if r6 is not None else None
         gaps=[abs(s[j][1]/s[j-1][0]-1)*100 for j in range(max(1,len(s)-60),len(s))]
