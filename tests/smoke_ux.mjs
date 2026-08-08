@@ -69,6 +69,8 @@ for (const [file,dataFile,mk,otherHref] of [
     const g=w.eval('GPT_GUIDE');
     t(typeof g==='string' && g.includes('[역할]') && g.includes('절대 규칙') && g.includes('헤게모니 스프레드'),
       'GPT_GUIDE 상수 존재·핵심 섹션 포함');
+    t(g.includes('[검증 절차') && g.includes('가격 반영도') && g.includes('반증 조건') && g.includes('컨센서스'),
+      '지침이 검증 절차·분석 요청을 흡수(합본)');
     const md=fs.readFileSync(path.join(ROOT,'docs/gpt-instructions.md'),'utf8');
     const doc=md.split('<!-- GUIDE:START -->')[1].split('<!-- GUIDE:END -->')[0].trim();
     t(doc===g.trim(), 'docs/gpt-instructions.md 와 페이지 지침 동일(드리프트 방지)');
