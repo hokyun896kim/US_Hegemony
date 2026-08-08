@@ -40,9 +40,16 @@ for (const [file,dataFile,mk,otherHref] of [
   // 4) 시장 전환 버튼
   const sw=d.querySelector('.mkt-switch');
   t(sw && sw.getAttribute('href')===otherHref, `시장 전환 버튼 → ${otherHref} (실제 ${sw&&sw.getAttribute('href')})`);
+  // 5-b) 상태바 색과 매니페스트 theme_color 가 어긋나면 홈 화면에서 띠가 생긴다
+  {const meta=d.querySelector('meta[name="theme-color"]')?.getAttribute('content');
+   const mf=JSON.parse(fs.readFileSync(path.join(ROOT,`app-${mk}.webmanifest`),'utf8'));
+   t(meta===mf.theme_color, `상태바 색 == 매니페스트 theme_color (${meta} / ${mf.theme_color})`);
+   t(mf.background_color===mf.theme_color, `매니페스트 배경색도 일치 (${mf.background_color})`);}
+
   // 5) 웹앱 메타 + 실제 파일 존재
   const need=[['meta[name="apple-mobile-web-app-capable"]','content','yes'],
-              ['meta[name="theme-color"]','content','#080c16']];
+              // 라이트 테마로 바꾸면서 상태바 색도 흰색으로 — 매니페스트와 같아야 한다
+              ['meta[name="theme-color"]','content','#ffffff']];
   need.forEach(([sel,attr,val])=>{
     const el=d.querySelector(sel);
     t(el && (val===null || el.getAttribute(attr)===val), `메타 ${sel}`);

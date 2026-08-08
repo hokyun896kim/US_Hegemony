@@ -11,13 +11,18 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 OUT = Path(__file__).resolve().parent.parent / "icons"
-BG = (14, 22, 38)          # --panel
-GOLD = (212, 175, 55)      # --gold
-GOLD2 = (240, 210, 122)    # --gold2
-MUT = (125, 138, 163)      # --mut
+# 화면을 증권사 리포트풍 라이트 테마로 바꾸면서 아이콘도 맞췄다.
+# 다만 아이콘 바탕까지 흰색으로 하면 아이폰 홈 화면(대개 사진 배경)에서
+# 경계가 사라져 안 보인다. 그래서 바탕은 화면의 강조색인 남색을 쓰고,
+# 막대만 밝게 — 화면과 같은 남색 계열로 묶인다.
+BG = (27, 42, 74)          # --rule
+BAR1 = (99, 128, 178)
+BAR2 = (163, 187, 222)
+BAR3 = (255, 255, 255)
+MUT = (150, 170, 200)
 
 # 화면과 같은 은유 — 왼쪽은 낮고 오른쪽으로 갈수록 높아지는 막대(가속).
-BARS = [(0.30, GOLD.__class__((140, 115, 32))), (0.55, GOLD), (0.85, GOLD2)]
+BARS = [(0.30, BAR1), (0.55, BAR2), (0.85, BAR3)]
 
 
 def font(px):
@@ -39,8 +44,8 @@ def make(size: int, label: str) -> Image.Image:
     for i in range(size):
         t = i / size
         d.line([(0, i), (size, i)],
-               fill=(int(BG[0] + 9 * (1 - t)), int(BG[1] + 12 * (1 - t)),
-                     int(BG[2] + 18 * (1 - t))))
+               fill=(int(BG[0] + 14 * (1 - t)), int(BG[1] + 18 * (1 - t)),
+                     int(BG[2] + 26 * (1 - t))))
 
     pad = size * 0.20
     w = size - pad * 2
