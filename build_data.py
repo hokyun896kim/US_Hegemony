@@ -27,7 +27,7 @@ def _throttle(u):
     if dt<0.11: time.sleep(0.11-dt)
     _last_sec=time.time()
 
-def get(u,h=UA_SEC,t=60,tries=3):
+def get(u,h=UA_SEC,t=60,tries=2):
     global _ua_warned
     for i in range(tries):
         _throttle(u)
@@ -35,22 +35,30 @@ def get(u,h=UA_SEC,t=60,tries=3):
             r=urllib.request.Request(u,headers=h)
             with urllib.request.urlopen(r,timeout=t) as x: return x.read().decode("utf-8","ignore")
         except urllib.error.HTTPError as e:
-            sec=("sec.gov" in u)
-            if sec and e.code in (403,429):
-                if not _ua_warned:
-                    _ua_warned=True
-                    # SEC 는 거부 사유를 응답 본문에 담아준다. 추측하지 말고 그대로 읽는다.
-                    try: body=e.read().decode("utf-8","ignore")[:400].replace("\n"," ").strip()
-                    except Exception: body="(본문 읽기 실패)"
-                    print(f"\n[!] SEC {e.code} — 요청이 거부됐습니다.",file=sys.stderr)
-                    print(f"    UA   : {h.get('User-Agent')!r}",file=sys.stderr)
-                    print(f"    URL  : {u}",file=sys.stderr)
-                    print(f"    사유 : {body}",file=sys.stderr)
-                    print('    UA 문제라면 저장소 Secret 에 SEC_UA="이름 you@example.com" 를 넣으세요.',file=sys.stderr)
-                    print("    속도 문제라면 잠시 뒤 재실행하면 풀립니다.\n",file=sys.stderr)
-                if i<tries-1:
-                    time.sleep(5*(i+1))   # 일시적 차단이면 기다렸다 다시
-                    continue
+            if not ("sec.gov" in u and e.code in (403,429)):
+                raise
+            # SEC 는 거부 사유를 응답 본문 <title> 에 담아준다. 추측하지 말고 읽는다.
+            try: body=e.read().decode("utf-8","ignore")
+            except Exception: body=""
+            m=re.search(r"<title>(.*?)</title>",body,re.S|re.I)
+            why=(m.group(1) if m else body[:160]).replace("\n"," ").strip() or "(사유 없음)"
+            rate=("rate" in why.lower() or "threshold" in why.lower())
+            if not _ua_warned:
+                _ua_warned=True
+                print(f"\n[!] SEC {e.code} — {why}",file=sys.stderr)
+                print(f"    URL: {u}",file=sys.stderr)
+                if rate:
+                    print("    요청 속도 제한입니다(UA 문제 아님). SEC 는 초당 10건이 상한이고",file=sys.stderr)
+                    print("    넘기면 IP 단위로 10분 안팎 막습니다. 짧은 간격으로 여러 번 돌리면",file=sys.stderr)
+                    print("    차단이 이어지니, 재실행은 충분히 시간을 두고 하세요.",file=sys.stderr)
+                else:
+                    print(f'    UA: {h.get("User-Agent")!r}',file=sys.stderr)
+                    print('    저장소 Secret 에 SEC_UA="이름 you@example.com" 를 넣어보세요.',file=sys.stderr)
+                print("",file=sys.stderr)
+            # 차단 중에 빠르게 재시도하면 차단만 길어진다. 한 번만, 넉넉히 쉬고.
+            if i<tries-1:
+                time.sleep(90 if rate else 5)
+                continue
             raise
 def getj(u,h=UA_SEC): return json.loads(get(u,h))
 CUR=date.today().year-1; PRV=CUR-1
