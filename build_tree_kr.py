@@ -916,6 +916,41 @@ def selftest():
     check(quarterly_ttm(q3, annual) == (None, None, "", False, None),
           "분기 3개면 TTM·q_end 모두 없음")
 
+    # DART ↔ yfinance 폴백. 이 분기는 DART 키가 있는 회차에만 밟히는 코드라
+    # 평소엔 아무도 안 지나간다 — 정작 필요한 순간에 처음 실행되는 코드는
+    # 믿을 수 없으므로 세 경로를 여기서 매번 밟는다. (q_note/q_approx 가
+    # 어느 한 경로에서 미할당으로 남으면 빌드 중간에 UnboundLocalError 로 죽는다.)
+    def _flow(qseries):
+        q_src = "yfinance"
+        q_rev = q_op = q_end = None
+        if qseries:
+            q_rev, q_op, q_note, q_approx, q_end = quarterly_ttm(q, annual, qseries)
+            if q_rev is not None or q_op is not None:
+                q_src = "DART"
+        if q_src != "DART":
+            q_rev, q_op, q_note, q_approx, q_end = quarterly_ttm(q, annual)
+        return q_src, q_rev, q_op, q_note, q_approx, q_end
+
+    _dart_ok = [(c, 260e8, 60e8 if i < 4 else 90e8) for i, c in enumerate(QCOLS)]
+    _s, _r, _o, _n, _a, _e = _flow(_dart_ok)
+    check(_s == "DART" and _r == 0 and _o == 50 and _e == "2026-06-30",
+          f"DART 가 제대로 주면 그걸 쓴다 (src={_s}, q_end={_e})")
+
+    # DART 가 분기 개수는 넘겼는데 값이 비어 TTM 이 안 나오는 경우.
+    # 여기서 그냥 포기하면 yfinance 로 얻었을 값까지 같이 잃는다.
+    _s, _r, _o, _n, _a, _e = _flow([(c, None, None) for c in QCOLS])
+    check(_s == "yfinance" and _r == 0 and _o == 50,
+          f"DART 가 부실하면 yfinance 로 되돌아간다 (src={_s}, 매출YoY={_r})")
+
+    _s, _r, _o, _n, _a, _e = _flow(None)
+    check(_s == "yfinance" and _r == 0, f"DART 미사용이면 yfinance (src={_s})")
+
+    _empty = FakeDF({"Total Revenue": {}, "Operating Income": {}})
+    _s2 = "yfinance"
+    _r2, _o2, _n2, _a2, _e2 = quarterly_ttm(_empty, annual)
+    check((_r2, _o2, _e2) == (None, None, None) and _n2 == "" and _a2 is False,
+          "양쪽 다 없으면 조용히 None — 지어내지 않는다")
+
     # 실적일 헬퍼 — 야후가 주는 모양(과거·미래 섞인 목록)을 제대로 가르는지
     class _Cal:
         def __init__(self, ds): self.calendar = {"Earnings Date": ds}
