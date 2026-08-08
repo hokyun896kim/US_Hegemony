@@ -265,7 +265,7 @@ for i,t in enumerate(allt):
     qop,qnote=best_op_ttm(cik) if cik else (None,"CIK없음")
     qspread=round(qop-qrev,1) if (qrev is not None and qop is not None) else None
     # 상대강도
-    s=yseries(t); rs3=rs6=gap=gaplvl=from_high=pe=None
+    s=yseries(t); rs3=rs6=gap=gaplvl=from_high=pe=eps=None
     if s:
         cl=[r[2] for r in s]; r3=ret(cl,63); r6=ret(cl,126)
         rs3=round(r3-spy3,1) if r3 is not None else None
@@ -278,9 +278,12 @@ for i,t in enumerate(allt):
         if _hi>0: from_high=round((cl[-1]/_hi-1)*100,1)
         # 후행 PER = 현재가 ÷ 직전 회계연도 EPS.
         # 상식선(1~300)을 벗어나면 계산이 어긋난 것으로 보고 버린다.
+        # eps 를 같이 남긴다 — SEC 가 막힌 회차에 refresh_prices.py 가
+        # 새 가격으로 PER 을 다시 낼 때 필요하다.
         try:
             _e=eps_map.get(int(cik)) if cik else None
             if _e and _e>0:
+                eps=round(_e,4)
                 _p=round(cl[-1]/_e,2)
                 if 1.0<=_p<=300.0: pe=_p
         except Exception: pass
@@ -292,7 +295,7 @@ for i,t in enumerate(allt):
                 m["accel"]=round(qspread-m["spread"],1) if qspread is not None else None
                 m["rs3"]=rs3;m["rs6"]=rs6;m["gap"]=gap;m["gaplvl"]=gaplvl
                 m["from_high"]=from_high
-                m["pe"]=pe; m["fpe"]=None; m["peg"]=None
+                m["pe"]=pe; m["eps"]=eps; m["fpe"]=None; m["peg"]=None
                 m["q_approx"]=False   # 미국은 8분기 정식 TTM 이라 근사가 아니다
                 m["ir"]=ir_map.get(t)
     if (i+1)%50==0: print(f"   {i+1}/{len(allt)}")
@@ -316,7 +319,9 @@ for _r in rows:
 print("[7/7] 저장")
 out={"sectors":sectors,"subs":rows,
      "market":{"vix":vix_now,"vix_state":vix_state,"spy3":round(spy3,1),"spy6":round(spy6,1)},
-     "updated":str(date.today())}
+     # 전체 빌드라 펀더멘털도 오늘 것이다. refresh_prices.py 가 도는 회차에는
+     # fund_updated 만 옛 날짜로 남고 updated 는 그날로 올라간다.
+     "updated":str(date.today()),"fund_updated":str(date.today()),"partial":None}
 os.makedirs("data",exist_ok=True)
 json.dump(out,open("data/tree.json","w"),ensure_ascii=False)
 print(f"완료: data/tree.json (세부산업 {len(rows)}, 갱신일 {out['updated']})")

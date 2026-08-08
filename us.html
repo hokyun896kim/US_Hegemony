@@ -352,6 +352,7 @@ h1{font-size:clamp(24px,5.6vw,42px);font-weight:800;line-height:1.05;margin:8px 
 </details>
 <div class="mkt" id="mkt"></div>
 <div id="updTag" style="font-size:10px;color:var(--mut);margin:-8px 0 12px;letter-spacing:.05em;text-align:right">데이터 로딩 중…</div>
+<div id="partialNote" style="display:none;font-size:11.5px;line-height:1.6;color:#f0c674;background:rgba(240,198,116,.09);border:1px solid rgba(240,198,116,.28);border-radius:10px;padding:10px 12px;margin:0 0 12px"></div>
 <div class="radar" id="radarPanel"></div>
 <div class="top5" id="top5Panel"></div>
 <div class="tabs">
@@ -470,8 +471,24 @@ async function loadData(){
   // 인덱스 재구축
   Object.keys(TKINDEX).forEach(k=>delete TKINDEX[k]);
   D.subs.forEach(s=>s.members.forEach(m=>{TKINDEX[m.tk]={...m,sec:s.ko||s.desc};}));
-  // 갱신일 표시
-  const up=document.getElementById('updTag'); if(up&&D.updated)up.textContent='데이터 갱신: '+D.updated;
+  // 갱신일 표시. SEC 가 막힌 회차에는 가격층만 새로 받으므로 펀더멘털이 더
+  // 오래됐을 수 있다 — 한 날짜만 보여주면 스프레드까지 오늘 것으로 읽힌다.
+  const up=document.getElementById('updTag');
+  if(up&&D.updated){
+    up.textContent='데이터 갱신: '+D.updated;
+    if(D.partial==='prices'&&D.fund_updated&&D.fund_updated!==D.updated){
+      up.textContent+=' · 가격만';
+      up.title='SEC 가 막혀 가격 지표(RS·52주 고점比·PER)만 새로 받았습니다. '
+              +'매출·영업이익·스프레드·분기TTM 은 '+D.fund_updated+' 기준입니다.';
+      const note=document.getElementById('partialNote');
+      if(note){
+        note.style.display='block';
+        note.innerHTML='⚠️ 이번 회차는 <b>가격층만</b> 갱신됐습니다. RS·52주 고점比·PER 은 '
+          +D.updated+' 기준이고, <b>매출·영업이익·스프레드·분기TTM 은 '+D.fund_updated
+          +' 기준</b>입니다. 그 사이 발표된 실적은 아직 반영되지 않았습니다.';
+      }
+    }
+  }
   // 시장 배지 + 첫 화면
   initMarket(); renderRadar(); renderTop5(); renderTree(); loadWatch();
  }catch(e){

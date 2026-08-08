@@ -6,20 +6,17 @@ name: Page tests
 
 on:
   push:
-    paths:
+    paths: &paths
       - 'index.html'
       - 'us.html'
       - 'tests/**'
       - 'docs/gpt-instructions.md'
       - '*.webmanifest'
+      - 'refresh_prices.py'
+      - 'build_tree_kr.py'
       - '.github/workflows/tests.yml'
   pull_request:
-    paths:
-      - 'index.html'
-      - 'us.html'
-      - 'tests/**'
-      - 'docs/gpt-instructions.md'
-      - '*.webmanifest'
+    paths: *paths
   workflow_dispatch:
 
 permissions:
@@ -49,3 +46,10 @@ jobs:
       - name: Run tests
         working-directory: tests
         run: npm test
+
+      # 부분 갱신은 SEC 가 막힌 회차에만 도는 코드라 평소엔 아무도 안 밟는다.
+      # 정작 필요한 순간에 처음 실행되는 코드는 믿을 수 없으므로 매번 돌린다.
+      - name: 빌더 자가진단 (네트워크 불필요)
+        run: |
+          python refresh_prices.py --selftest
+          python build_tree_kr.py --selftest
