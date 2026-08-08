@@ -102,6 +102,9 @@ h1{font-size:clamp(24px,5.6vw,42px);font-weight:800;line-height:1.05;margin:8px 
 .t5-tk{font-size:17.5px;font-weight:800;color:var(--txt)}
 .t5-nm{font-size:11.5px;color:var(--mut)}
 .t5-sec{font-size:11.5px;color:var(--gold2);background:#eef2f7;padding:2px 8px;border-radius:6px;margin-left:auto}
+/* TOP5 ↔ 레이더 관계 표시 — 두 목록이 왜 다른지 줄마다 밝힌다 */
+.t5-rel{font-size:10px;font-weight:700;color:var(--mut);border:1px solid var(--line);border-radius:4px;padding:1px 6px;white-space:nowrap}
+.t5-rel.in{color:var(--grn);border-color:var(--grn)}
 .t5-score{font-size:15px;font-weight:800;color:var(--gold2);font-variant-numeric:tabular-nums}
 .t5-metrics{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:7px}
 .t5-m{font-size:11.5px;color:#39414e;background:var(--bg);border:1px solid var(--line);padding:3px 8px;border-radius:6px;font-variant-numeric:tabular-nums}
@@ -822,7 +825,7 @@ document.getElementById('q').style.display='none';
 const TIPS={
  watch:{k:"기능 설명",t:"📌 내 워치리스트",b:"<p>보유·관심 종목을 담아 <b>매수 후 관리</b>를 하는 자리입니다.</p><p><b>신호등:</b> 🟢가속(보유 유지) · 🟡유지 · 🔴피크아웃(분기TTM이 연간보다 둔화 = 이익 모멘텀 꺾임, 익절·감량 검토).</p><p>브라우저에 저장돼 다시 열어도 유지됩니다(localStorage).</p><p><b>참고:</b> 야후가 한국 종목의 실적 발표 예정일을 잘 주지 않아 이 빌드에는 실적 캘린더(D-day)가 없습니다. 확정일은 DART·네이버 금융에서 확인하세요.</p>"},
  radar:{k:"기능 설명",t:"🎯 선취매 레이더",b:"<p>'헤게모니 가속' 탭은 <b>가속 순으로만</b> 세웁니다. 그래서 그 안에는 두 종류의 가짜가 섞입니다 — ① 전년 이익이 바닥이라 비율만 폭발한 <b>흑자전환 착시</b>, ② 가속은 양수지만 분기 스프레드가 여전히 음수인 <b>'덜 나빠진 것'</b>.</p><p>레이더는 이 둘을 걷어내고 <b>지금 실제로 이익 레버리지가 있으면서 가속 중인 것</b>만 남긴 뒤, 거기서 다시 <b>주가가 아직 안 움직인 것</b>을 고릅니다. 상단 깔때기 숫자가 몇 개에서 몇 개로 줄었는지 보여줍니다.</p><p><b>가장 중요한 구분:</b> 6개월 약세가 같아도 3개월이 보합이면 '바닥 다지는 중', 계속 빠지면 '떨어지는 칼날'입니다. 각 카드의 <b>조심</b> 줄에 그게 적힙니다.</p><p><b>한계:</b> RS가 깊게 빠진 이유가 '아직 안 깨워서'인지 '이유가 있어서'인지는 이 도구가 모릅니다. 반드시 DART로 확인하세요.</p>"},
- top5:{k:"기능 설명",t:"⭐ 이상적 매수후보 TOP5",b:"<p>형님의 해석 4단계를 그대로 점수화한 결과입니다.</p><p><b>스코어 구성:</b> 연간 헤게모니 강도 + 매출 동반 성장(품질) + 분기TTM 지속성 + 가속 강도 + 시장 미반영. 피크아웃·과열·기저효과·고PER은 감점.</p><p><b>가장 높은 점수 = 펀더 강하고, 최근 더 강해지는데, 시장은 아직 안 깨운 종목.</b> 형님이 말한 '남보다 먼저' 자리입니다. 단, 출발 후보일 뿐 1차 자료 확인 필수.</p>"},
+ top5:{k:"기능 설명",t:"⭐ 이상적 매수후보 TOP5",b:"<p>형님의 해석 4단계를 그대로 점수화한 결과입니다.</p><p><b>스코어 구성:</b> 연간 헤게모니 강도 + 매출 동반 성장(품질) + 분기TTM 지속성 + 가속 강도 + 시장 미반영. 피크아웃·과열·기저효과·고PER은 감점.</p><p><b>가장 높은 점수 = 펀더 강하고, 최근 더 강해지는데, 시장은 아직 안 깨운 종목.</b> 형님이 말한 '남보다 먼저' 자리입니다. 단, 출발 후보일 뿐 1차 자료 확인 필수.</p><p><b>🎯 레이더와의 관계:</b> 레이더는 선취매 전제조건(가속>0 · 저반영 · 실적반영 · TTM검증)을 <b>전부 통과한 것만</b> 보여주는 목록이고, TOP5 는 전제조건 없이 전 종목을 점수로 줄 세운 목록입니다. 그래서 서로 다른 종목이 나옵니다 — TOP5 의 각 줄에 '선취매 권역' 인지, 아니면 왜 아닌지(이미 절반 반영 · 가속 없음 등)가 표시됩니다. <b>선취매가 목적이면 레이더가 먼저, TOP5 는 '좋은 기업 전체 줄세우기'로 관찰 리스트를 만들 때</b> 보세요. 단 실적 미반영·TTM 충돌 종목은 TOP5 에서도 뺍니다 — 못 믿는 숫자로 만든 점수이기 때문입니다.</p>"},
  tree:{k:"탭 설명",t:"🌳 탑다운 트리",b:"<p>형님의 투자 순서 그대로 — <b>대섹터 → 세부산업 → 종목</b>으로 위에서 아래로 좁혀 들어갑니다.</p><p>대섹터 막대는 그 섹터에 속한 모든 종목의 헤게모니 스프레드 <b>중앙값</b>입니다. 막대가 금색(우)이면 이익 레버리지가 붙는 섹터, 회색(좌)이면 마진 압박 섹터.</p><p>대섹터를 누르면 세부산업이, 세부산업을 누르면 종목이 펼쳐집니다.</p>"},
  flat:{k:"탭 설명",t:"📊 세부산업 랭킹",b:"<p>대섹터 구분 없이 <b>세부산업 전체를 헤게모니 순으로</b> 한 줄로 세웁니다.</p><p>검색창에 '반도체', '방산', '005930' 등을 치면 즉시 필터됩니다. \"지금 가장 뜨거운 세부산업이 어디든 한눈에\" 보고 싶을 때.</p>"},
  signal:{k:"탭 설명",t:"🎯 1층+2층 시그널",b:"<p><b>펀더(1층)가 양수인 종목만</b> 모아서, 상대강도(2층)와 함께 자동 판정합니다.</p><p><b>GO</b> = 펀더+상대강도 동반 강세(시장이 막 인정 시작)<br><b>관망</b> = 펀더는 좋은데 상대강도 보통<br><b>매복</b> = 펀더 좋은데 시장이 아직 안 깨움(잠복 후보)<br><b>냉각</b> = 6개월은 강했는데 3개월이 꺾임(뒷북 위험)<br><b>과열주의</b> = 상대강도 과도+갭위험 높음</p><p>주의: 판정은 종목을 고르는 신호가 아니라 <b>타이밍 참고</b>입니다.</p>"},
@@ -1149,6 +1152,22 @@ function scoreCandidate(m){
 
  return {pts:Math.round(pts*10)/10, parts:{Q:Math.round(Q*10)/10,U:Math.round(U*10)/10,T,V},
          reasons, grade:q, tier:fl.g};
+}
+// TOP5 와 선취매 레이더가 왜 다른 종목을 내는지 카드마다 밝힌다.
+// 레이더 = 선취매 전제조건(가속·저반영 등)을 전부 강제한 목록.
+// TOP5   = 전제조건 없이 전 종목을 종합 점수로 줄 세운 목록.
+// 그래서 TOP5 에는 '이미 움직이기 시작한' 좋은 종목도 올라온다 — 그게 뭔지
+// 표시해 주지 않으면 두 목록이 그냥 어긋나 보인다(실제로 그렇게 보였다).
+function radarRel(m){
+ const c=accelCheck(m);
+ if(c.ok){
+   const p=priceIn(m);
+   if(p.c==='g') return {in:true, t:'🎯 선취매 권역'};
+   return {in:false, t:p.c==='m'?'선취매 아님 — 이미 절반 반영':'선취매 아님 — 이미 반영(고점권)'};
+ }
+ const why={na:'자료 부족',stale:'실적 미반영',ttmconflict:'TTM 검증 실패',noaccel:'가속 없음',
+            shrink:'축소형(턴어라운드 구간)',weak:'스프레드 문턱 미달',base:'기저효과'}[c.why]||c.why;
+ return {in:false, t:'선취매 아님 — '+why};
 }
 // ===== 선취매 레이더 =====
 // 가속 탭은 가속 순으로만 세우기 때문에, 그 안에 섞인 기저효과·허수 가속을
@@ -1509,10 +1528,14 @@ function renderRadar(){
 }
 
 function renderTop5(){
- const cands=[];
+ const cands=[]; let dropped=0;
  D.subs.forEach(s=>s.members.forEach(m=>{
    const r=scoreCandidate(m);                        // 기본(동결) — 절대 미변경
    if(r&&r.pts>0){
+     // 데이터 신뢰 게이트는 여기도 강제한다. 실적 미반영·TTM 충돌은 레이더에서
+     // '후보 진입 금지'인데, 같은 종목이 이상적 후보 1위로 나오면 앞뒤가 안 맞는다.
+     // (점수 감점이 아니라 제외다 — 못 믿는 숫자로 만든 점수이기 때문)
+     if(staleness(m).s==='stale' || ttmConflict(m)){ dropped++; return; }
      const b = SUPPLY_ON ? supplyBonus(m) : {pts:0,why:''};   // 별도 오버레이
      cands.push({...m,sec:s.ko||s.desc,_base:r.pts,_bonus:b.pts,_bwhy:b.why,
                  _pts:r.pts+b.pts,_reasons:r.reasons,_grade:r.grade});
@@ -1533,13 +1556,14 @@ function renderTop5(){
   </label>`:'';
  panel.innerHTML=`
   <div class="top5-head">⭐ 오늘의 이상적 매수후보 TOP5<i class="help-i" onclick="tip('top5')">i</i></div>
-  <div class="top5-sub">유기적 성장(<b>매출 동반</b>) + 지속성(분기 유지) + 합리적 밸류 + 시장 미반영을 보상하고, <b>흑자전환·기저효과·비용절감·고평가·피크아웃은 감점</b>한 결과입니다. 발견의 출발점이지 매수 신호가 아닙니다.</div>
+  <div class="top5-sub"><b>위 🎯 레이더와 다른 목록입니다 — 보는 순서는 레이더가 먼저.</b> 레이더는 선취매 전제조건(가속·저반영)을 <b>전부 강제</b>한 목록이고, 이 TOP5 는 전제조건 없이 <b>전 종목을 종합 점수로 줄 세운</b> 목록이라 이미 움직이기 시작한 종목도 올라옵니다. 각 줄에 선취매 권역 여부가 표시됩니다.<br>점수: 유기적 성장(<b>매출 동반</b>) + 지속성(분기 유지) + 합리적 밸류 + 시장 미반영 보상, <b>흑자전환·기저효과·비용절감·고평가·피크아웃 감점</b>.${dropped?` · 실적 미반영·TTM 충돌 <b>${dropped}종목 제외</b>`:''} 발견의 출발점이지 매수 신호가 아닙니다.</div>
   ${supplyToggle}
   ${top.map((m,i)=>`
    <div class="top5-card" onclick="openTrade('${m.tk}')">
     <div class="t5-row1">
      <span class="t5-rank">${i+1}</span>
      <span><span class="t5-tk">${m.tk}</span> <span class="t5-nm">${m.nm}</span></span>
+     <span class="t5-rel ${radarRel(m).in?'in':''}">${radarRel(m).t}</span>
      <span class="t5-sec">${QLABEL[m._grade]||''} · ${m.sec}</span>
     </div>
     <div class="t5-metrics">
