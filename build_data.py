@@ -29,7 +29,7 @@ def _throttle(u):
     if dt<0.35: time.sleep(0.35-dt)
     _last_sec=time.time()
 
-def get(u,h=UA_SEC,t=60,tries=3):
+def get(u,h=UA_SEC,t=60,tries=2):   # 속도제한 확인은 한 번이면 족하다(위 주석 참고)
     global _ua_warned
     for i in range(tries):
         _throttle(u)
@@ -59,11 +59,14 @@ def get(u,h=UA_SEC,t=60,tries=3):
                     print('    저장소 Secret 에 SEC_UA="이름 you@example.com" 를 넣어보세요.',file=sys.stderr)
                 print("",file=sys.stderr)
             if i<tries-1:
-                # 속도 제한 시 11분 대기 후 재시도. 다만 출구 IP 가 공유 NAT 라
-                # 다른 세입자가 계속 달구면 대기로도 안 풀린다(실측: 22분 대기에도
-                # 지속). 그런 회차는 포기하고 다음 스케줄이 새 출구를 뽑게 한다.
-                w=660 if rate else 5
-                print(f"    … {w}초 대기 후 재시도 ({i+1}/{tries-1})",file=sys.stderr)
+                # 한때 여기서 11분씩 두 번(총 22분) 기다렸다. 실측으로 폐기했다 —
+                # run #12~#18 일곱 회차 연속으로, 22분을 꽉 채우고도 첫 요청부터
+                # 403 이었다. 공유 NAT 출구가 계속 달궈지는 한 대기로는 안 풀린다.
+                # 그래서 짧게 한 번만 확인하고 넘긴다. 회차를 버리는 게 아니라
+                # refresh_prices.py 가 받아서 가격층을 갱신하므로, 여기서 20분을
+                # 태우는 건 부분 갱신만 그만큼 늦출 뿐이다.
+                w=90 if rate else 5
+                print(f"    … {w}초 뒤 한 번만 더 시도 ({i+1}/{tries-1})",file=sys.stderr)
                 time.sleep(w)
                 continue
             raise
