@@ -28,7 +28,7 @@ const CASES = [
   ['FRESH', '2026-06-30', '2026-08-05', 'fresh',   true,  '최신 분기 보유 + 그 분기 공시'],
   ['STALE', '2026-03-31', '2026-07-31', 'stale',   false, '공시는 6월 분기인데 우리는 3월까지'],
   ['OLD',   '2025-12-31', null,         'stale',   false, '공시일 없음 + 220일 낡음'],
-  ['DUE',   '2026-04-15', null,         'due',     true,  '115일 — 분기는 끝났고 발표 임박'],
+  ['DUE',   '2026-04-15', null,         'due',     true,  '115일 — 분기는 끝났고 발표 전'],
   // q_end 가 없는 옛 데이터. '최근에 발표했는가' 만으로 갈린다 —
   // 발표 직후인데 반영 여부를 확인할 수 없으면 선취매라고 부를 수 없다.
   ['NOQE',  null,         '2026-08-05', 'stale',   false, 'q_end 없음 + 3일 전 발표 → 확인 불가'],
@@ -36,8 +36,11 @@ const CASES = [
   ['NOQNIL',null,         null,         'unknown', true,  'q_end 없음 + 공시일도 없음 → 판정 불가'],
   ['EDGE',  '2026-06-30', '2026-08-20', 'fresh',   true,  '공시가 최근이어도 같은 분기면 정상'],
   // 경계값 — 여기가 어긋나면 조용히 잘못 걸러진다
-  ['B99',   '2026-04-30', null,         'fresh',   true,  '100일 = DUE 문턱 직전'],
-  ['B136',  '2026-03-25', null,         'stale',   false, '136일 = OLD 문턱 직후'],
+  // 경계값은 달력에서 유도한다: DUE=91일(분기 끝남), OLD=91+35=126일(실적 공개됨)
+  ['B90',   '2026-05-10', null,         'fresh',   true,  '90일 = 분기가 아직 안 끝남'],
+  ['B100',  '2026-04-30', null,         'due',     true,  '100일 = 분기는 끝났고 발표 전'],
+  ['B126',  '2026-04-04', null,         'due',     true,  '126일 = OLD 문턱 직전'],
+  ['B130',  '2026-03-31', null,         'stale',   false, '130일 = 한국 전형 사례(1분기까지·8월초). 예전 135일 문턱은 이걸 놓쳤다'],
 ];
 
 // 지연 + 매출 역성장. 실제로 났던 버그 — shrink 를 먼저 보는 바람에 실적
@@ -77,7 +80,7 @@ for (const [file, url] of [['index.html', 'https://x.test/'], ['us.html', 'https
 
   // 지연 종목은 실제로 레이더에서 빠져야 한다 — 판정만 맞고 화면에 남으면 소용없다
   const shown = [...w.document.querySelectorAll('#radarPanel .rc-tk')].map(x => x.textContent);
-  t(!shown.includes('STALE') && !shown.includes('OLD') && !shown.includes('B136'),
+  t(!shown.includes('STALE') && !shown.includes('OLD') && !shown.includes('B130'),
     `지연 종목이 레이더에 안 뜸 (표시된 것: ${shown.join(',') || '없음'})`);
   // 막은 개수를 밝히는가 — 조용한 절삭 금지
   const funnel = w.document.querySelector('.radar-funnel')?.textContent || '';

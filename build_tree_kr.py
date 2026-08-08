@@ -23,7 +23,7 @@ import re
 import statistics
 import sys
 import time
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import est_trend
@@ -337,6 +337,38 @@ def annual_yoy(inc):
     return sane(pct(rev[0][1], rev[1][1]), pct(op[0][1], op[1][1]))
 
 
+def days_until(iso):
+    """오늘부터 그 날짜까지 남은 일수. 없거나 이상하면 None."""
+    if not iso:
+        return None
+    try:
+        return (date.fromisoformat(iso) - date.today()).days
+    except ValueError:
+        return None
+
+
+def earnings_dates(t):
+    """(직전 발표일, 다음 발표일). 못 받으면 (None, None).
+
+    야후 calendar 의 'Earnings Date' 는 보통 다가오는 일정이고, 막 발표한
+    종목은 최근 날짜가 들어온다. 그래서 오늘을 기준으로 과거/미래로 가른다.
+    """
+    today = date.today()
+    got = []
+    try:
+        cal = t.calendar or {}
+        for d in (cal.get("Earnings Date") or []):
+            if hasattr(d, "date"):
+                d = d.date()
+            if isinstance(d, date):
+                got.append(d)
+    except Exception:  # noqa: BLE001 — 없으면 없는 대로 간다
+        pass
+    past = [d for d in got if d <= today]
+    future = [d for d in got if d > today]
+    return (max(past) if past else None, min(future) if future else None)
+
+
 def quarterly_ttm(qinc, inc):
     """분기 TTM YoY. (q_rev, q_op, q_note, q_approx, q_end) 를 돌려준다.
 
@@ -400,9 +432,14 @@ def fetch_stock(tk, log=print):
         log(f"  {tk} 재무 실패: {exc}")
         return None
 
-    # 컨센서스 추정치 방향. 한국 종목은 야후가 잘 안 주므로 대부분 None 이
-    # 나온다 — 화면은 그걸 중립으로 처리하니 없다고 문제되지 않는다.
+    # 컨센서스 추정치 방향. 실측하니 한국도 85%(190/223)가 채워진다.
     est = est_trend.fetch(t)
+
+    # 실적 발표일. 지금까지 한국판은 이걸 아예 물어보지도 않고 None 을
+    # 박아뒀는데, 그 탓에 '발표된 실적이 아직 안 들어갔는지' 판정이 한국에서만
+    # 정밀 경로를 못 탔다(미국은 8-K 날짜가 있다). 야후가 한국 종목에 얼마나
+    # 주는지는 미지수라 전부 best-effort — 실패하면 지금과 똑같이 None 이다.
+    earn = earnings_dates(t)
 
     rev, op = annual_yoy(inc)
     if rev is None or op is None:
@@ -457,6 +494,8 @@ def fetch_stock(tk, log=print):
             "peg": num(info.get("trailingPegRatio") or info.get("pegRatio")),
             "est30": est.get("est30"),
             "est90": est.get("est90"),
+            "last_earn": earn[0].isoformat() if earn[0] else None,
+            "next_earn": earn[1].isoformat() if earn[1] else None,
         },
     }
 
@@ -695,7 +734,7 @@ def build(limit, min_cap, sleep, log=print):
             for k in ("pe", "fpe", "peg"):
                 m[k] = info.get(k) if info.get(k) is not None else num(r.get(k))
             # 컨센서스 추정치 방향 — 없으면 None 그대로(화면이 중립 처리)
-            for k in ("est30", "est90"):
+            for k in ("est30", "est90", "last_earn", "next_earn"):
                 m[k] = info.get(k)
             members.append(m)
         if i % 25 == 0:
@@ -725,8 +764,11 @@ def build(limit, min_cap, sleep, log=print):
             # 수급: pykrx 가 KRX 계정을 요구하게 되어 미수집. 화면이 null 을 처리한다.
             "foreign_net": None, "inst_net": None, "foreign_pct": None,
             "supply": None,
-            "d_until": None,
-            "ir": None,
+            # 화면의 '실적 D-7 이내' 경고가 쓰는 값. 실적일을 못 받으면 None.
+            "d_until": days_until(m.get("next_earn")),
+            # 미국의 8-K 자리. 한국은 개별 공시 링크를 수집하지 않으므로
+            # 날짜만 담는다 — 실적 반영 지연 판정은 이 날짜만 있으면 된다.
+            "ir": {"date": m["last_earn"], "docs": []} if m.get("last_earn") else None,
         })
 
     log("[4/4] 조립")
@@ -823,6 +865,26 @@ def selftest():
                  "Operating Income": {c: 75e8 for c in QCOLS[5:]}})
     check(quarterly_ttm(q3, annual) == (None, None, "", False, None),
           "분기 3개면 TTM·q_end 모두 없음")
+
+    # 실적일 헬퍼 — 야후가 주는 모양(과거·미래 섞인 목록)을 제대로 가르는지
+    class _Cal:
+        def __init__(self, ds): self.calendar = {"Earnings Date": ds}
+    _today = date.today()
+    _past, _fut = _today - timedelta(days=6), _today + timedelta(days=20)
+    check(earnings_dates(_Cal([_past, _fut])) == (_past, _fut), "실적일 과거·미래 분리")
+    check(earnings_dates(_Cal([_fut])) == (None, _fut), "미래 일정만 있으면 직전은 None")
+    check(earnings_dates(_Cal([_past])) == (_past, None), "과거만 있으면 다음은 None")
+    check(earnings_dates(_Cal([])) == (None, None), "빈 목록이면 둘 다 None")
+    check(earnings_dates(_Cal(None)) == (None, None), "목록이 없어도 죽지 않음")
+
+    class _Boom:
+        @property
+        def calendar(self): raise RuntimeError("야후 응답 없음")
+    check(earnings_dates(_Boom()) == (None, None), "야후가 실패해도 빌드는 계속된다")
+
+    check(days_until((_today + timedelta(days=5)).isoformat()) == 5, "D-day 계산")
+    check(days_until(None) is None and days_until("이상한값") is None,
+          "실적일이 없거나 깨져도 D-day 는 None")
 
     members = [
         {"tk": "005930.KS", "nm": "삼성전자", "sector": "Technology",
