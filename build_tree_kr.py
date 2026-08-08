@@ -441,13 +441,53 @@ def is_dart(src: str) -> bool:
     return (src or "").startswith("DART")
 
 
+def latest_q_yoy(qinc, qseries=None):
+    """최신 분기 자체의 YoY. (lq_rev, lq_op) — 못 구하면 None.
+
+    TTM 은 4개 분기의 합이라 **최신 분기가 이미 꺾여도 두세 분기 더 양수로
+    남는다.** 금호석유 사례: TTM 스프레드 +16p 인데 최신 분기 실적은 방향이
+    반대였다 — 그 +16p 는 옛 분기가 만든 숫자다. 화면이 이 착시를 걸러낼 수
+    있게(ttmConflict) 최신 분기 vs 전년 동분기 YoY 를 따로 준다.
+
+    전년 동분기는 날짜가 아니라 (연도−1, 같은 월)로 찾는다 — 야후 기말일은
+    30/31일이 오락가락해서 날짜로 맞추면 멀쩡한 짝을 놓친다.
+    """
+    if qseries is not None:
+        qrev = [(e, r) for e, r, o in reversed(qseries) if r is not None]
+        qop = [(e, o) for e, r, o in reversed(qseries) if o is not None]
+    else:
+        qrev = series_values(pick_row(qinc, REV_ROWS))
+        qop = series_values(pick_row(qinc, OP_ROWS))
+    qrev, qop = align_quarters(qrev, qop)
+    if not qrev:
+        return None, None
+
+    def yoy(series):
+        e0, v0 = series[0]
+        y0, m0 = int(str(e0)[:4]), str(e0)[5:7]
+        prev = next((v for e, v in series[1:]
+                     if int(str(e)[:4]) == y0 - 1 and str(e)[5:7] == m0), None)
+        v = pct(v0, prev)
+        # 단일 분기는 기저효과가 TTM 보다 훨씬 거칠다. 상한은 같은 기준을 쓰되
+        # 짝을 무효화하지 않고 그 값만 버린다(영익만으로도 충돌 판정은 된다).
+        if v is not None and abs(v) > MAX_OP_YOY:
+            return None
+        return v
+
+    return yoy(qrev), yoy(qop)
+
+
 def pick_quarterly(qinc, inc, qseries, prelim=0):
-    """분기 TTM 을 어느 소스로 낼지 정한다. (q_src, rev, op, note, approx, end).
+    """분기 TTM 을 어느 소스로 낼지 정한다.
+    (q_src, rev, op, note, approx, end, lq_rev, lq_op).
 
     이 분기 흐름은 DART 키가 있는 회차에만 밟히는 코드라 평소엔 아무도 안
     지나간다. 그래서 함수로 떼어 자가진단이 **실제 코드를** 밟게 한다 —
     예전엔 테스트가 이 로직을 베껴 갖고 있었는데, 본체만 고치고 사본은 그대로
     둬서 테스트가 통과하는데 코드는 틀린 상태가 될 뻔했다.
+
+    lq(최신 분기 YoY)는 **TTM 을 만든 바로 그 소스**에서 구한다 — 다른
+    소스에서 구하면 충돌 판정이 소스 차이를 충돌로 오인한다.
     """
     q_src = "yfinance"
     q_rev = q_op = q_end = None
@@ -459,7 +499,8 @@ def pick_quarterly(qinc, inc, qseries, prelim=0):
     # 그때 그냥 포기하면 yfinance 로 얻었을 값까지 같이 잃는다 — 다시 시도한다.
     if not is_dart(q_src):
         q_rev, q_op, q_note, q_approx, q_end = quarterly_ttm(qinc, inc)
-    return q_src, q_rev, q_op, q_note, q_approx, q_end
+    lq_rev, lq_op = latest_q_yoy(qinc, qseries if is_dart(q_src) else None)
+    return q_src, q_rev, q_op, q_note, q_approx, q_end, lq_rev, lq_op
 
 
 def num(v):
@@ -534,8 +575,8 @@ def fetch_stock(tk, log=print):
         except Exception as exc:  # noqa: BLE001 — 잠정은 없어도 되는 값이다
             log(f"  {tk} 네이버 실패({exc}) — 확정(DART)만 씁니다")
 
-    q_src, q_rev, q_op, q_note, q_approx, q_end = pick_quarterly(
-        qinc, inc, qseries, prelim)
+    (q_src, q_rev, q_op, q_note, q_approx, q_end,
+     lq_rev, lq_op) = pick_quarterly(qinc, inc, qseries, prelim)
 
     info = {}
     try:
@@ -576,6 +617,10 @@ def fetch_stock(tk, log=print):
         "q_note": q_note,
         "q_approx": q_approx,
         "q_end": q_end,
+        # 최신 분기 자체의 YoY — TTM 이 옛 분기로 버티는 착시(금호석유 +16p)를
+        # 화면의 ttmConflict 가 걸러낼 때 쓴다. TTM 과 같은 소스에서 구한 값이다.
+        "lq_rev": None if lq_rev is None else round(lq_rev, 1),
+        "lq_op": None if lq_op is None else round(lq_op, 1),
         "q_src": q_src,
         "_info": {
             "sector": info.get("sector"),
@@ -1020,6 +1065,21 @@ def selftest():
           f"영업이익 YoY 도 정확하다 (기대 +100.0, 실제 {_to})")
     check(abs(_tr - _to) < 1e-6, f"→ 스프레드 0.0 (실제 {_tr - _to:+.4f}p)")
 
+    # 최신 분기 YoY(lq) — TTM 이 옛 분기로 버티는 착시를 화면이 거르는 재료.
+    _lq_series = [("2024-06-30", 100e8, 10e8), ("2024-09-30", 100e8, 10e8),
+                  ("2024-12-31", 100e8, 10e8), ("2025-03-31", 100e8, 10e8),
+                  ("2025-06-30", 110e8, 12e8), ("2025-09-30", 120e8, 14e8),
+                  ("2025-12-31", 130e8, 16e8), ("2026-03-31", 140e8, 18e8),
+                  ("2026-06-30", 143e8, 9e8)]   # ← 최신 분기: 매출 +30%, 영익 -25%
+    _lr, _lo = latest_q_yoy(None, _lq_series)
+    check(_lr == 30.0, f"최신 분기 매출 YoY = 전년 동분기 대비 (실제 {_lr})")
+    check(_lo == -25.0, f"최신 분기 영익 YoY — TTM 이 +여도 최신은 −일 수 있다 ({_lo})")
+    _lr2, _lo2 = latest_q_yoy(None, _lq_series[6:])   # 전년 동분기가 없다
+    check((_lr2, _lo2) == (None, None), "전년 동분기가 없으면 lq 는 None — 지어내지 않는다")
+    _boom = _lq_series[:-1] + [("2026-06-30", 143e8, 90e8)]   # 영익 +800%
+    check(latest_q_yoy(None, _boom)[1] is None, "단일 분기 기저효과 폭발(±500%↑)은 버린다")
+    check(latest_q_yoy(None, [])[0] is None, "시계열이 비면 None")
+
     # DART ↔ yfinance 폴백. 이 분기는 DART 키가 있는 회차에만 밟히는 코드라
     # 평소엔 아무도 안 지나간다 — 정작 필요한 순간에 처음 실행되는 코드는
     # 믿을 수 없으므로 세 경로를 여기서 매번 밟는다. (q_note/q_approx 가
@@ -1027,21 +1087,21 @@ def selftest():
     _flow = lambda qseries, prelim=0: pick_quarterly(q, annual, qseries, prelim)
 
     _dart_ok = [(c, 260e8, 60e8 if i < 4 else 90e8) for i, c in enumerate(QCOLS)]
-    _s, _r, _o, _n, _a, _e = _flow(_dart_ok)
+    _s, _r, _o, _n, _a, _e, _flr, _flo = _flow(_dart_ok)
     check(_s == "DART" and _r == 0 and _o == 50 and _e == "2026-06-30",
           f"DART 가 제대로 주면 그걸 쓴다 (src={_s}, q_end={_e})")
 
     # DART 가 분기 개수는 넘겼는데 값이 비어 TTM 이 안 나오는 경우.
     # 여기서 그냥 포기하면 yfinance 로 얻었을 값까지 같이 잃는다.
-    _s, _r, _o, _n, _a, _e = _flow([(c, None, None) for c in QCOLS])
+    _s, _r, _o, _n, _a, _e, _flr, _flo = _flow([(c, None, None) for c in QCOLS])
     check(_s == "yfinance" and _r == 0 and _o == 50,
           f"DART 가 부실하면 yfinance 로 되돌아간다 (src={_s}, 매출YoY={_r})")
 
-    _s, _r, _o, _n, _a, _e = _flow(None)
+    _s, _r, _o, _n, _a, _e, _flr, _flo = _flow(None)
     check(_s == "yfinance" and _r == 0, f"DART 미사용이면 yfinance (src={_s})")
 
     # 네이버 잠정이 얹힌 경우. 출처가 달라지므로 화면이 '잠정' 이라고 밝힐 수 있다.
-    _s, _r, _o, _n, _a, _e = _flow(_dart_ok, prelim=1)
+    _s, _r, _o, _n, _a, _e, _flr, _flo = _flow(_dart_ok, prelim=1)
     check(_s == "DART+잠정", f"잠정이 얹히면 출처에 남긴다 (src={_s})")
     check(_r == 0 and _o == 50, "잠정이 얹혀도 TTM 계산은 그대로")
     # q_src == "DART" 로 세면 잠정 얹힌 종목이 집계에서 빠진다 — 실제로 그랬다.
@@ -1080,6 +1140,7 @@ def selftest():
          "industry": "Semiconductors", "rev": 10.0, "op": 40.0, "spread": 30.0,
          "q_rev": 12.0, "q_op": 55.0, "q_spread": 43.0, "accel": 13.0,
          "q_note": "정상", "q_approx": False, "q_end": "2026-06-30", "q_src": "DART",
+         "lq_rev": 8.0, "lq_op": -6.0,
          "pe": 12.3, "fpe": None, "peg": None, "est30": 4.2, "est90": 9.1,
          "rs3": 4.0, "rs6": -8.0, "gap": 5.0, "gaplvl": "M", "from_high": -14.0,
          "foreign_net": None, "inst_net": None, "foreign_pct": None,
@@ -1088,6 +1149,7 @@ def selftest():
          "industry": "Semiconductors", "rev": 20.0, "op": 15.0, "spread": -5.0,
          "q_rev": None, "q_op": None, "q_spread": None, "accel": None,
          "q_note": "", "q_approx": True, "q_end": None, "q_src": "yfinance",
+         "lq_rev": None, "lq_op": None,
          "pe": None, "fpe": None, "peg": None, "est30": None, "est90": None,
          "rs3": None, "rs6": None, "gap": None, "gaplvl": None,
          "from_high": None, "foreign_net": None, "inst_net": None,

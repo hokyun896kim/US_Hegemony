@@ -974,7 +974,16 @@ const GATE={
 function revClass(m){
  const k=r=>r==null?'na':(r>=GATE.REV_GROW?'grow':(r>=0?'slow':'shrink'));
  const r = (m.q_rev!=null) ? m.q_rev : m.rev;   // 분기TTM 이 있으면 그쪽이 최신
- const out = {k:k(r), r:r, basis:(m.q_rev!=null?'분기TTM':'연간'), turning:null};
+ let kk = k(r), annualShrink = false;
+ // 금호석유 사례: 연간 매출이 줄고 있는데 연간 스프레드가 양수면 그 레버리지는
+ // 비용절감에서 온 것이다. 분기 매출이 소폭 양수(+5% 미만)라도 축소형으로 본다.
+ // 단 분기TTM 매출이 +5% 이상이면 이미 재가속이라 예외다 — 실측에서 KC텍
+ // (+37.5%)·삼성물산(+5.9%)을 축소형이라 부르면 그게 오히려 틀린 분류였다.
+ if(kk!=='na' && kk!=='shrink' && m.rev!=null && m.spread!=null
+    && m.rev<0 && m.spread>0 && !(m.q_rev!=null && m.q_rev>=GATE.REV_GROW)){
+   kk='shrink'; annualShrink=true;
+ }
+ const out = {k:kk, r:r, basis:(m.q_rev!=null?'분기TTM':'연간'), turning:null};
  // 연간과 분기TTM 이 서로 다른 방향을 가리키면 그 자체가 신호다. 어느 한쪽만
  // 보면 안 보인다 — 401종목 중 98개(24%)가 여기서 갈렸다. 예: CPB 는 연간
  // +6.4% 인데 최근 4분기는 -2.9% 다. '성장 기업'으로 읽으면 안 되는 상태다.
@@ -985,8 +994,22 @@ function revClass(m){
  out.t = out.k==='na'    ? '매출 확인 불가'
        : out.k==='grow'  ? `매출 +${r}% 동반성장`
        : out.k==='slow'  ? `매출 +${r}% — 저성장 레버리지`
+       : annualShrink    ? `매출 연간 ${m.rev}%(분기 ${r>=0?'+':''}${r}%) — 축소형(비용절감) 레버리지`
        :                   `매출 ${r}% — 축소형(비용절감) 레버리지`;
  return out;
+}
+// TTM 은 4개 분기의 합이라 최신 분기가 이미 꺾여도 두세 분기 더 양수로 남는다.
+// 금호석유 사례: TTM 스프레드 +16p 인데 최신 분기 실적은 방향이 반대였다 —
+// 그 +16p 는 옛 분기가 만든 숫자다. 최신 분기 YoY(lq_*)와 방향이 충돌하면
+// TTM 을 믿지 않고 후보 진입을 금지한다. lq 가 없으면(구 데이터) 판정하지 않는다.
+function ttmConflict(m){
+ const lr=m.lq_rev, lo=m.lq_op;
+ if(lo==null) return null;
+ if(m.q_op!=null && m.q_op>0 && lo<0)
+   return {t:`TTM 영익 +${m.q_op}% 인데 최신 분기는 ${lo}% — 옛 분기가 만든 숫자`};
+ if(m.q_spread!=null && m.q_spread>0 && lr!=null && (lo-lr)<0)
+   return {t:`TTM 스프레드 +${m.q_spread}p 인데 최신 분기는 ${(lo-lr).toFixed(1)}p — 방향 충돌`};
+ return null;
 }
 
 // ── 기저효과(흑자전환·일회성) 추정 ────────────────────────────
@@ -1244,6 +1267,9 @@ function accelCheck(m){
  // (한때 shrink 를 먼저 봤더니, 실적 발표 이틀 뒤인 MMS 가 낡은 매출로
  //  '축소형' 판정을 받아 턴어라운드 구간에 그대로 올라왔다.)
  if(staleness(m).s==='stale') return {ok:false,why:'stale'};
+ // 실적 반영 다음으로 TTM 자체의 신뢰를 본다. 최신 분기와 방향이 충돌하면
+ // 이 TTM 으로 내리는 가속·축소형 분류 전부를 못 믿는다(턴어라운드로도 안 보낸다).
+ if(ttmConflict(m))          return {ok:false,why:'ttmconflict'};
  if(a<=0)                    return {ok:false,why:'noaccel'};
  if(revClass(m).k==='shrink') return {ok:false,why:'shrink'};   // 턴어라운드 구간으로
  if(s<GATE.MIN_ANN||q<GATE.MIN_QTTM) return {ok:false,why:'weak'};
@@ -1295,6 +1321,8 @@ function radarRisk(m){
  else if(rc.k==='slow') r.push(`매출 +${rc.r}% — 성장 미미, 헤게모니라기엔 약함`);
  if(hugeSpread(m)) r.push('스프레드가 비정상적으로 큼 — 산수 착시 가능');
  if(m.gaplvl==='H') r.push(`갭위험 ${m.gap}% — 실적 전후 변동 큼`);
+ const tc=ttmConflict(m);
+ if(tc) r.push(`⛔ <b>${tc.t}</b> — 후보 진입 금지`);
  const stl=staleness(m);
  if(stl.s==='due')     r.push(`⏳ ${stl.t} — 발표 뒤 숫자가 바뀔 수 있다`);
  if(stl.s==='unknown') r.push('분기 시점 미확인 — 최근 실적이 반영됐는지 확인 필요');
@@ -1349,6 +1377,18 @@ function renderRadar(){
      return priceIn(c).c==='g';
    }).sort((a,b)=>(b.q_spread||0)-(a.q_spread||0));
  const stalesShown=stales.slice(0,4);
+ // TTM–최신분기 방향 충돌. 다른 조건을 다 통과한 것만 여기 보여준다 —
+ // 이 구간의 뜻은 "숫자만 보면 후보인데 그 숫자를 못 믿는다"이기 때문이다.
+ // (실적 미반영과 겹치면 stale 쪽에만 둔다. 같은 종목을 두 번 보여주지 않는다)
+ const confl=pool.filter(m=>{
+     if(!ttmConflict(m) || staleness(m).s==='stale') return false;
+     const c={...m};
+     if(c.accel<=0 || revClass(c).k==='shrink') return false;
+     if(c.spread<GATE.MIN_ANN || c.q_spread<GATE.MIN_QTTM) return false;
+     if(spreadQuality(c)==='base') return false;
+     return priceIn(c).c==='g';
+   }).sort((a,b)=>(b.q_spread||0)-(a.q_spread||0));
+ const conflShown=confl.slice(0,4);
 
  // 산업 단위: '가속 중인데 아직 안 깨워진 산업'.
  // 중앙값을 전 종목으로 내면 흑자전환 착시가 그대로 들어와(항공 +95p 같은 값)
@@ -1403,7 +1443,7 @@ function renderRadar(){
    <div class="rf">→ 진짜 가속<b>${real.length}</b></div>
    <div class="rf on">→ 아직 저반영<b>${picksAll.length}</b></div>
   </div>
-  <div class="radar-gate">거르는 조건: 매출 역성장 제외 · 연간 스프레드 ${GATE.MIN_ANN}p↑ · 분기TTM ${GATE.MIN_QTTM}p↑ · 가속 &gt; 0 · 기저효과 제외 · <b>발표된 실적 미반영분 제외</b> · 52주 고점比 ${GATE.FH_DEEP}%↓ · RS6M ${GATE.RS6_QUIET}%↓</div>
+  <div class="radar-gate">거르는 조건: 매출 역성장 제외 · 연간 스프레드 ${GATE.MIN_ANN}p↑ · 분기TTM ${GATE.MIN_QTTM}p↑ · 가속 &gt; 0 · 기저효과 제외 · <b>발표된 실적 미반영분 제외</b> · <b>TTM–최신분기 방향충돌 제외</b> · 52주 고점比 ${GATE.FH_DEEP}%↓ · RS6M ${GATE.RS6_QUIET}%↓</div>
 
   <div class="radar-sec">산업 — 가속 중인데 시장이 안 깨운 곳</div>
   ${inds.length ? inds.map(x=>`
@@ -1431,6 +1471,10 @@ function renderRadar(){
   ${stalesShown.length ? `<div class="radar-sec">종목 — 실적 확인 필요(숫자가 한 분기 뒤처짐)${stales.length>4?` · 상위 4 · 전체 ${stales.length}`:''}</div>
    <div class="radar-note">다른 조건은 다 통과했는데 <b>발표된 실적이 이 숫자에 아직 안 들어갔습니다.</b> 카드의 스프레드·가속은 <b>${stalesShown[0].q_end||'직전'} 분기까지</b>의 이야기이고, 주가는 이미 새 실적에 반응했을 수 있습니다. 그래서 선취매 후보로는 올리지 않습니다 — ${'DART'}에서 최신 실적을 직접 확인하고 보세요.</div>
    ${stalesShown.map(m=>card(m,true)).join('')}` : ''}
+
+  ${conflShown.length ? `<div class="radar-sec">종목 — TTM 검증 실패(최신 분기와 방향 충돌)${confl.length>4?` · 상위 4 · 전체 ${confl.length}`:''}</div>
+   <div class="radar-note">TTM 은 4개 분기의 합이라 <b>최신 분기가 이미 꺾여도 두세 분기 더 양수로 남습니다.</b> 이 종목들의 스프레드·가속은 옛 분기가 만든 숫자이고, 정작 최신 분기는 방향이 다릅니다. 그래서 선취매 후보로 올리지 않습니다 — 최신 분기 실적부터 직접 확인하세요.</div>
+   ${conflShown.map(m=>card(m,true)).join('')}` : ''}
 
   <div class="top5-disc">이건 조건으로 걸러낸 <b>출발 후보</b>지 매수 신호가 아닙니다. 특히 RS6M이 깊게 빠진 종목은 "시장이 아직 안 깨운 것"과 "시장이 이유 있게 던지는 것"을 이 도구가 구분하지 못합니다 — 종목을 눌러 트레이드 카드에서 DART로 확인하세요.</div>`;
 }

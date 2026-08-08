@@ -48,8 +48,8 @@ function strip(code) {
 // 여기가 어긋나면 두 시장이 같은 종목을 다르게 판정한다는 뜻이다.
 const SHARED = ['priceIn', 'cooling', 'realAccel', 'accelCheck', 'turnaround',
                 'falling', 'earnSoon', 'detectBaseEffect', 'hugeSpread',
-                'revClass', 'estTrend', 'spreadQuality', 'medOf', 'peShow',
-                'valColor', 'verdict', 'radarWhy'];
+                'revClass', 'ttmConflict', 'estTrend', 'spreadQuality', 'medOf',
+                'peShow', 'valColor', 'verdict', 'radarWhy'];
 console.log('\n━━ 시장 무관 판정 로직은 두 페이지가 같아야 한다 ━━');
 for (const name of SHARED) {
   const a = fnBody(KR, name), b = fnBody(US, name);
