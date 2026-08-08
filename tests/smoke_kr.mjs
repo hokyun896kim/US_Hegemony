@@ -48,7 +48,9 @@ const t = (cond, msg) => {
 t(doc.querySelectorAll('[data-sec]').length === D.sectors.length,
   `트리 대섹터 ${D.sectors.length}개 렌더`);
 t(doc.getElementById('mkt').textContent.includes('코스피'), '시장 배지 렌더');
-t(doc.getElementById('updTag').textContent.includes('데이터 갱신'), '갱신일 표시');
+// 갱신일은 리포트 머리(.hd-meta)에 있고, 하단 각주는 '자료 출처'를 맡는다
+t(doc.getElementById('hdDate').textContent.includes('기준일'), '리포트 머리에 기준일 표시');
+t(doc.getElementById('updTag').textContent.includes('자료:'), '하단에 자료 출처 각주');
 {
   const prev = doc.getElementById('mkt').previousElementSibling;
   t(!prev || !prev.textContent.includes('데모'), 'demo 플래그 없으면 데모 배너 안 뜸');
