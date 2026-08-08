@@ -12,11 +12,15 @@ on:
         description: '결과를 커밋할지 여부'
         type: boolean
         default: true
+      dart_probe:
+        description: 'DART 응답 구조만 확인하고 끝낼 종목코드 (예: 005930). 비우면 평소대로 빌드'
+        default: ''
   push:
     # 개발 브랜치에서 빌더를 고치면 커밋 없이 소규모 스모크 빌드로 검증만 한다
     branches: ['claude/**']
     paths:
       - 'build_tree_kr.py'
+      - 'dart.py'
       - 'index.html'
       - '.github/workflows/update_kr.yml'
 
@@ -38,7 +42,29 @@ jobs:
         run: pip install --quiet yfinance
 
       - name: Logic self-test (네트워크 불필요)
-        run: python build_tree_kr.py --selftest
+        run: |
+          python build_tree_kr.py --selftest
+          python dart.py --selftest
+
+      # DART 파싱은 '응답이 내가 가정한 모양인가' 에 통째로 기대고 있는데,
+      # 이 코드를 쓴 환경에서는 DART 에 네트워크가 닿지 않아 눈으로 못 봤다.
+      # 그래서 키를 넣은 뒤 여기서 한 번 찍어보고 믿는다. 빌드는 하지 않는다.
+      - name: DART 응답 구조 확인
+        if: inputs.dart_probe != ''
+        env:
+          DART_KEY: ${{ secrets.DART_KEY }}
+        run: |
+          if [ -z "${DART_KEY:-}" ]; then
+            echo "::error::DART_KEY 저장소 Secret 이 없습니다. Settings → Secrets and variables → Actions 에서 추가하세요."
+            exit 1
+          fi
+          python dart.py --probe "${{ inputs.dart_probe }}" | tee /tmp/probe.txt
+          {
+            echo '## DART 응답 구조 확인'
+            echo '```'
+            cat /tmp/probe.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Decide run mode
         id: mode
@@ -60,6 +86,7 @@ jobs:
           fi
 
       - name: Build data
+        if: inputs.dart_probe == ''
         env:
           # 분기 재무를 DART 에서 받는다 — yfinance 보다 1~3주 빠르다.
           # 키가 없으면 빌더가 조용히 yfinance 로 떨어지므로 없어도 돈다.
@@ -67,6 +94,7 @@ jobs:
         run: python build_tree_kr.py --limit ${{ steps.mode.outputs.limit }}
 
       - name: Summarize
+        if: inputs.dart_probe == ''
         run: |
           python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import json
@@ -97,13 +125,14 @@ jobs:
           PY
 
       - name: Upload artifact
+        if: inputs.dart_probe == ''
         uses: actions/upload-artifact@v4
         with:
           name: tree_kr-${{ github.run_number }}
           path: data/tree_kr.json
 
       - name: Commit
-        if: steps.mode.outputs.commit == 'true'
+        if: steps.mode.outputs.commit == 'true' && inputs.dart_probe == ''
         run: |
           git config user.name  "hegemony-bot"
           git config user.email "bot@users.noreply.github.com"

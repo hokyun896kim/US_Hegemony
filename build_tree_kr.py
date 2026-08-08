@@ -470,11 +470,17 @@ def fetch_stock(tk, log=print):
                     qseries = qs
             except Exception as exc:  # noqa: BLE001 — 실패는 폴백으로 흡수
                 log(f"  {tk} DART 실패({exc}) — yfinance 로 대체")
-    q_rev, q_op, q_note, q_approx, q_end = quarterly_ttm(qinc, inc, qseries)
+
+    q_src = "yfinance"
+    q_rev = q_op = q_end = None
     if qseries:
-        q_src = "DART"
-    else:
-        q_src = "yfinance"
+        q_rev, q_op, q_note, q_approx, q_end = quarterly_ttm(qinc, inc, qseries)
+        if q_rev is not None or q_op is not None:
+            q_src = "DART"
+    # DART 가 분기를 4개 넘겨줬어도 매출·영익이 군데군데 비면 TTM 이 안 나온다.
+    # 그때 그냥 포기하면 yfinance 로 얻었을 값까지 같이 잃는다 — 다시 시도한다.
+    if q_src != "DART":
+        q_rev, q_op, q_note, q_approx, q_end = quarterly_ttm(qinc, inc)
 
     info = {}
     try:
