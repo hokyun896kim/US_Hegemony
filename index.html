@@ -102,6 +102,9 @@ h1{font-size:clamp(24px,5.6vw,42px);font-weight:800;line-height:1.05;margin:8px 
 .t5-tk{font-size:17.5px;font-weight:800;color:var(--txt)}
 .t5-nm{font-size:11.5px;color:var(--mut)}
 .t5-sec{font-size:11.5px;color:var(--gold2);background:#eef2f7;padding:2px 8px;border-radius:6px;margin-left:auto}
+/* TOP5 ↔ 레이더 관계 표시 — 두 목록이 왜 다른지 줄마다 밝힌다 */
+.t5-rel{font-size:10px;font-weight:700;color:var(--mut);border:1px solid var(--line);border-radius:4px;padding:1px 6px;white-space:nowrap}
+.t5-rel.in{color:var(--grn);border-color:var(--grn)}
 .t5-score{font-size:15px;font-weight:800;color:var(--gold2);font-variant-numeric:tabular-nums}
 .t5-metrics{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:7px}
 .t5-m{font-size:11.5px;color:#39414e;background:var(--bg);border:1px solid var(--line);padding:3px 8px;border-radius:6px;font-variant-numeric:tabular-nums}
@@ -165,6 +168,16 @@ h1{font-size:clamp(24px,5.6vw,42px);font-weight:800;line-height:1.05;margin:8px 
 .ri-m span{font-size:11.5px;color:#39414e;background:var(--bg);border:1px solid var(--line);padding:2px 7px;border-radius:5px;font-variant-numeric:tabular-nums}
 .ri-m b{color:var(--grn)}
 .ri-go{font-size:11.5px;color:var(--gold2);white-space:nowrap}
+/* 관찰(미충족) 산업 줄 — 본후보와 한눈에 구분되게 */
+.ri.obs{border-left-color:var(--mut);opacity:.88}
+.ri-obs{display:inline-block;font-size:10.5px;font-weight:700;color:var(--mut);border:1px solid var(--line);border-radius:4px;padding:0 5px;margin-left:6px;vertical-align:1px}
+.ri-miss{font-size:11px;color:var(--mut);margin-top:4px}
+.ri-side{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.ri-copy{font-size:13px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:2px 8px;cursor:pointer;line-height:1.4}
+.ri-copy:hover{border-color:var(--gold)}
+.ind-guide-btn{font-size:11px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 8px;cursor:pointer;color:var(--txt2);margin-left:4px}
+.ind-guide-btn:hover{border-color:var(--gold)}
+.ind-guide-btn.done{color:var(--grn)}
 .rc{background:linear-gradient(105deg,var(--panel2),var(--panel));border:1px solid #ccd4de;border-left:3px solid var(--grn);border-radius:12px;padding:11px 13px;margin-bottom:7px;cursor:pointer;transition:.16s}
 .rc:hover{border-color:var(--gold);transform:translateY(-1px)}
 .rc.warn{border-left-color:var(--gold)}
@@ -812,7 +825,7 @@ document.getElementById('q').style.display='none';
 const TIPS={
  watch:{k:"기능 설명",t:"📌 내 워치리스트",b:"<p>보유·관심 종목을 담아 <b>매수 후 관리</b>를 하는 자리입니다.</p><p><b>신호등:</b> 🟢가속(보유 유지) · 🟡유지 · 🔴피크아웃(분기TTM이 연간보다 둔화 = 이익 모멘텀 꺾임, 익절·감량 검토).</p><p>브라우저에 저장돼 다시 열어도 유지됩니다(localStorage).</p><p><b>참고:</b> 야후가 한국 종목의 실적 발표 예정일을 잘 주지 않아 이 빌드에는 실적 캘린더(D-day)가 없습니다. 확정일은 DART·네이버 금융에서 확인하세요.</p>"},
  radar:{k:"기능 설명",t:"🎯 선취매 레이더",b:"<p>'헤게모니 가속' 탭은 <b>가속 순으로만</b> 세웁니다. 그래서 그 안에는 두 종류의 가짜가 섞입니다 — ① 전년 이익이 바닥이라 비율만 폭발한 <b>흑자전환 착시</b>, ② 가속은 양수지만 분기 스프레드가 여전히 음수인 <b>'덜 나빠진 것'</b>.</p><p>레이더는 이 둘을 걷어내고 <b>지금 실제로 이익 레버리지가 있으면서 가속 중인 것</b>만 남긴 뒤, 거기서 다시 <b>주가가 아직 안 움직인 것</b>을 고릅니다. 상단 깔때기 숫자가 몇 개에서 몇 개로 줄었는지 보여줍니다.</p><p><b>가장 중요한 구분:</b> 6개월 약세가 같아도 3개월이 보합이면 '바닥 다지는 중', 계속 빠지면 '떨어지는 칼날'입니다. 각 카드의 <b>조심</b> 줄에 그게 적힙니다.</p><p><b>한계:</b> RS가 깊게 빠진 이유가 '아직 안 깨워서'인지 '이유가 있어서'인지는 이 도구가 모릅니다. 반드시 DART로 확인하세요.</p>"},
- top5:{k:"기능 설명",t:"⭐ 이상적 매수후보 TOP5",b:"<p>형님의 해석 4단계를 그대로 점수화한 결과입니다.</p><p><b>스코어 구성:</b> 연간 헤게모니 강도 + 매출 동반 성장(품질) + 분기TTM 지속성 + 가속 강도 + 시장 미반영. 피크아웃·과열·기저효과·고PER은 감점.</p><p><b>가장 높은 점수 = 펀더 강하고, 최근 더 강해지는데, 시장은 아직 안 깨운 종목.</b> 형님이 말한 '남보다 먼저' 자리입니다. 단, 출발 후보일 뿐 1차 자료 확인 필수.</p>"},
+ top5:{k:"기능 설명",t:"⭐ 이상적 매수후보 TOP5",b:"<p>형님의 해석 4단계를 그대로 점수화한 결과입니다.</p><p><b>스코어 구성:</b> 연간 헤게모니 강도 + 매출 동반 성장(품질) + 분기TTM 지속성 + 가속 강도 + 시장 미반영. 피크아웃·과열·기저효과·고PER은 감점.</p><p><b>가장 높은 점수 = 펀더 강하고, 최근 더 강해지는데, 시장은 아직 안 깨운 종목.</b> 형님이 말한 '남보다 먼저' 자리입니다. 단, 출발 후보일 뿐 1차 자료 확인 필수.</p><p><b>🎯 레이더와의 관계:</b> 레이더는 선취매 전제조건(가속>0 · 저반영 · 실적반영 · TTM검증)을 <b>전부 통과한 것만</b> 보여주는 목록이고, TOP5 는 전제조건 없이 전 종목을 점수로 줄 세운 목록입니다. 그래서 서로 다른 종목이 나옵니다 — TOP5 의 각 줄에 '선취매 권역' 인지, 아니면 왜 아닌지(이미 절반 반영 · 가속 없음 등)가 표시됩니다. <b>선취매가 목적이면 레이더가 먼저, TOP5 는 '좋은 기업 전체 줄세우기'로 관찰 리스트를 만들 때</b> 보세요. 단 실적 미반영·TTM 충돌 종목은 TOP5 에서도 뺍니다 — 못 믿는 숫자로 만든 점수이기 때문입니다.</p>"},
  tree:{k:"탭 설명",t:"🌳 탑다운 트리",b:"<p>형님의 투자 순서 그대로 — <b>대섹터 → 세부산업 → 종목</b>으로 위에서 아래로 좁혀 들어갑니다.</p><p>대섹터 막대는 그 섹터에 속한 모든 종목의 헤게모니 스프레드 <b>중앙값</b>입니다. 막대가 금색(우)이면 이익 레버리지가 붙는 섹터, 회색(좌)이면 마진 압박 섹터.</p><p>대섹터를 누르면 세부산업이, 세부산업을 누르면 종목이 펼쳐집니다.</p>"},
  flat:{k:"탭 설명",t:"📊 세부산업 랭킹",b:"<p>대섹터 구분 없이 <b>세부산업 전체를 헤게모니 순으로</b> 한 줄로 세웁니다.</p><p>검색창에 '반도체', '방산', '005930' 등을 치면 즉시 필터됩니다. \"지금 가장 뜨거운 세부산업이 어디든 한눈에\" 보고 싶을 때.</p>"},
  signal:{k:"탭 설명",t:"🎯 1층+2층 시그널",b:"<p><b>펀더(1층)가 양수인 종목만</b> 모아서, 상대강도(2층)와 함께 자동 판정합니다.</p><p><b>GO</b> = 펀더+상대강도 동반 강세(시장이 막 인정 시작)<br><b>관망</b> = 펀더는 좋은데 상대강도 보통<br><b>매복</b> = 펀더 좋은데 시장이 아직 안 깨움(잠복 후보)<br><b>냉각</b> = 6개월은 강했는데 3개월이 꺾임(뒷북 위험)<br><b>과열주의</b> = 상대강도 과도+갭위험 높음</p><p>주의: 판정은 종목을 고르는 신호가 아니라 <b>타이밍 참고</b>입니다.</p>"},
@@ -848,6 +861,7 @@ try{if(localStorage.getItem('guideSeen')==='1')GUIDE_SEEN=true;}catch(e){}
 // ===== 트레이드 카드 시스템 =====
 const TKINDEX={};  // loadData()에서 채움
 let LAST_TOP5=[];  // 박제용 현재 TOP5
+let LAST_INDS=[];  // 산업 레이더 목록 — 산업 스냅샷 복사가 쓴다
 
 function bullBear(m){
  const bull=[],bear=[];
@@ -1139,6 +1153,22 @@ function scoreCandidate(m){
  return {pts:Math.round(pts*10)/10, parts:{Q:Math.round(Q*10)/10,U:Math.round(U*10)/10,T,V},
          reasons, grade:q, tier:fl.g};
 }
+// TOP5 와 선취매 레이더가 왜 다른 종목을 내는지 카드마다 밝힌다.
+// 레이더 = 선취매 전제조건(가속·저반영 등)을 전부 강제한 목록.
+// TOP5   = 전제조건 없이 전 종목을 종합 점수로 줄 세운 목록.
+// 그래서 TOP5 에는 '이미 움직이기 시작한' 좋은 종목도 올라온다 — 그게 뭔지
+// 표시해 주지 않으면 두 목록이 그냥 어긋나 보인다(실제로 그렇게 보였다).
+function radarRel(m){
+ const c=accelCheck(m);
+ if(c.ok){
+   const p=priceIn(m);
+   if(p.c==='g') return {in:true, t:'🎯 선취매 권역'};
+   return {in:false, t:p.c==='m'?'선취매 아님 — 이미 절반 반영':'선취매 아님 — 이미 반영(고점권)'};
+ }
+ const why={na:'자료 부족',stale:'실적 미반영',ttmconflict:'TTM 검증 실패',noaccel:'가속 없음',
+            shrink:'축소형(턴어라운드 구간)',weak:'스프레드 문턱 미달',base:'기저효과'}[c.why]||c.why;
+ return {in:false, t:'선취매 아님 — '+why};
+}
 // ===== 선취매 레이더 =====
 // 가속 탭은 가속 순으로만 세우기 때문에, 그 안에 섞인 기저효과·허수 가속을
 // 사람이 일일이 걸러야 한다. 그 작업을 화면이 대신 한다.
@@ -1394,18 +1424,34 @@ function renderRadar(){
  // 중앙값을 전 종목으로 내면 흑자전환 착시가 그대로 들어와(항공 +95p 같은 값)
  // 종목 쪽에서 걷어낸 노이즈가 산업 쪽으로 되살아난다. 그래서 기저효과 종목을
  // 뺀 '깨끗한' 구성원만으로 계산하고, 실제 후보를 최소 1개는 품은 산업만 남긴다.
- const inds=D.subs.map(s=>{
+ const indAll=D.subs.map(s=>{
      const clean=s.members.filter(m=>m.q_spread!=null && spreadQuality(m)!=='base'
                                   && (m.accel==null||Math.abs(m.accel)<=150));
      return {s, clean, hits:s.members.filter(realAccel),
        acc:medOf(clean.map(m=>m.accel)),
        qsp:medOf(clean.map(m=>m.q_spread)),
        rs :medOf(clean.map(m=>m.rs6))};
-   })
-   .filter(x=>!isBag(x.s)
-            && x.clean.length>=2 && x.hits.length>=1
-            && x.acc!=null&&x.acc>0 && x.qsp!=null&&x.qsp>0 && x.rs!=null&&x.rs<10)
-   .sort((a,b)=>b.acc-a.acc).slice(0,4);
+   }).filter(x=>!isBag(x.s) && x.clean.length>=2 && x.acc!=null && x.qsp!=null);
+ // 본후보: 네 조건을 다 통과한 산업
+ const indPass=x=>x.hits.length>=1 && x.acc>0 && x.qsp>0 && x.rs!=null&&x.rs<10;
+ // 어떤 조건이 모자랐는지 — 관찰 줄에 그대로 적는다. 조건을 몰래 완화하는 게
+ // 아니라, 못 채운 조건을 밝힌 채로 보여주는 것이다.
+ const indMiss=x=>{const w=[];
+   if(x.hits.length<1) w.push('통과 종목 0');
+   if(x.acc<=0)        w.push(`가속 중앙 ${x.acc}p`);
+   if(x.qsp<=0)        w.push(`분기 중앙 ${x.qsp}p`);
+   if(x.rs==null)      w.push('RS 확인 불가');
+   else if(x.rs>=10)   w.push(`RS6M 중앙 +${x.rs}% — 이미 반쯤 깨어남`);
+   return w;};
+ const qual=indAll.filter(indPass).sort((a,b)=>b.acc-a.acc);
+ // 본후보가 3개가 안 되면 '아깝게 떨어진' 산업으로 채운다 — 미충족 조건이
+ // 적은 순, 같으면 가속 순. 왜 관찰인지는 줄에 표시된다.
+ const near=indAll.filter(x=>!indPass(x))
+   .map(x=>({...x, obs:true, miss:indMiss(x)}))
+   .sort((a,b)=>a.miss.length-b.miss.length || b.acc-a.acc);
+ const inds=qual.slice(0,4);
+ if(inds.length<3) inds.push(...near.slice(0, 3-inds.length));
+ LAST_INDS=inds;   // 산업 스냅샷 복사가 이 목록을 쓴다
 
  // 등급은 '타이밍'만 뜻한다 — 하락이 멈췄는지. A 라고 좋은 종목이 아니라
  // A 는 지금 들어가기 편한 자리, C 는 더 빠질 수 있는 자리라는 뜻이다.
@@ -1446,12 +1492,14 @@ function renderRadar(){
   <div class="radar-gate">거르는 조건: 매출 역성장 제외 · 연간 스프레드 ${GATE.MIN_ANN}p↑ · 분기TTM ${GATE.MIN_QTTM}p↑ · 가속 &gt; 0 · 기저효과 제외 · <b>발표된 실적 미반영분 제외</b> · <b>TTM–최신분기 방향충돌 제외</b> · 52주 고점比 ${GATE.FH_DEEP}%↓ · RS6M ${GATE.RS6_QUIET}%↓</div>
 
   <div class="radar-sec">산업 — 가속 중인데 시장이 안 깨운 곳</div>
-  ${inds.length ? inds.map(x=>`
-   <div class="ri" onclick="gotoIndustry('${(x.s.ko||x.s.desc).replace(/'/g,"\\'")}')">
-    <div><div class="ri-nm">${x.s.ko||x.s.desc}<span>${x.s.desc} · ${x.s.n}개${x.hits.length?` · 후보 ${x.hits.length}`:''}</span></div>
-     <div class="ri-m"><span>가속 중앙 <b>+${x.acc}p</b></span><span>분기 중앙 <b>+${x.qsp}p</b></span>
-      <span>RS6M 중앙 ${x.rs>0?'+':''}${x.rs}%</span></div></div>
-    <div class="ri-go">펼쳐보기 →</div>
+  <div class="radar-note">산업 중앙값은 표본이 작아 <b>한 종목에 끌려갈 수 있습니다.</b> 줄의 📋 버튼으로 산업 스냅샷을 복사해 프로젝트룸 GPT 에서 "실제로 산업이 가속 중인지 · 정말 안 깨어난 것인지"를 검증하세요. <button class="ind-guide-btn" onclick="event.stopPropagation();copyIndGuide(this)">🏭 산업 검증 GPT 지침 복사 — 프로젝트룸에 최초 1회</button></div>
+  ${inds.length ? inds.map((x,i)=>`
+   <div class="ri ${x.obs?'obs':''}" onclick="gotoIndustry('${(x.s.ko||x.s.desc).replace(/'/g,"\\'")}')">
+    <div><div class="ri-nm">${x.s.ko||x.s.desc}${x.obs?'<span class="ri-obs">관찰</span>':''}<span>${x.s.desc} · ${x.s.n}개${x.hits.length?` · 후보 ${x.hits.length}`:''}</span></div>
+     <div class="ri-m"><span>가속 중앙 <b class="${sg(x.acc)}">${x.acc>0?'+':''}${x.acc}p</b></span><span>분기 중앙 <b class="${sg(x.qsp)}">${x.qsp>0?'+':''}${x.qsp}p</b></span>
+      <span>RS6M 중앙 ${x.rs==null?'—':(x.rs>0?'+':'')+x.rs+'%'}</span></div>
+     ${x.obs?`<div class="ri-miss">미충족: ${x.miss.join(' · ')}</div>`:''}</div>
+    <div class="ri-side"><button class="ri-copy" title="산업 스냅샷 복사 — 프로젝트룸 GPT 검증용" onclick="event.stopPropagation();copyIndSnap(${i},this)">📋</button><div class="ri-go">펼쳐보기 →</div></div>
    </div>`).join('')
    : `<div class="radar-empty">지금은 <b>산업 단위로</b> 가속하면서 저평가된 곳이 없습니다. 산업 전체가 움직이는 국면이 아니라 종목별로 갈리는 장이라는 뜻이니, 아래 종목 단위로 보세요.</div>`}
 
@@ -1480,10 +1528,14 @@ function renderRadar(){
 }
 
 function renderTop5(){
- const cands=[];
+ const cands=[]; let dropped=0;
  D.subs.forEach(s=>s.members.forEach(m=>{
    const r=scoreCandidate(m);                        // 기본(동결) — 절대 미변경
    if(r&&r.pts>0){
+     // 데이터 신뢰 게이트는 여기도 강제한다. 실적 미반영·TTM 충돌은 레이더에서
+     // '후보 진입 금지'인데, 같은 종목이 이상적 후보 1위로 나오면 앞뒤가 안 맞는다.
+     // (점수 감점이 아니라 제외다 — 못 믿는 숫자로 만든 점수이기 때문)
+     if(staleness(m).s==='stale' || ttmConflict(m)){ dropped++; return; }
      const b = SUPPLY_ON ? supplyBonus(m) : {pts:0,why:''};   // 별도 오버레이
      cands.push({...m,sec:s.ko||s.desc,_base:r.pts,_bonus:b.pts,_bwhy:b.why,
                  _pts:r.pts+b.pts,_reasons:r.reasons,_grade:r.grade});
@@ -1504,13 +1556,14 @@ function renderTop5(){
   </label>`:'';
  panel.innerHTML=`
   <div class="top5-head">⭐ 오늘의 이상적 매수후보 TOP5<i class="help-i" onclick="tip('top5')">i</i></div>
-  <div class="top5-sub">유기적 성장(<b>매출 동반</b>) + 지속성(분기 유지) + 합리적 밸류 + 시장 미반영을 보상하고, <b>흑자전환·기저효과·비용절감·고평가·피크아웃은 감점</b>한 결과입니다. 발견의 출발점이지 매수 신호가 아닙니다.</div>
+  <div class="top5-sub"><b>위 🎯 레이더와 다른 목록입니다 — 보는 순서는 레이더가 먼저.</b> 레이더는 선취매 전제조건(가속·저반영)을 <b>전부 강제</b>한 목록이고, 이 TOP5 는 전제조건 없이 <b>전 종목을 종합 점수로 줄 세운</b> 목록이라 이미 움직이기 시작한 종목도 올라옵니다. 각 줄에 선취매 권역 여부가 표시됩니다.<br>점수: 유기적 성장(<b>매출 동반</b>) + 지속성(분기 유지) + 합리적 밸류 + 시장 미반영 보상, <b>흑자전환·기저효과·비용절감·고평가·피크아웃 감점</b>.${dropped?` · 실적 미반영·TTM 충돌 <b>${dropped}종목 제외</b>`:''} 발견의 출발점이지 매수 신호가 아닙니다.</div>
   ${supplyToggle}
   ${top.map((m,i)=>`
    <div class="top5-card" onclick="openTrade('${m.tk}')">
     <div class="t5-row1">
      <span class="t5-rank">${i+1}</span>
      <span><span class="t5-tk">${m.tk}</span> <span class="t5-nm">${m.nm}</span></span>
+     <span class="t5-rel ${radarRel(m).in?'in':''}">${radarRel(m).t}</span>
      <span class="t5-sec">${QLABEL[m._grade]||''} · ${m.sec}</span>
     </div>
     <div class="t5-metrics">
@@ -1700,6 +1753,7 @@ function buildPrompt(tk){
 
 // ── GPT 상주 지침 (docs/gpt-instructions.md 와 동일 — 테스트가 일치를 강제) ──
 // 종목 프롬프트는 매번 바뀌는 질문이고, 이건 GPT 에 한 번만 넣어두는 규칙이다.
+const IND_GUIDE="[역할]\n너는 \"헤게모니 트리\" 스크리너의 산업 레이더와 짝을 이루는 산업 사이클 분석가다. 사용자는 \"가속 중인데 시장이 아직 안 깨운 산업\" 후보의 산업 스냅샷을 붙여넣는다. 너의 일은 그 주장(산업이 실제로 가속 중이다 + 시장이 아직 반영하지 않았다)을 검증하고, 맞다면 산업 안에서 어떤 종목이 레버리지가 큰지 판단 재료를 정리하는 것이다. 매수·매도 명령이 아니다. 한국 산업은 K-IFRS 연결, 미국 산업은 US-GAAP 기준으로 본다.\n\n[데이터 사전]\n- 산업 집계 = 기저효과(흑자전환·가속 ±150p 초과) 종목을 뺀 구성원의 중앙값. 그래도 표본이 2~5개면 한 종목이 산업의 얼굴을 바꾼다.\n- 가속 중앙 = 구성원별 (분기TTM 스프레드 − 연간 스프레드)의 중앙값. 양수면 산업의 이익 레버리지가 최근 강해지는 중.\n- 통과 종목 = 종목 단위 전체 게이트(가속·저반영·기저효과·실적반영·TTM검증)를 다 통과한 구성원 수.\n- 스크리너 판정 '본후보' = 가속>0 · 분기>0 · RS6M 중앙<+10% · 통과종목≥1 을 모두 충족. '관찰' = 일부 미충족이며 어떤 조건이 모자랐는지 함께 적혀 있다 — 조건을 완화한 게 아니라 아깝게 떨어진 것을 밝힌 채 보여주는 것이다.\n- 종목 줄의 [잠정] = 최신 분기가 잠정실적(확정에서 바뀔 수 있음), [TTM충돌] = TTM 은 +인데 최신 분기는 방향이 반대(그 종목 숫자는 옛 분기가 만든 것), [실적미반영] = 발표된 실적이 숫자에 아직 안 들어감, [기저효과] = 집계에서 제외된 착시 의심.\n\n[산업 레이더의 알려진 맹점 — 숫자를 그대로 믿지 말 것]\n1. 중앙값은 소수 표본에 취약하다. 구성 종목 표로 직접 재확인하라 — 상위 1~2개를 빼면 중앙값이 무너지는지.\n2. 산업 분류는 야후 기준이라 실제 밸류체인과 다를 수 있다. 구성 종목들이 정말 같은 수요·가격 사이클을 공유하는지 먼저 물어라. 공유하지 않으면 '산업 가속'이라는 말 자체가 성립하지 않는다.\n3. '가속'은 회계 숫자다. 산업 공통 동인(제품가격·수요·정책·증설 사이클) 없이 개별 회사 사정(구조조정·일회성 이익)의 우연한 동시 발생일 수 있다.\n4. RS6M 중앙이 낮다고 '아직 못 본 것'이 아니다. 구조적 쇠퇴 산업은 영원히 싸다 — 소외에 이유가 있는지 밝히는 게 네 몫이다.\n5. 주간 스냅샷이다. 분기 데이터 기준(q_end) 이후의 실적·업황 변화는 안 들어 있다.\n\n[검증 절차 — 이 순서로]\nV0. 신선도: 스냅샷의 분기 기준일과 잠정·미반영·TTM충돌 표시부터 본다. 표시가 붙은 종목이 절반을 넘으면 집계 자체를 보류하라.\nV1. 집계 재검증: 구성 종목 표에서 중앙값을 직접 재계산한다. 상위 1~2종목을 제외해도 가속 중앙이 양수로 남는가? 남지 않으면 이것은 '산업'이 아니라 '한두 종목' 이야기다.\nV2. 공통 동인 실재 확인(핵심): 이 산업의 이익을 실제로 움직이는 1차 지표(제품 가격 스팟·수주잔고·출하량·가동률·운임·정책 일정)를 웹검색으로 확인한다. 서로 독립인 출처 2개 이상. 지표가 실제로 돌아섰으면 '진짜 산업 가속', 지표는 그대로인데 회계 숫자만 좋아졌으면 '우연 집합'으로 판정하라.\nV3. 시장 인지도: 산업 지수·대표주(스냅샷 밖 대형주 포함)의 3·6개월 수익률, 밸류에이션이 역사 레인지에서 어디인지, 증권사 산업 리포트가 최근 늘었는지. RS6M 중앙<+10% 라는 스냅샷 주장과 대조해 [잠복 / 초기 인지 / 이미 주도 테마] 중 하나로 판정한다.\nV4. 사이클 위치: V2 의 1차 지표로 지금이 사이클의 초입·중반·피크 어디인지. 증설(공급) 일정과 재고 수준을 반드시 본다 — 피크에 산 가속은 제일 비싼 실수다.\nV5. 수혜 순서: 산업 논제가 맞다면 가격결정력을 가진 대장과 베타만 큰 후발을 구분하고, 스냅샷의 통과 종목이 어느 쪽인지 밝힌다. 스냅샷에 없는 더 나은 수혜주가 있으면 그것도 말하라.\nV6. 산업 반증 조건: 이 산업 논제가 틀렸음을 가장 빨리 보여줄 단일 관찰값(가격 지표 재하락, 수주 취소, 증설 발표 등)을 하나 정한다.\n모든 외부 사실에 출처를 달고, 확인 못 한 것은 \"미확인\"으로 표기한다.\n\n[출력 형식 — 이 순서로]\n① 스냅샷 요약 + V1 집계 재검증 결과(상위 종목 제외 시 중앙값)\n② 공통 동인 판정 — 진짜 산업 가속 / 우연 집합 / 판정 불가, 1차 지표 근거와 출처\n③ 시장 인지도 판정 — 잠복 / 초기 인지 / 이미 주도 테마, 근거\n④ 사이클 위치 — 초입 / 중반 / 피크 의심, 공급(증설)과 재고 관점 포함\n⑤ 산업 안 우선순위 — 종목 2~3개를 수혜 구조(대장/후발)와 함께. 매수 지시가 아니라 \"깊게 팔 순서\"다. 각 종목은 개별 스냅샷으로 종목 지침에 따라 별도 검증하라고 안내하라.\n⑥ 스틸맨 — 이 산업을 지금 사면 안 되는 가장 강한 논거\n⑦ 반증 조건 — V6 의 단일 관찰값\n⑧ 결론 — 관찰 / 종목 단위로 진행 / 보류 중 택1 + 확신도(상/중/하)와 근거\n\n[절대 규칙]\n- 매수·매도를 단정하지 마라. 차트 기술지표는 쓰지 마라.\n- 숫자를 지어내지 마라. 검색이 안 되면 안 된다고 말하라.\n- 목표가를 찍지 마라. 반증 조건을 줘라.\n- 한국어로 답하고, 용어는 위 데이터 사전의 정의대로 쓴다.";
 const GPT_GUIDE="[역할]\n너는 \"헤게모니 트리\" 스크리너와 짝을 이루는 주식 펀더멘털 분석가다. 사용자는 한국(코스피·코스닥) 또는 미국 증시 종목의 스냅샷 데이터를 붙여넣는다. 스냅샷이 오면 아래 [검증 절차]와 [분석·출력 형식]을 그대로 수행한다. 너의 일은 숫자를 검증하고 맥락을 붙여 사용자가 스스로 판단할 재료를 정리하는 것이지, 매수·매도 명령을 내리는 것이 아니다. 한국 종목은 K-IFRS 연결 영업이익, 미국 종목은 US-GAAP 기준으로 본다.\n\n[데이터 사전 — 붙여넣기에 나오는 용어]\n- 헤게모니 스프레드 = 영업이익 YoY% − 매출 YoY%. 양수면 이익이 매출보다 빨리 늘어 이익 레버리지(가격결정력·고정비 효과)가 작동 중.\n- 분기TTM 스프레드 = 최근 4분기 합산 기준 스프레드. 연간보다 최신 상태.\n- 가속 = 분기TTM − 연간. 양수면 레버리지가 최근 더 강해지는 중.\n- RS3M / RS6M = 벤치마크(한국은 코스피, 미국은 S&P500) 대비 3·6개월 상대수익률. 차트 지표가 아니라 원시 수익률 차이다.\n- 52주 고점比 = 현재가가 52주 고점 대비 몇 % 아래인가. 고점에 가까울수록 이미 반영, 깊게 눌릴수록 여력.\n- 갭위험 = 최근 60거래일의 시가 갭 최대치. H 면 실적 전후 변동이 크다.\n- PER 뒤의 F = 후행 PER 이 없어 선행(Forward) PER 로 대체된 값. 서로 다른 지표이므로 비교 시 감안하라.\n- \"근사치\"(q_approx) = 분기 자료가 8분기 미만이라 TTM 을 직전 연간과 비교한 근사값. 한국 종목 대부분이 이 모드다.\n- 매출 분류 = 매출 YoY(분기TTM 우선) 기준. +5% 이상 \"동반성장\", 0~5% \"저성장 레버리지\", 0% 미만 \"축소형(비용절감) 레버리지\". 축소형은 본 후보에서 빠져 별도 '턴어라운드' 구간에 놓인다.\n- \"매출이 꺾이는 중 / 돌아서는 중\" = 연간 매출 방향과 최근 4분기 방향이 어긋난다는 표시. 어느 한쪽만 보면 안 보이는 변곡이다.\n- 타이밍 등급 A/B/C = RS3M 기준. A는 하락이 멈춤(≥-5%), B는 횡보·확인 불가, C는 아직 하락 중(≤-8%). **좋은 종목 등급이 아니라 '지금 들어가기 편한 자리인가'** 다. C 라고 탈락은 아니다.\n- 점수 분해 = 헤게모니 품질 50 · 가격 미반영 30 · 타이밍 10 · 밸류 10. 밸류 비중을 낮게 묶어둔 이유는 \"싼 데는 이유가 있다\"를 반영하기 위해서다.\n- 추정치(est30/est90) = 애널리스트 당해 EPS 컨센서스의 30일·90일 변화율(%). 실측으로 한국 종목은 85%(190/223) 채워진다. 비어 있는 종목은 화면이 중립으로 처리하니, 그런 종목만 네가 웹검색으로 보강하면 된다.\n\n[스크리너의 알려진 맹점 — 숫자를 그대로 믿지 말 것]\n1. 기저효과: 전년 이익이 바닥이면 스프레드가 폭발한다. 영업이익 YoY +80% 이상이거나 가속이 ±60p 를 넘으면 흑자전환·일회성을 의심하라.\n2. 출처 정의 차이: 숫자는 야후·SEC 프레임 기반이라 한국 K-IFRS 연결 영업이익, 미국 US-GAAP 공시와 어긋날 수 있다. 1차 자료와 대조하라.\n3. 한국판은 외국인·기관 수급을 수집하지 않는다. 웹검색으로 반드시 보강하라.\n4. 주간 스냅샷이다. 붙여넣기의 데이터 기준일 이후에 나온 실적·공시가 있는지 날짜부터 확인하라. 스냅샷에 \"분기 데이터 기준\"(q_end)이 있으면 그게 진짜 기준선이다 — 데이터 기준일이 아니라. 8/8에 받은 데이터라도 분기가 3/31까지면 그 사이 발표된 2분기 실적은 안 들어 있다.\n5. RS 가 깊게 빠진 것(-30% 이하)은 \"시장이 아직 못 본 것\"과 \"이유 있는 투매\"를 구분하지 못한다. 왜 싼지를 밝히는 게 네 몫이다.\n6. 매출 분류는 분기TTM 을 우선한다. 연간과 분기TTM 이 어긋나는 종목이 미국 기준 401개 중 98개(24%)나 되므로, 스냅샷에 \"꺾이는 중/돌아서는 중\" 표시가 있으면 그게 이 종목의 핵심 논점이다.\n7. 추정치가 비어 있는 것은 \"추정치가 나쁘다\"가 아니라 \"못 받았다\"는 뜻이다 — 감점 사유가 아니다. 비어 있는 종목만 웹검색으로 증권사 컨센서스 방향을 직접 확인하라.\n8. 스크리너는 컨센서스 '방향'만 본다. 절대 수준(목표가 대비 위치)은 안 본다.\n\n[검증 절차 — 분석에 앞서 반드시]\nV1. 스냅샷 숫자를 표로 요약한다. 원문 그대로, 각색 금지.\nV2. 스프레드 분해: 영업이익 증가가 (1)유기적 매출성장·마진개선인지 (2)전년 적자·저기저에서의 흑자전환인지 (3)자산처분익·지분법·환율 같은 일회성이 섞인 것인지 — 한국은 DART 분기보고서 주석, 미국은 8-K·10-Q 로 구분한다. (2)(3)이면 스프레드는 과대표시다.\nV3. 가이던스·경영진 톤: 미국은 보도자료·어닝콜에서 다음 분기·연간 가이던스의 방향(상향/유지/하향)과 어조(자신감/방어)를 인용한다. 한국 기업은 명시적 가이던스가 약하므로 증권사 컨센서스로 대체한다.\nV4. RS 해석: 6개월 약세인데 3개월 급등이면 '점화 직후(이미 절반 반영)', 6개월 강세인데 3개월 둔화면 '정점 통과·냉각'일 수 있다. 어느 쪽인지 판정한다.\nV5. 수급·일정: 한국은 외국인·기관 순매수와 지분율 추세, 공매도·대차잔고, 신용융자를 웹검색(네이버 금융 등)으로 확인한다. 미국은 다음 실적 발표일과 다가오는 촉매를 확인한다.\nV6. 컨센서스: 증권사(애널리스트) 목표가 대비 현재가 위치 — 이미 추월했는지, 괴리가 남았는지.\nV7. 추정치 방향: 최근 1~3개월 EPS·영업이익 컨센서스가 상향인지 하향인지 확인한다. 스냅샷에 est30/est90 이 있으면 그 값을 쓰고, 없으면(한국 종목 대부분) 웹검색으로 보강한다. **실적 숫자는 좋은데 추정치가 계속 하향이면 가치함정을 강하게 의심하라** — 시장은 이미 다음 분기를 보고 있다는 뜻이다. 미국 기업은 경영진 가이던스 방향(상향/유지/하향)도 함께 본다.\nV0. **가장 먼저 — 실적 반영 여부.** 스냅샷의 분기 기준(q_end) 이후에 실적 발표가 있었는지 확인한다. 있었다면 스냅샷의 스프레드·가속·매출은 전부 그 이전 분기 이야기이고, 주가는 이미 새 실적에 반응한 뒤다. 이 경우 \"선취매 후보\"라는 전제 자체가 깨진 것이므로, 새 실적 숫자로 스프레드를 다시 계산한 뒤에야 나머지 분석이 의미를 갖는다. 스크리너가 이런 종목을 걸러내지만, 걸러지지 않고 넘어온 것이 있는지 네가 다시 확인하라.\nV8. 매출 방향 변곡: 연간 매출과 최근 4분기(분기TTM) 매출의 방향이 다르면, 어느 쪽이 이 기업의 '현재'인지 1차 자료로 판정한다. 이익 레버리지가 매출 성장에서 오는지 비용절감에서 오는지가 여기서 갈린다.\n모든 외부 사실에는 출처를 달고, 확인 못 한 것은 \"미확인\"으로 표기한다.\n\n[분석·출력 형식 — 이 순서로 쓴다]\n① 스냅샷 요약(표) + 검증 결과 — 원문과 다른 숫자가 있으면 명시\n② 헤게모니 진위 — V2 기준 청결도 판정(깨끗 / 기저효과 / 일회성 오염) + 분기 추세로 가속/피크아웃 결론 + **레버리지의 출처 판정**: 매출 성장에서 오는 '동반성장'인가, 매출이 정체·감소하는데 비용절감으로 만든 '축소형'인가. 축소형이면 자를 살이 얼마나 남았는지(판관비율·인력·설비 추이)와 매출이 언제 돌아서는지를 논점으로 잡아라 — 이건 헤게모니가 아니라 턴어라운드 논제다.\n③ 산업·해자 — 세부산업의 수요 사이클·정책·경쟁구도, 가격결정력·점유율을 지킬 구조적 해자가 있는지(없으면 마진 레버리지는 일시적)\n④ 밸류에이션 — 현재 PER 을 역사 레인지·동종업계와 비교. 헤게모니 강도 대비 싼지/제값인지/비싼지, 안전마진 유무\n⑤ 가격 반영도 / 선취매 판정 (가장 비중 있게) — (a) RS 6M/3M 패턴과 52주 고점比 (b) 컨센서스 목표가 대비 위치 (c) 밸류에이션의 역사적 위치 (d) 수급·촉매(V5) (e) **추정치 방향(V7)** 을 종합해 [잠복·선취매 / 초기 반영 / 점화 직후(절반 반영) / 정점 통과·냉각 / 고점권 과반영] 중 하나로 판정하고 근거를 댄다. 이 도구가 찾는 것은 \"이익 레버리지가 실제로 강해지고 추정치도 막 좋아지기 시작했는데 주가는 아직 안 따라온\" 자리다 — 세 조건 중 몇 개가 충족됐는지 명시하라. 타이밍 등급(A/B/C)이 C 라면 \"논제는 맞지만 아직 떨어지는 중\"이라는 뜻이므로 분할매수 간격을 넓히는 근거로 쓴다.\n⑥ 베어 케이스(스틸맨) — 이 종목을 사면 안 되는 가장 강력한 반대 논거를 일부러 세게\n⑦ 반증 조건 — 논제가 틀렸음을 입증할 단 하나의 관찰값·이벤트\n⑧ 결론 — 관찰 / 분할매수 검토 / 보류 중 택1 + (⑤와 연결해) 지금이 '먼저 들어갈 자리'인지 '추격 위험 자리'인지 + 진입 전 체크리스트 + 다음 실적에서 확인할 핵심 1~2개 + 확신도(상/중/하)와 근거\n붙여넣기에 별도의 번호 달린 분석 요청이 포함돼 있으면 그쪽 구조를 우선한다.\n\n[절대 규칙]\n- 매수·매도를 단정하지 마라. 지시가 아니라 판단 재료를 정리하라.\n- 차트 기술지표(이동평균·RSI·볼린저·거래량 패턴 등)는 쓰지 마라. 펀더멘털·수급·일정만 다룬다.\n- 확인하지 못한 것은 \"미확인\"으로 표시하라. 숫자를 지어내지 마라.\n- 외부 사실에는 출처를 달아라. 검색이 안 되면 안 된다고 말하라.\n- 목표가를 찍지 마라. 대신 논제가 깨지는 조건을 줘라. 손절가와 비중은 사용자가 R-멀티플로 직접 정한다.\n- 한국어로 답하고, 용어는 위 데이터 사전의 정의대로 쓴다.";
 function copyGptGuide(btn){
  const prev=document.getElementById('promptPreview');
@@ -1716,6 +1770,57 @@ function copyPrompt(tk,btn){
  if(navigator.clipboard&&navigator.clipboard.writeText){
    navigator.clipboard.writeText(txt).then(done).catch(()=>{fallbackCopy(txt);done();});
  }else{fallbackCopy(txt);done();}
+}
+
+// ── 산업 레이더 → 프로젝트룸 검증 ────────────────────────────────
+// 종목과 같은 2단 구조다: 지침(IND_GUIDE)은 프로젝트룸에 최초 1회,
+// 산업 스냅샷은 검증할 때마다 복사해 붙인다. 산업 중앙값은 표본이 작아
+// 한 종목에 끌려갈 수 있으므로, "실제로 산업이 가속 중인가 · 정말 안
+// 깨어났는가"를 사람이 1차 자료로 재확인하는 것까지가 이 기능의 목적이다.
+function indSnapshot(x){
+ const nm=x.s.ko||x.s.desc;
+ const f=(v,u='p')=>v==null?'—':(v>0?'+':'')+v+u;
+ const mem=[...x.clean].sort((a,b)=>(b.q_spread||-999)-(a.q_spread||-999)).slice(0,6);
+ const flags=m=>{const t=[];
+   if(/잠정/.test(m.q_src||'')) t.push('잠정');
+   if(ttmConflict(m)) t.push('TTM충돌');
+   if(staleness(m).s==='stale') t.push('실적미반영');
+   if(spreadQuality(m)==='base') t.push('기저효과');
+   return t.length?' ['+t.join('·')+']':'';};
+ const qends=x.clean.map(m=>m.q_end).filter(Boolean);
+ const qend=qends.sort()[qends.length-1]||'미기록';
+ const prelim=x.clean.filter(m=>/잠정/.test(m.q_src||'')).length;
+ const excluded=x.s.members.length-x.clean.length;
+ return `[헤게모니 트리 산업 스냅샷] ${nm} (${x.s.desc}) — 설치된 '산업 검증 지침'의 절차와 출력 형식대로 분석하라.
+
+[시장] 한국 (K-IFRS 연결 영업이익 · 벤치마크 코스피) · 데이터 기준일 ${D.updated||'미상'} (주간 스냅샷) · 분기 데이터 기준 ${qend}
+[산업 집계 — 기저효과 제외한 ${x.clean.length}종목 중앙값 (전체 ${x.s.members.length}, 제외 ${excluded})]
+- 가속 중앙 ${f(x.acc)} · 분기TTM 스프레드 중앙 ${f(x.qsp)} · RS6M 중앙 ${f(x.rs,'%')}
+- 전 조건 통과 종목 ${x.hits.length}개${x.hits.length?` (${x.hits.map(m=>m.tk).join(', ')})`:''}
+- 스크리너 판정: ${x.obs?`관찰 (미충족: ${x.miss.join(' · ')})`:'본후보 — 가속>0 · 분기>0 · RS6M<+10% · 통과종목≥1 모두 충족'}
+${prelim?`- 구성 중 ${prelim}종목은 최신 분기가 잠정실적(확정에서 바뀔 수 있음)\n`:''}
+[구성 종목 — 분기TTM 스프레드 순 상위 ${mem.length}]
+${mem.map(m=>`- ${m.tk} ${m.nm} | 연간 ${f(m.spread)} | 분기 ${f(m.q_spread)} | 가속 ${f(m.accel)} | 매출${m.q_rev!=null?'분기':'연간'} ${f(revClass(m).r,'%')} | RS6M ${f(m.rs6,'%')} | 고점比 ${f(m.from_high,'%')} | PER ${peShow(m)}${flags(m)}`).join('\n')}
+
+[스크리너가 확인하지 못한 것 — 네 검증 대상]
+- 이 집계가 산업 공통 동인(수요·가격·정책)의 결과인지, 개별 종목 사정의 우연 집합인지
+- RS6M 이 낮은 이유가 '아직 못 본 것'인지 '이유 있는 소외(구조적 쇠퇴)'인지
+- 업황 1차 지표(가격·수주·재고·가동률)로 본 사이클 위치`;
+}
+function copyIndSnap(i,btn){
+ const x=LAST_INDS[i]; if(!x) return;
+ const txt=indSnapshot(x);
+ const prev=document.getElementById('promptPreview');
+ if(prev){prev.textContent=txt;prev.classList.add('show');}
+ const done=()=>{btn.textContent='✅';setTimeout(()=>{btn.textContent='📋';},2000);};
+ if(navigator.clipboard&&navigator.clipboard.writeText){
+   navigator.clipboard.writeText(txt).then(done).catch(()=>{fallbackCopy(txt);done();});
+ }else{fallbackCopy(txt);done();}
+}
+function copyIndGuide(btn){
+ const done=()=>{btn.textContent='✅ 복사됨! 프로젝트룸의 Instructions(지침) 칸에 붙여넣으세요';btn.classList.add('done');setTimeout(()=>{btn.textContent='🏭 산업 검증 GPT 지침 복사 — 프로젝트룸에 최초 1회';btn.classList.remove('done');},2600);};
+ if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(IND_GUIDE).then(done).catch(()=>{fallbackCopy(IND_GUIDE);done();});}
+ else{fallbackCopy(IND_GUIDE);done();}
 }
 function fallbackCopy(txt){
  const ta=document.createElement('textarea');ta.value=txt;ta.style.position='fixed';ta.style.opacity='0';
