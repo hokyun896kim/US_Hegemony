@@ -24,17 +24,22 @@ DART 는 4~6주를 2주로 줄인다. 그런데 **잠정실적은 DART 재무제
   · 아직 끝나지 않은 분기는 버린다(기말일 > 오늘)
   · 그러고도 남은 값은 상식 검사를 통과해야 한다
 
-응답 형태를 모른다는 문제
--------------------------
-이 모듈을 만든 환경에서 네이버에 네트워크가 닿지 않아(프록시 403) 응답을 눈으로
-보지 못했다. DART 에서 형태를 가정하고 파서를 썼다가 **기간이 다른 두 컬럼을
-섞어 매출이 음수인 분기를 만든 적이 있다.** 같은 실수를 반복하지 않으려고
-이 모듈은 두 가지로 방어한다.
+확인된 응답 형태 (2026-08-08, Actions 프로브 실측 · 005930)
+-----------------------------------------------------------
+    최상위      ['itemCode', 'financePeriodType', 'financeInfo', 'corporationSummary']
+    계정 행     {'title': '매출액', 'columns': {'202603': ..., ...}}
+    단위        **억원** (DART 는 원 — 정확히 1e8 배 차이)
+    최신 분기   2026-06-30  ← DART 는 2026-03-31 까지였다. 이 한 분기가 목적이다.
+
+이 모듈을 만든 환경에서는 네이버에 네트워크가 닿지 않아(프록시 403) 개발 중에는
+응답을 못 봤다. DART 에서 형태를 가정하고 파서를 썼다가 **기간이 다른 두 컬럼을
+섞어 매출이 음수인 분기를 만든 적이 있어서**, 이번엔 순서를 바꿨다.
 
   1. **트리 모양을 가정하지 않는다.** JSON 어디에 있든 계정명으로 찾아 들어간다.
      중첩이 달라져도, 키 이름이 바뀌어도 계정명만 맞으면 걸린다.
-  2. `python naver.py --probe 005930` 이 실제 응답을 그대로 찍는다.
-     Actions 에서 한 번 돌려 형태를 확인한 뒤에 믿는다.
+     (자가진단이 서로 다른 세 가지 중첩에서 같은 값을 읽는지 확인한다.)
+  2. `--probe` 로 실제 응답을 먼저 보고 나서 확정했다. 위 '확인된 응답 형태' 가
+     그 결과다. 네이버가 구조를 바꾸면 프로브를 다시 돌려 갱신한다.
 
   python naver.py --selftest        # 네트워크 없이 파싱 검증
   python naver.py --probe 005930    # 실제 응답 구조 확인
@@ -42,6 +47,7 @@ DART 는 4~6주를 2주로 줄인다. 그런데 **잠정실적은 DART 재무제
 from __future__ import annotations
 
 import json
+import math
 import re
 import sys
 import time
@@ -49,12 +55,11 @@ import urllib.error
 import urllib.request
 from datetime import date
 
-# 후보 엔드포인트. 어느 게 살아있는지 프로브로 확인한 뒤 줄인다.
-# 모바일 API 가 JSON 이라 HTML 을 긁는 것보다 훨씬 덜 깨진다.
+# 실측(프로브)으로 확인한 순서. 모바일 API 가 JSON 이라 HTML 을 긁는 것보다
+# 훨씬 덜 깨진다. .../finance/quarterly 는 404 라 뺐다.
 ENDPOINTS = [
-    "https://m.stock.naver.com/api/stock/{code}/finance/quarter",
-    "https://m.stock.naver.com/api/stock/{code}/finance/quarterly",
-    "https://m.stock.naver.com/api/stock/{code}/integration",
+    "https://m.stock.naver.com/api/stock/{code}/finance/quarter",   # 200 · 분기 손익
+    "https://m.stock.naver.com/api/stock/{code}/integration",       # 200 · 예비
 ]
 
 UA = {
@@ -247,6 +252,75 @@ def quarters(code: str, today: date | None = None, js=None, log=print):
     return out
 
 
+def splice(dart_qs, naver_qs, log=print):
+    """DART(확정) 위에 네이버(잠정)의 '더 최근 분기'만 얹는다.
+
+    돌려주는 값: (분기목록, 붙인 잠정 분기 수)
+
+    확정이 있으면 확정이 이긴다. 네이버는 DART 가 아직 못 준 최근 분기만 채운다.
+
+    **여기가 새 사고가 날 자리다.** 두 소스는 단위가 다르다. 실측(005930):
+
+        DART   2026-03-31  매출 133,873,444,000,000   ← 원
+        네이버 2026-03-31  매출         1,338,734      ← 억원 (정확히 1e8 배)
+
+    그대로 이어 붙여 TTM 을 만들면 매출이 1억 배가 되고, 그 숫자는 '엄청난
+    성장'처럼 보인다. DART 에서 기간이 다른 두 컬럼을 섞었던 것과 같은 사고다.
+
+    그래서 **겹치는 분기로 배수를 알아내고 맞춘 뒤에** 붙인다. 인정하는 배수는
+    10의 거듭제곱뿐이다 — 어중간한 배수(예: 1.4배)는 단위 문제가 아니라 계정
+    정의가 다른 것이므로 붙이면 안 된다. 대조할 분기가 2개 미만이면 우연일 수
+    있으므로 역시 붙이지 않는다.
+    """
+    if not naver_qs:
+        return dart_qs, 0
+    if not dart_qs:
+        return [], 0          # 대조할 기준이 없으면 잠정만으로 시작하지 않는다
+
+    last = max(e for e, _, _ in dart_qs)
+    if not [e for e, _, _ in naver_qs if e > last]:
+        return dart_qs, 0     # 얹을 게 없으면 대조 자체가 불필요
+
+    d_by = {e: r for e, r, o in dart_qs if r}
+    n_by = {e: r for e, r, o in naver_qs if r}
+    common = sorted(set(d_by) & set(n_by))
+    ratios = [n_by[e] / d_by[e] for e in common]
+    if len(ratios) < 2:
+        log(f"  네이버: 대조할 분기가 {len(ratios)}개뿐 — 우연일 수 있어 붙이지 않는다")
+        return dart_qs, 0
+
+    f = _unit_factor(ratios)
+    if f is None:
+        rs = ", ".join(f"{r:.4g}" for r in sorted(ratios))
+        log(f"  네이버: 겹치는 분기 비율이 일정한 10의 거듭제곱이 아니다({rs}) "
+            f"— 계정 정의가 다르다고 보고 붙이지 않는다")
+        return dart_qs, 0
+
+    # 네이버 값을 DART 단위로 되돌린다
+    extra = [(e, None if r is None else r / f, None if o is None else o / f)
+             for e, r, o in naver_qs if e > last]
+    unit = "" if f == 1 else f" (단위 {1/f:,.0f}배 보정)"
+    log(f"  네이버: 잠정 {len(extra)}개 분기를 얹는다"
+        f"({', '.join(e for e, _, _ in extra)}) — 겹치는 {len(common)}개로 대조 통과{unit}")
+    return sorted(dart_qs + extra), len(extra)
+
+
+def _unit_factor(ratios):
+    """겹치는 분기 비율에서 단위 배수를 찾는다. 못 찾으면 None.
+
+    DART 는 원, 네이버는 억원으로 준다(실측: 1e8 배). 10의 거듭제곱만 인정하고,
+    **겹치는 모든 분기가 같은 배수로 설명돼야** 통과시킨다. 하나라도 어긋나면
+    단위가 아니라 정의가 다른 것이다.
+
+    허용 오차 3% — 네이버가 억원 단위로 반올림하므로 작은 회사일수록 오차가 크다.
+    """
+    mid = sorted(ratios)[len(ratios) // 2]
+    if mid <= 0:
+        return None
+    f = 10.0 ** round(math.log10(mid))
+    return f if all(abs(r / f - 1) <= 0.03 for r in ratios) else None
+
+
 # ── 자가진단 ─────────────────────────────────────────────────────
 def selftest() -> int:
     ok = [True]
@@ -326,6 +400,56 @@ def selftest() -> int:
     t(quarters("005930", today=date(2026, 8, 8), js={"rowList": [
         {"title": "당기순이익", "columns": {"202606": "99"}}]},
         log=lambda *a: None) == [], "매출·영익이 없으면 빈 목록")
+
+    print("\n── 확정 위에 잠정 얹기 (실측값으로) ──")
+    # 아래 숫자는 지어낸 게 아니라 Actions 프로브에서 실제로 받은 005930 값이다.
+    #   DART   원    · 최신 2026-03-31 (1분기까지)
+    #   네이버 억원  · 최신 2026-06-30 (2분기 — 우리가 못 보던 그 분기)
+    # 두 소스가 정확히 1e8 배 차이 난다. 그대로 붙이면 매출이 1억 배가 된다.
+    D = [("2025-09-30", 86_061_700_000_000.0, 12_166_100_000_000.0),
+         ("2025-12-31", 93_837_371_000_000.0, 20_073_660_000_000.0),
+         ("2026-03-31", 133_873_444_000_000.0, 57_232_797_000_000.0)]
+    N = [("2025-09-30", 860_617.0, 121_661.0),
+         ("2025-12-31", 938_374.0, 200_737.0),
+         ("2026-03-31", 1_338_734.0, 572_328.0),
+         ("2026-06-30", 1_738_644.0, 850_494.0)]
+
+    out, n = splice(D, N, log=lambda *a: None)
+    t(n == 1, f"잠정 2분기 하나를 얹는다 (얹은 수 {n})")
+    t([e for e, _, _ in out][-1] == "2026-06-30", f"최신이 2분기가 된다 ({[e for e,_,_ in out][-1]})")
+    got = out[-1][1]
+    t(abs(got - 173_864_400_000_000.0) / 173_864_400_000_000.0 < 0.01,
+      f"얹은 값이 DART 단위(원)로 보정된다 ({got:,.0f})")
+    t(out[2] == D[2], "겹치는 분기는 확정(DART)이 이긴다")
+    # 1억 배 그대로 들어가면 매출이 173조가 아니라 1,738,644 원이 된다
+    t(got > 1e14, f"보정을 빠뜨려 억원이 그대로 들어가지 않는다 ({got:,.0f})")
+
+    # 같은 단위끼리도 당연히 붙는다
+    D2 = [("2025-12-31", 100.0, 10.0), ("2026-03-31", 110.0, 12.0)]
+    N2 = [("2025-12-31", 100.0, 10.0), ("2026-03-31", 110.0, 12.0),
+          ("2026-06-30", 150.0, 16.0)]
+    out2, n2 = splice(D2, N2, log=lambda *a: None)
+    t(n2 == 1 and out2[-1] == ("2026-06-30", 150.0, 16.0),
+      f"단위가 같으면 그대로 얹는다 ({out2[-1]})")
+
+    print("\n── 붙이면 안 되는 경우 ──")
+    # 어중간한 배수 = 단위 문제가 아니라 계정 정의가 다른 것
+    N3 = [(e, r * 1.4, o * 1.4) for e, r, o in N2]
+    t(splice(D2, N3, log=lambda *a: None)[1] == 0, "1.4배는 단위가 아니므로 안 붙인다")
+    # 배수가 분기마다 들쭉날쭉해도 안 된다
+    N4 = [("2025-12-31", 100.0, 10.0), ("2026-03-31", 200.0, 12.0),
+          ("2026-06-30", 150.0, 16.0)]
+    t(splice(D2, N4, log=lambda *a: None)[1] == 0,
+      "겹치는 분기 비율이 일정하지 않으면 안 붙인다")
+    t(splice(D2, [("2026-03-31", 110.0, 12.0), ("2026-06-30", 150.0, 16.0)],
+             log=lambda *a: None)[1] == 0, "대조할 분기가 1개뿐이면 우연일 수 있어 안 붙인다")
+    t(splice(D2, [("2026-06-30", 150.0, 16.0)], log=lambda *a: None)[1] == 0,
+      "겹치는 분기가 없으면 안 붙인다")
+    t(splice(D2, [], log=lambda *a: None) == (D2, 0), "네이버가 비면 확정 그대로")
+    t(splice([], N2, log=lambda *a: None) == ([], 0),
+      "확정이 없으면 잠정만으로 시작하지 않는다(대조 기준이 없다)")
+    t(splice(D2, [("2025-12-31", 100.0, 10.0)], log=lambda *a: None)[1] == 0,
+      "네이버가 더 최근 분기를 못 주면 얹을 게 없다")
 
     print("\n✅ 전부 통과" if ok[0] else "\n❌ 실패")
     return 0 if ok[0] else 1

@@ -108,6 +108,20 @@ for (const [file, url] of [['index.html', 'https://x.test/'], ['us.html', 'https
    const html = w.document.getElementById('radarPanel').innerHTML;
    const iStale = html.indexOf('실적 확인 필요'), p = html.indexOf('>NOQE<');
    t(p < 0 || (iStale >= 0 && p > iStale), 'q_end 없이 막 발표한 종목은 선취매 권역에 없음');}
+
+  // 잠정실적으로 최신 분기를 메운 종목 — 한국만 해당한다(미국은 8-K 가 확정치를
+  // 바로 준다). 잠정 덕에 2~4주 먼저 보는 대신 확정에서 숫자가 바뀔 수 있으므로,
+  // 그 사실이 화면에 반드시 드러나야 한다. 잠정을 확정처럼 보여주면 안 된다.
+  if (file === 'index.html') {
+    const prelim = stock('PRELIM', '2026-06-30', null, { q_src: 'DART+잠정' });
+    const firm   = stock('FIRM',   '2026-06-30', null, { q_src: 'DART' });
+    t(E('isPrelim')(prelim) === true && E('isPrelim')(firm) === false, '잠정 여부 판별');
+    t(E('accelCheck')(prelim).ok === true, '잠정이라고 후보에서 빼지는 않는다(그게 목적이다)');
+    t(/잠정/.test(E('staleness')(prelim).t), `신선도 문구에 잠정 표시 (${E('staleness')(prelim).t})`);
+    t(/잠정/.test(E('radarRisk')(prelim)), '결격 항목에 잠정 표시');
+    t(!/잠정/.test(E('radarRisk')(firm)), '확정 종목에는 잠정 표시가 없다');
+    t(!/잠정/.test(E('staleness')(firm).t), '확정 종목 신선도 문구에도 없다');
+  }
 }
 
 console.log(ok ? '\n✅ 실적 반영 지연 판정 통과' : '\n❌ 실패');

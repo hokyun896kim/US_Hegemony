@@ -28,6 +28,7 @@ from pathlib import Path
 
 import dart
 import est_trend
+import naver
 
 OUT = Path(__file__).resolve().parent / "data" / "tree_kr.json"
 BENCH = "^KS11"  # 코스피 종합
@@ -424,6 +425,9 @@ def num(v):
 
 # 종목코드 → DART 고유번호. 빌드 시작 때 한 번 받는다(키 없으면 빈 dict).
 DART_CORP: dict = {}
+# 잠정실적(네이버)을 얹을지. 확정(DART)이 있어야 대조가 되므로 DART 와 짝이다.
+# NO_NAVER=1 로 끌 수 있다 — 네이버가 구조를 바꿔 이상해지면 즉시 끄기 위해서다.
+USE_NAVER: bool = not os.environ.get("NO_NAVER")
 
 
 def fetch_stock(tk, log=print):
@@ -459,9 +463,9 @@ def fetch_stock(tk, log=print):
     # 다음에야 주기 때문에 매 분기 1~3주가 더 밀린다(실측: 8/8 에 223종목 중
     # 216종목이 아직 1분기까지였다). DART 는 접수 즉시 정형으로 준다.
     # 키가 없거나 못 받으면 조용히 yfinance 로 떨어진다 — 화면은 그대로 돈다.
-    qseries = None
+    code = tk.split(".")[0]
+    qseries, prelim = None, 0
     if DART_CORP:
-        code = tk.split(".")[0]
         corp = DART_CORP.get(code)
         if corp:
             try:
@@ -471,15 +475,26 @@ def fetch_stock(tk, log=print):
             except Exception as exc:  # noqa: BLE001 — 실패는 폴백으로 흡수
                 log(f"  {tk} DART 실패({exc}) — yfinance 로 대체")
 
+    # DART 가 확정만 주는 사이, 시장은 이미 잠정으로 다음 분기를 보고 있다.
+    # 그 한 분기를 네이버에서 받아 얹는다 — 선취매 도구에서 정작 중요한 구간이다.
+    # 단위가 달라(DART 원 / 네이버 억원) 그냥 붙이면 매출이 1억 배가 되므로,
+    # splice() 가 겹치는 분기로 배수를 대조하고 못 맞추면 붙이지 않는다.
+    if qseries and USE_NAVER:
+        try:
+            nq = naver.quarters(code, log=lambda *a: None)
+            qseries, prelim = naver.splice(qseries, nq, log=lambda *a: None)
+        except Exception as exc:  # noqa: BLE001 — 잠정은 없어도 되는 값이다
+            log(f"  {tk} 네이버 실패({exc}) — 확정(DART)만 씁니다")
+
     q_src = "yfinance"
     q_rev = q_op = q_end = None
     if qseries:
         q_rev, q_op, q_note, q_approx, q_end = quarterly_ttm(qinc, inc, qseries)
         if q_rev is not None or q_op is not None:
-            q_src = "DART"
+            q_src = "DART+잠정" if prelim else "DART"
     # DART 가 분기를 4개 넘겨줬어도 매출·영익이 군데군데 비면 TTM 이 안 나온다.
     # 그때 그냥 포기하면 yfinance 로 얻었을 값까지 같이 잃는다 — 다시 시도한다.
-    if q_src != "DART":
+    if not q_src.startswith("DART"):
         q_rev, q_op, q_note, q_approx, q_end = quarterly_ttm(qinc, inc)
 
     info = {}
