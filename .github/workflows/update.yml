@@ -3,6 +3,10 @@ name: Update Hegemony Data
 on:
   schedule:
     - cron: '0 22 * * 6'   # 매주 토요일 22:00 UTC = 한국 일요일 07:00
+    # Actions 공용 출구 IP 가 SEC 에 이미 차단돼 있으면 그 회차는 실패한다
+    # (다른 크롤러들이 달궈놓은 IP 를 뽑는 복권). 12시간 뒤 백업 슬롯이
+    # 새 출구를 뽑아 재시도한다. 성공 회차가 이미 커밋했으면 백업은 무해하다.
+    - cron: '0 10 * * 0'   # 일요일 10:00 UTC = 한국 일요일 19:00 (백업)
   workflow_dispatch:
     inputs:
       commit:

@@ -19,12 +19,14 @@ UA_SEC={"User-Agent":(os.environ.get("SEC_UA") or "").strip()
 UA_YH ={"User-Agent":"Mozilla/5.0 (Macintosh) research"}
 _ua_warned=False; _last_sec=0.0
 def _throttle(u):
-    # SEC 공정접근 정책은 초당 10건이 상한이다. 넘기면 IP 단위로 막힌다.
-    # 이 빌더는 종목당 여러 번 부르므로 전역으로 간격을 강제한다.
+    # SEC 상한은 초당 10건이지만, Actions 러너는 공유 NAT 출구 IP 를 쓴다 —
+    # 같은 IP 뒤의 다른 크롤러 트래픽과 합산되므로 상한을 꽉 채우면 안 된다.
+    # (실측: 우리 잡이 놀고 있어도 첫 요청부터 403 인 출구가 있었다)
+    # 초당 ~3건으로 낮춰 헤드룸을 남긴다. 1500건 기준 SEC 구간 약 8분.
     global _last_sec
     if "sec.gov" not in u: return
     dt=time.time()-_last_sec
-    if dt<0.11: time.sleep(0.11-dt)
+    if dt<0.35: time.sleep(0.35-dt)
     _last_sec=time.time()
 
 def get(u,h=UA_SEC,t=60,tries=3):
@@ -48,18 +50,18 @@ def get(u,h=UA_SEC,t=60,tries=3):
                 print(f"\n[!] SEC {e.code} — {why}",file=sys.stderr)
                 print(f"    URL: {u}",file=sys.stderr)
                 if rate:
-                    print("    요청 속도 제한입니다(UA 문제 아님). Actions 공용 러너 IP 는 다른",file=sys.stderr)
-                    print("    크롤러들 때문에 이미 타 있는 경우가 많습니다(실측: 첫 요청부터 403).",file=sys.stderr)
-                    print("    SEC 차단은 IP 당 10분이고 러너 IP 는 이 잡이 독점하므로,",file=sys.stderr)
-                    print("    11분 기다렸다 자동 재시도합니다.",file=sys.stderr)
+                    print("    요청 속도 제한입니다(UA 문제 아님). Actions 러너의 공유 출구 IP 가",file=sys.stderr)
+                    print("    다른 크롤러들 때문에 이미 타 있는 경우입니다(실측: 첫 요청부터 403).",file=sys.stderr)
+                    print("    11분 대기 후 재시도하되, 공유 출구가 계속 달궈지면 이 회차는",file=sys.stderr)
+                    print("    실패로 끝납니다 — 다음 스케줄(백업 슬롯 포함)이 새 출구를 뽑습니다.",file=sys.stderr)
                 else:
                     print(f'    UA: {h.get("User-Agent")!r}',file=sys.stderr)
                     print('    저장소 Secret 에 SEC_UA="이름 you@example.com" 를 넣어보세요.',file=sys.stderr)
                 print("",file=sys.stderr)
             if i<tries-1:
-                # 속도 제한: SEC 차단은 IP 당 10분 창이다. 러너를 잡은 순간 그 IP 는
-                # 우리 독점이므로(전 세입자의 초과분만 남아 있음) 11분이면 풀린다.
-                # 90초 재시도는 창 안이라 무의미했다 — 실측으로 확인.
+                # 속도 제한 시 11분 대기 후 재시도. 다만 출구 IP 가 공유 NAT 라
+                # 다른 세입자가 계속 달구면 대기로도 안 풀린다(실측: 22분 대기에도
+                # 지속). 그런 회차는 포기하고 다음 스케줄이 새 출구를 뽑게 한다.
                 w=660 if rate else 5
                 print(f"    … {w}초 대기 후 재시도 ({i+1}/{tries-1})",file=sys.stderr)
                 time.sleep(w)
