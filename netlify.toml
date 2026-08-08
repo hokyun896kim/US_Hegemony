@@ -16,6 +16,20 @@
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
 
+# 화면 코드도 캐시에 눌러붙으면 안 된다. 아이폰 홈 화면 웹앱(standalone)은
+# 새로고침 버튼이 없어서, 낡은 HTML 이 캐시에 남으면 사용자가 스스로 벗어날
+# 방법이 없다. 매번 서버에 확인하게 하되(must-revalidate) 안 바뀌었으면
+# 304 로 끝나므로 트래픽 부담은 없다.
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
 # 홈 화면 추가(웹앱)가 동작하려면 매니페스트가 올바른 타입으로 나가야 한다.
 [[headers]]
   for = "/*.webmanifest"

@@ -483,11 +483,27 @@ h1+.sub,h1~.sub:first-of-type{color:var(--txt2)}
   border-left:3px solid var(--rule);border-radius:2px;padding:11px 13px;
   font-size:12.5px;line-height:1.75;color:var(--txt2)}
 .gi-fresh b{color:var(--txt)}
+
+/* 시계 · 장 상태 · 새로고침 — 머리글 오른쪽에 붙는다 */
+.hd-clock{display:inline-flex;align-items:baseline;gap:6px;margin-left:auto}
+.hd-clock .clk-t{font-variant-numeric:tabular-nums;font-weight:800;color:var(--txt);
+  font-size:13px;letter-spacing:.02em}
+.hd-clock .clk-s{font-size:10.5px;font-weight:700;color:var(--mut);
+  background:var(--panel2);border:1px solid var(--line);border-radius:2px;padding:0 5px}
+.hd-clock .clk-s.on{color:#fff;background:var(--up);border-color:var(--up)}
+.hd-reload{margin-left:8px;width:24px;height:24px;flex-shrink:0;cursor:pointer;
+  border:1px solid var(--line);background:var(--panel);border-radius:2px;
+  color:var(--rule);font-size:14px;line-height:1;font-family:inherit;
+  display:inline-flex;align-items:center;justify-content:center;transition:.15s}
+.hd-reload:hover{background:var(--rule);color:#fff;border-color:var(--rule)}
+.hd-reload.spin{animation:hdspin .6s linear}
+@keyframes hdspin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@media print{.hd-clock,.hd-reload{display:none}}
 </style></head><body><div class="wrap">
 <div class="kicker" style="display:flex;align-items:center;gap:10px;justify-content:space-between"><span>도토리 · KR Edition</span><a class="mkt-switch" href="./us.html">🇺🇸 미국판 →</a></div>
 <h1>한국 헤게모니 트리 <span style="font-size:.5em;color:var(--mut);-webkit-text-fill-color:var(--mut)">v1.3</span></h1>
 <hr class="hd-rule">
-<div class="hd-meta"><span>시장 <b>한국 (KOSPI·KOSDAQ)</b></span><span>벤치마크 <b>KOSPI</b></span><span>회계기준 <b>K-IFRS 연결</b></span><span id="hdDate">기준일 <b>—</b></span><span id="hdCount">수록 <b>—</b></span><span id="hdNext"></span></div>
+<div class="hd-meta"><span>시장 <b>한국 (KOSPI·KOSDAQ)</b></span><span>벤치마크 <b>KOSPI</b></span><span>회계기준 <b>K-IFRS 연결</b></span><span id="hdDate">기준일 <b>—</b></span><span id="hdCount">수록 <b>—</b></span><span id="hdNext"></span><span id="hdClock" class="hd-clock"></span><button id="hdReload" class="hd-reload" onclick="refresh(true)" title="데이터를 다시 받습니다">↻</button></div>
 <div class="def"><b>연간 YoY 옆에 분기 TTM(최근 4분기 연환산)을 나란히.</b> 둘의 차이가 <b>가속/둔화 신호</b>입니다 — 분기가 연간보다 높으면 헤게모니가 막 붙기 시작한 것(형님의 "남보다 먼저"). 3층 구조: 1층 펀더(연간+분기) · 2층 보조(상대강도·갭·변동성) · <b>밸류에이션(PER) 체크</b>. 차트로 고르지 않되, 차트 없이 사지 않는다. <b>종목의 트레이드 카드를 열면 DART 전자공시·네이버 금융·FnGuide로 바로가기</b> — 가이던스·톤은 점수화하지 않고 1차 자료를 직접 읽습니다.</div>
 <details class="gi" id="giBox">
 <summary class="gi-sum">📖 이 화면 읽는 법 <span class="gi-hint">· 30초면 충분합니다</span></summary>
@@ -1722,6 +1738,75 @@ async function toggleLog(tk, force){
 }
 async function delJournal(key,tk){try{await window.storage.delete(key,false);toggleLog(tk,true);}catch(e){}}
 ['tradeModal'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('show');});});
+
+// ── 시계 · 장 상태 · 새로고침 ─────────────────────────────────────
+// 아이폰 홈 화면 웹앱(standalone)은 주소창도 새로고침 버튼도 없고,
+// 당겨서 새로고침도 안 된다. iOS 는 앱을 잠재웠다 그대로 되살리므로
+// loadData() 가 다시 돌지 않아, 며칠 전에 띄운 화면을 계속 보게 된다.
+// 그래서 (1) 앱이 앞으로 돌아오면 스스로 다시 받고 (2) 손으로 누를
+// 버튼도 둔다. 브라우저에서 열었을 때도 해로울 게 없다.
+const MKT = {tz:'Asia/Seoul', name:'KRX', open:9*60, close:15*60+30, hours:'09:00–15:30'};
+
+// 시장 현지 시각을 부품으로 받는다. Intl 이 서머타임까지 처리해준다 —
+// 손으로 오프셋을 더하면 미국 서머타임 전환 때 한 시간씩 틀린다.
+function tzParts(tz, d){
+ const f = new Intl.DateTimeFormat('en-US', {timeZone: tz, hour12: false,
+   weekday: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit'});
+ const p = {};
+ for (const x of f.formatToParts(d)) p[x.type] = x.value;
+ const H = p.hour === '24' ? 0 : +p.hour;   // Intl 이 자정을 24 로 줄 때가 있다
+ return {wd: p.weekday, h: H, m: +p.minute, s: +p.second};
+}
+function marketState(d){
+ const t = tzParts(MKT.tz, d);
+ const weekend = (t.wd === 'Sat' || t.wd === 'Sun');
+ const mins = t.h * 60 + t.m;
+ const open = !weekend && mins >= MKT.open && mins < MKT.close;
+ const pre  = !weekend && mins < MKT.open;
+ return {
+   clock: `${String(t.h).padStart(2,'0')}:${String(t.m).padStart(2,'0')}:${String(t.s).padStart(2,'0')}`,
+   open,
+   label: weekend ? '휴장(주말)' : open ? '장중' : pre ? '개장 전' : '장 마감',
+ };
+}
+function tickClock(){
+ const el = document.getElementById('hdClock');
+ if (!el) return;
+ const st = marketState(new Date());
+ el.innerHTML = `<span class="clk-t">${st.clock}</span>`
+   + `<span class="clk-s ${st.open?'on':''}">${MKT.name} ${st.label}</span>`;
+ el.title = `${MKT.name} 현지 시각 (${MKT.tz}) · 정규장 ${MKT.hours}\n`
+          + `공휴일은 반영하지 않습니다.`;
+}
+
+// 마지막으로 데이터를 받은 시각. 앱이 앞으로 올 때마다 무작정 다시 받으면
+// 화면 전환할 때마다 요청이 나가므로 최소 간격을 둔다.
+let lastFetch = Date.now();
+const REFETCH_MIN = 60e3;
+async function refresh(manual){
+ const btn = document.getElementById('hdReload');
+ if (btn) btn.classList.add('spin');
+ try { await loadData(); lastFetch = Date.now(); }
+ finally { if (btn) setTimeout(()=>btn.classList.remove('spin'), 400); }
+}
+function onForeground(){
+ if (document.visibilityState !== 'visible') return;
+ if (Date.now() - lastFetch < REFETCH_MIN) return;
+ refresh(false);
+}
+// 화면이 가려져 있는 동안 초침을 돌릴 이유가 없다 — 휴대폰에서는 그게
+// 배터리다. 앞으로 돌아오면 즉시 한 번 그리고 다시 돌린다.
+let clockTimer = null;
+function startClock(){ if(!clockTimer){ tickClock(); clockTimer = setInterval(tickClock, 1000); } }
+function stopClock(){ if(clockTimer){ clearInterval(clockTimer); clockTimer = null; } }
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') { startClock(); onForeground(); }
+  else stopClock();
+});
+// iOS 가 뒤로가기·앱 복귀로 페이지를 캐시에서 되살릴 때
+window.addEventListener('pageshow', e => { startClock(); if (e.persisted) onForeground(); });
+window.addEventListener('pagehide', stopClock);
+startClock();
 
 // ── 아이폰 홈 화면 웹앱 대응 ──
 // standalone 으로 띄우면 iOS 가 링크를 사파리로 튕겨내는 경우가 있다.
