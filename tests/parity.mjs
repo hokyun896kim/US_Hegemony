@@ -46,9 +46,10 @@ function strip(code) {
 // ── 1) 시장 무관 판정 로직: 완전 일치 ─────────────────────────────
 // 이 목록에 있는 함수는 '한국이라서/미국이라서' 달라질 이유가 없다.
 // 여기가 어긋나면 두 시장이 같은 종목을 다르게 판정한다는 뜻이다.
-const SHARED = ['priceIn', 'realAccel', 'falling', 'detectBaseEffect',
-                'spreadQuality', 'medOf', 'peShow', 'valColor', 'verdict',
-                'radarWhy'];
+const SHARED = ['priceIn', 'cooling', 'realAccel', 'accelCheck', 'turnaround',
+                'falling', 'earnSoon', 'detectBaseEffect', 'hugeSpread',
+                'revClass', 'estTrend', 'spreadQuality', 'medOf', 'peShow',
+                'valColor', 'verdict', 'radarWhy'];
 console.log('\n━━ 시장 무관 판정 로직은 두 페이지가 같아야 한다 ━━');
 for (const name of SHARED) {
   const a = fnBody(KR, name), b = fnBody(US, name);
@@ -94,6 +95,16 @@ for (const name of ['scoreCandidate', 'radarRisk']) {
 
 // ── 2) 시장마다 달라도 되는 것: 요소만 확인 ────────────────────────
 // 문구와 1차 자료 이름은 달라야 맞다. 다만 '판정 요소가 빠지는 것'은 드리프트다.
+console.log('\n━━ 문턱값 상수(GATE)는 두 시장이 같아야 한다 ━━');
+{
+  const g = s => { const m = s.match(/const GATE=\{([\s\S]*?)\};/); return m ? strip(m[1]) : null; };
+  const a = g(KR), b = g(US);
+  t(!!a && !!b, 'GATE 상수 양쪽에 존재');
+  const same = a === b;
+  t(same, 'GATE 값 동일');
+  if (!same) { console.log('    KR ▸ ' + a); console.log('    US ▸ ' + b); }
+}
+
 console.log('\n━━ 시장별 문구는 달라도, 판정 요소는 양쪽에 다 있어야 한다 ━━');
 for (const [label, s] of [['KR', KR], ['US', US]]) {
   const radar = fnBody(s, 'renderRadar');
@@ -107,6 +118,13 @@ for (const [label, s] of [['KR', KR], ['US', US]]) {
   t(/x\.hits\.length>=1/.test(strip(radar)), `${label} 실제 후보 1개 이상인 산업만`);
   // 감춘 개수를 밝힌다 — '조용한 절삭' 금지
   t(/picksAll\.length/.test(strip(radar)), `${label} 상한으로 감춘 개수를 공개`);
+  // 축소형 레버리지는 삭제가 아니라 별도 구간으로 — 사라지면 사용자가 이유를 알 수 없다
+  t(/turnaround\(m\)/.test(strip(radar)), `${label} 축소형을 턴어라운드 구간으로 분리`);
+  // 어떤 조건으로 걸렀는지 화면에 밝힌다
+  t(/GATE\.MIN_ANN/.test(strip(radar)), `${label} 거르는 조건을 화면에 공개`);
+  // 타이밍은 후보 삭제가 아니라 등급으로
+  t(/sc\.tier/.test(strip(radar)), `${label} 타이밍 A·B·C 등급 표시`);
+  t(/sc\.parts\.Q/.test(strip(radar)), `${label} 점수 분해(품질·미반영·타이밍·밸류) 표시`);
 
   const why = fnBody(s, 'radarWhy'), risk = fnBody(s, 'radarRisk');
   t(!!why && !!risk, `${label} radarWhy·radarRisk 존재`);
@@ -114,6 +132,9 @@ for (const [label, s] of [['KR', KR], ['US', US]]) {
     // 근사치 경고: KR 은 q_approx, US 는 q_note. 이름은 달라도 경고 자체는 있어야 한다.
     t(/q_approx|q_note/.test(strip(risk)), `${label} 분기 데이터 한계를 경고`);
     t(/gaplvl/.test(strip(risk)), `${label} 갭위험을 경고`);
+    t(/estTrend|est30/.test(strip(risk)), `${label} 추정치 하향을 경고`);
+    t(/earnSoon/.test(strip(risk)), `${label} 실적 임박(D-7)을 경고`);
+    t(/shrink/.test(strip(risk)), `${label} 축소형 레버리지를 경고`);
   }
 }
 

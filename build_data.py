@@ -5,6 +5,7 @@
    그대로 두면 돌아간다. 다만 SEC 에 본인 연락처를 밝히려면 저장소 Secret 에
    SEC_UA 를 넣으면 된다(아래 UA_SEC 참고)."""
 import urllib.request, urllib.error, json, time, os, sys, statistics, re
+import est_trend
 from datetime import date
 
 # SEC 는 UA 에 '이름 + 연락 이메일' 형태를 요구하고, 이메일이 없으면 403 을 준다
@@ -52,8 +53,8 @@ def get(u,h=UA_SEC,t=60,tries=2):   # 속도제한 확인은 한 번이면 족�
                 if rate:
                     print("    요청 속도 제한입니다(UA 문제 아님). Actions 러너의 공유 출구 IP 가",file=sys.stderr)
                     print("    다른 크롤러들 때문에 이미 타 있는 경우입니다(실측: 첫 요청부터 403).",file=sys.stderr)
-                    print("    11분 대기 후 재시도하되, 공유 출구가 계속 달궈지면 이 회차는",file=sys.stderr)
-                    print("    실패로 끝납니다 — 다음 스케줄(백업 슬롯 포함)이 새 출구를 뽑습니다.",file=sys.stderr)
+                    print("    대기로는 안 풀립니다(실측: 22분 대기에도 지속). 이 회차 전체 빌드는",file=sys.stderr)
+                    print("    포기하고, refresh_prices.py 가 가격층만 갱신합니다 — 펀더멘털은 유지됩니다.",file=sys.stderr)
                 else:
                     print(f'    UA: {h.get("User-Agent")!r}',file=sys.stderr)
                     print('    저장소 Secret 에 SEC_UA="이름 you@example.com" 를 넣어보세요.',file=sys.stderr)
@@ -71,6 +72,11 @@ def get(u,h=UA_SEC,t=60,tries=2):   # 속도제한 확인은 한 번이면 족�
                 continue
             raise
 def getj(u,h=UA_SEC): return json.loads(get(u,h))
+try:
+    import yfinance as _yf
+except Exception:
+    _yf=None
+    print("[!] yfinance 없음 — 컨센서스 추정치는 비웁니다(나머지는 정상 동작)",file=sys.stderr)
 CUR=date.today().year-1; PRV=CUR-1
 
 print("[1/7] 티커맵")
@@ -267,6 +273,9 @@ for i,t in enumerate(allt):
     qrev=best_rev_ttm(cik) if cik else None
     qop,qnote=best_op_ttm(cik) if cik else (None,"CIK없음")
     qspread=round(qop-qrev,1) if (qrev is not None and qop is not None) else None
+    # 컨센서스 추정치 방향 — 야후 quoteSummary 는 crumb 인증을 타므로
+    # 그 처리를 대신해주는 yfinance 로만 이 값을 받는다. 실패는 조용히 None.
+    est=est_trend.fetch(_yf.Ticker(t)) if _yf else {"est30":None,"est90":None}
     # 상대강도
     s=yseries(t); rs3=rs6=gap=gaplvl=from_high=pe=eps=None
     if s:
@@ -299,6 +308,7 @@ for i,t in enumerate(allt):
                 m["rs3"]=rs3;m["rs6"]=rs6;m["gap"]=gap;m["gaplvl"]=gaplvl
                 m["from_high"]=from_high
                 m["pe"]=pe; m["eps"]=eps; m["fpe"]=None; m["peg"]=None
+                m["est30"]=est.get("est30"); m["est90"]=est.get("est90")
                 m["q_approx"]=False   # 미국은 8분기 정식 TTM 이라 근사가 아니다
                 m["ir"]=ir_map.get(t)
     if (i+1)%50==0: print(f"   {i+1}/{len(allt)}")

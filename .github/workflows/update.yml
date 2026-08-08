@@ -30,6 +30,12 @@ jobs:
         with:
           python-version: '3.12'
 
+      # yfinance 는 컨센서스 추정치(eps_trend)를 받을 때만 쓴다 — 야후
+      # quoteSummary 가 crumb 인증을 타는데 그 처리를 대신해준다.
+      # 설치가 실패해도 빌더는 추정치만 비우고 계속 돈다.
+      - name: Install deps
+        run: pip install --quiet yfinance || echo "::warning::yfinance 설치 실패 — 컨센서스 추정치는 비웁니다"
+
       - name: Build data
         id: build
         # SEC 가 막혀도 회차를 통째로 버리지 않는다 — 아래 단계가 받는다.
