@@ -1,15 +1,65 @@
 #!/usr/bin/env python3
 """미국 헤게모니 트리 — 통합 데이터 빌더 (GitHub Actions용)
-   SEC(연간 frames + 분기TTM + 비12월결산 보강 + IR) + Yahoo(상대강도) → data/tree.json
-   ★ 27행 UA 이메일만 본인 것으로 교체. 나머지 수정 불필요."""
-import urllib.request, json, time, os, statistics, re
+   SEC(연간 frames + 분기TTM + 비12월결산 보강 + IR + EPS) + Yahoo(시세) → data/tree.json
+
+   그대로 두면 돌아간다. 다만 SEC 에 본인 연락처를 밝히려면 저장소 Secret 에
+   SEC_UA 를 넣으면 된다(아래 UA_SEC 참고)."""
+import urllib.request, urllib.error, json, time, os, sys, statistics, re
 from datetime import date
 
-UA_SEC={"User-Agent":"YourName your@email.com"}   # ★★★ 교체 필수 ★★★
+# SEC 는 UA 에 '이름 + 연락 이메일' 형태를 요구하고, 이메일이 없으면 403 을 준다
+# (실측: 이메일 없는 UA 로 바꿨더니 [1/7] 티커맵에서 바로 막혔다).
+# 개인 메일을 공개 저장소에 박지 않으려고 기본값은 GitHub noreply 주소를 쓴다.
+# 본인 연락처를 쓰려면 저장소 Secret 에 SEC_UA 를 넣으면 그쪽이 우선한다.
+#   예: SEC_UA="Hong Gildong hong@example.com"
+# 주의: Secret 미설정 시 Actions 는 빈 문자열을 넘기므로 get(...,기본값) 으로는
+# 못 막는다. 빈 문자열·공백까지 걸러 기본값으로 떨어뜨린다.
+UA_SEC={"User-Agent":(os.environ.get("SEC_UA") or "").strip()
+        or "US-Hegemony-Tree hokyun896kim@users.noreply.github.com"}
 UA_YH ={"User-Agent":"Mozilla/5.0 (Macintosh) research"}
-def get(u,h=UA_SEC,t=60):
-    r=urllib.request.Request(u,headers=h)
-    with urllib.request.urlopen(r,timeout=t) as x: return x.read().decode("utf-8","ignore")
+_ua_warned=False; _last_sec=0.0
+def _throttle(u):
+    # SEC 공정접근 정책은 초당 10건이 상한이다. 넘기면 IP 단위로 막힌다.
+    # 이 빌더는 종목당 여러 번 부르므로 전역으로 간격을 강제한다.
+    global _last_sec
+    if "sec.gov" not in u: return
+    dt=time.time()-_last_sec
+    if dt<0.11: time.sleep(0.11-dt)
+    _last_sec=time.time()
+
+def get(u,h=UA_SEC,t=60,tries=2):
+    global _ua_warned
+    for i in range(tries):
+        _throttle(u)
+        try:
+            r=urllib.request.Request(u,headers=h)
+            with urllib.request.urlopen(r,timeout=t) as x: return x.read().decode("utf-8","ignore")
+        except urllib.error.HTTPError as e:
+            if not ("sec.gov" in u and e.code in (403,429)):
+                raise
+            # SEC 는 거부 사유를 응답 본문 <title> 에 담아준다. 추측하지 말고 읽는다.
+            try: body=e.read().decode("utf-8","ignore")
+            except Exception: body=""
+            m=re.search(r"<title>(.*?)</title>",body,re.S|re.I)
+            why=(m.group(1) if m else body[:160]).replace("\n"," ").strip() or "(사유 없음)"
+            rate=("rate" in why.lower() or "threshold" in why.lower())
+            if not _ua_warned:
+                _ua_warned=True
+                print(f"\n[!] SEC {e.code} — {why}",file=sys.stderr)
+                print(f"    URL: {u}",file=sys.stderr)
+                if rate:
+                    print("    요청 속도 제한입니다(UA 문제 아님). SEC 는 초당 10건이 상한이고",file=sys.stderr)
+                    print("    넘기면 IP 단위로 10분 안팎 막습니다. 짧은 간격으로 여러 번 돌리면",file=sys.stderr)
+                    print("    차단이 이어지니, 재실행은 충분히 시간을 두고 하세요.",file=sys.stderr)
+                else:
+                    print(f'    UA: {h.get("User-Agent")!r}',file=sys.stderr)
+                    print('    저장소 Secret 에 SEC_UA="이름 you@example.com" 를 넣어보세요.',file=sys.stderr)
+                print("",file=sys.stderr)
+            # 차단 중에 빠르게 재시도하면 차단만 길어진다. 한 번만, 넉넉히 쉬고.
+            if i<tries-1:
+                time.sleep(90 if rate else 5)
+                continue
+            raise
 def getj(u,h=UA_SEC): return json.loads(get(u,h))
 CUR=date.today().year-1; PRV=CUR-1
 
@@ -19,9 +69,10 @@ cik2tk={v["cik_str"]:v["ticker"] for v in tkj.values()}
 tkmap={v["ticker"].upper():str(v["cik_str"]).zfill(10) for v in tkj.values()}
 
 print("[2/7] 연간 frames")
-def frame(tag,yr):
-    try: return {d["cik"]:d["val"] for d in getj(f"https://data.sec.gov/api/xbrl/frames/us-gaap/{tag}/USD/CY{yr}.json")["data"]}
+def frame_unit(tag,unit,yr):
+    try: return {d["cik"]:d["val"] for d in getj(f"https://data.sec.gov/api/xbrl/frames/us-gaap/{tag}/{unit}/CY{yr}.json")["data"]}
     except: return {}
+def frame(tag,yr): return frame_unit(tag,"USD",yr)
 rev_c=frame("Revenues",CUR); rev_p=frame("Revenues",PRV)
 for k,v in frame("RevenueFromContractWithCustomerExcludingAssessedTax",CUR).items(): rev_c.setdefault(k,v)
 for k,v in frame("RevenueFromContractWithCustomerExcludingAssessedTax",PRV).items(): rev_p.setdefault(k,v)
@@ -171,13 +222,31 @@ def best_op_ttm(cik):
     return None,"영익불가"
 # --- 상대강도 (Yahoo) ---
 def yseries(sym):
+    # (종가, 시가, 수정종가). 수익률·고점比는 수정종가로 계산한다 — 원종가는
+    # 배당·분할이 반영되지 않아 배당주가 하락한 것처럼 보인다(실측: 고점比
+    # -67% 인데 6개월 상대강도 +201% 인 모순 사례). 갭은 실제 시가/종가 괴리를
+    # 보는 값이라 원종가를 그대로 쓴다.
     try:
         d=json.loads(get(f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?range=1y&interval=1d",UA_YH,30))
         res=d["chart"]["result"][0];ts=res["timestamp"];q=res["indicators"]["quote"][0]
-        return [(q["close"][i],q["open"][i]) for i in range(len(ts)) if q["close"][i]]
+        try: adj=res["indicators"]["adjclose"][0]["adjclose"]
+        except Exception: adj=q["close"]
+        out=[]
+        for i in range(len(ts)):
+            if not q["close"][i]: continue
+            a=adj[i] if (i<len(adj) and adj[i]) else q["close"][i]
+            out.append((q["close"][i],q["open"][i],a))
+        return out
     except: return None
 def ret(cl,n): return (cl[-1]/cl[-1-n]-1)*100 if len(cl)>n else None
-spy=yseries("SPY"); spy_cl=[r[0] for r in spy]; spy3=ret(spy_cl,63); spy6=ret(spy_cl,126)
+# --- 후행 PER 재료 (SEC EPS 프레임) ---
+# 데이터에 PER 이 아예 없어서 화면의 스코어러가 411종목 전부에 '밸류 미검증'
+# 감점을 주고 있었다. 야후 quoteSummary 는 인증을 타므로, 이미 쓰고 있는
+# SEC 프레임에서 주당순이익을 받아 (현재가 ÷ EPS) 로 직접 만든다.
+eps_map=frame_unit("EarningsPerShareDiluted","USD-per-shares",CUR)
+for _k,_v in frame_unit("EarningsPerShareBasic","USD-per-shares",CUR).items(): eps_map.setdefault(_k,_v)
+print(f"   EPS 프레임 {len(eps_map)}건 (CY{CUR})")
+spy=yseries("SPY"); spy_cl=[r[2] for r in spy]; spy3=ret(spy_cl,63); spy6=ret(spy_cl,126)
 vix=yseries("^VIX"); vix_now=round(vix[-1][0],1)
 vix_state="저변동(위험선호)" if vix_now<16 else("중립" if vix_now<22 else("경계" if vix_now<30 else "공포"))
 
@@ -189,14 +258,25 @@ for i,t in enumerate(allt):
     qop,qnote=best_op_ttm(cik) if cik else (None,"CIK없음")
     qspread=round(qop-qrev,1) if (qrev is not None and qop is not None) else None
     # 상대강도
-    s=yseries(t); rs3=rs6=gap=gaplvl=None
+    s=yseries(t); rs3=rs6=gap=gaplvl=from_high=pe=None
     if s:
-        cl=[r[0] for r in s]; r3=ret(cl,63); r6=ret(cl,126)
+        cl=[r[2] for r in s]; r3=ret(cl,63); r6=ret(cl,126)
         rs3=round(r3-spy3,1) if r3 is not None else None
         rs6=round(r6-spy6,1) if r6 is not None else None
         gaps=[abs(s[j][1]/s[j-1][0]-1)*100 for j in range(max(1,len(s)-60),len(s))]
         gap=round(max(gaps),1) if gaps else None
         gaplvl="H" if (gap and gap>8) else("M" if (gap and gap>4) else "L")
+        # 52주 고점 대비 — 가격이 얼마나 반영됐는지 판정하는 재료
+        _hi=max(cl)
+        if _hi>0: from_high=round((cl[-1]/_hi-1)*100,1)
+        # 후행 PER = 현재가 ÷ 직전 회계연도 EPS.
+        # 상식선(1~300)을 벗어나면 계산이 어긋난 것으로 보고 버린다.
+        try:
+            _e=eps_map.get(int(cik)) if cik else None
+            if _e and _e>0:
+                _p=round(cl[-1]/_e,2)
+                if 1.0<=_p<=300.0: pe=_p
+        except Exception: pass
     # 부착
     for r in rows:
         for m in r["members"]:
@@ -204,6 +284,9 @@ for i,t in enumerate(allt):
                 m["q_rev"]=qrev;m["q_op"]=qop;m["q_spread"]=qspread;m["q_note"]=qnote
                 m["accel"]=round(qspread-m["spread"],1) if qspread is not None else None
                 m["rs3"]=rs3;m["rs6"]=rs6;m["gap"]=gap;m["gaplvl"]=gaplvl
+                m["from_high"]=from_high
+                m["pe"]=pe; m["fpe"]=None; m["peg"]=None
+                m["q_approx"]=False   # 미국은 8분기 정식 TTM 이라 근사가 아니다
                 m["ir"]=ir_map.get(t)
     if (i+1)%50==0: print(f"   {i+1}/{len(allt)}")
     time.sleep(0.04)

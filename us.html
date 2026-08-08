@@ -1,11 +1,21 @@
 <!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="미국 증시의 이익 레버리지로 주도 산업과 종목을 찾는 도구">
+<meta name="theme-color" content="#080c16">
+<!-- 홈 화면에 추가하면 사파리 UI 없이 앱처럼 뜬다 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="US 헤게모니">
+<link rel="apple-touch-icon" href="./icons/icon-us-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-us-192.png">
+<link rel="manifest" href="./app-us.webmanifest">
 <title>US HEGEMONY TREE v1.2</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css">
 <style>
 :root{--bg:#080c16;--panel:#0e1626;--panel2:#131f35;--panel3:#0b1322;--line:#1c2942;--gold:#d4af37;--gold2:#f0d27a;--txt:#e8edf6;--mut:#7d8aa3;--neg:#52647f;--red:#c2544d;--grn:#4a9d7f}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:"Pretendard Variable",sans-serif;background:radial-gradient(1100px 560px at 82% -10%,#13203a 0%,transparent 55%),radial-gradient(820px 460px at -8% 108%,#10182b 0%,transparent 50%),var(--bg);color:var(--txt);min-height:100vh;padding:clamp(14px,3.5vw,38px);letter-spacing:-.01em}
+body{font-family:"Pretendard Variable",sans-serif;background:radial-gradient(1100px 560px at 82% -10%,#13203a 0%,transparent 55%),radial-gradient(820px 460px at -8% 108%,#10182b 0%,transparent 50%),var(--bg);color:var(--txt);min-height:100vh;letter-spacing:-.01em;-webkit-text-size-adjust:100%;padding:calc(clamp(14px,3.5vw,38px) + env(safe-area-inset-top)) calc(clamp(14px,3.5vw,38px) + env(safe-area-inset-right)) calc(clamp(22px,4vw,38px) + env(safe-area-inset-bottom)) calc(clamp(14px,3.5vw,38px) + env(safe-area-inset-left))}
 .wrap{max-width:1000px;margin:0 auto}
 .kicker{font-size:11px;letter-spacing:.3em;color:var(--gold);font-weight:700;text-transform:uppercase}
 h1{font-size:clamp(24px,5.6vw,42px);font-weight:800;line-height:1.05;margin:8px 0 4px;background:linear-gradient(92deg,#fff 32%,var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -115,6 +125,62 @@ h1{font-size:clamp(24px,5.6vw,42px);font-weight:800;line-height:1.05;margin:8px 
 .snap-pick:hover{border-color:var(--gold)}
 .snap-pick b{color:var(--gold2)}
 
+.mkt-switch{color:var(--gold2);text-decoration:none;border:1px solid var(--line);background:var(--panel3);border-radius:8px;padding:7px 12px;font-size:11.5px;font-weight:700;letter-spacing:.02em;white-space:nowrap;transition:.15s}
+.mkt-switch:hover{background:var(--gold);color:#0a0e17;border-color:var(--gold)}
+/* ===== 화면에 붙는 설명 (팝업 대체) ===== */
+.gi{background:linear-gradient(100deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:13px;margin:14px 0 4px;overflow:hidden}
+.gi[open]{border-color:#2a3552}
+.gi-sum{list-style:none;cursor:pointer;padding:13px 16px;font-size:13.5px;font-weight:700;color:var(--gold2);display:flex;align-items:center;gap:8px;user-select:none}
+.gi-sum::-webkit-details-marker{display:none}
+.gi-sum::after{content:"▾";margin-left:auto;color:var(--mut);font-size:12px;transition:.2s}
+.gi[open] .gi-sum::after{transform:rotate(180deg)}
+.gi-sum .gi-hint{font-size:11px;color:var(--mut);font-weight:500}
+.gi-body{padding:2px 16px 16px;font-size:13.5px;line-height:1.75;color:#c8d2e2}
+.gi-body b{color:var(--gold2)}
+.gi-row{display:flex;gap:11px;padding:11px 0;border-top:1px solid var(--line)}
+.gi-row .n{flex-shrink:0;width:24px;height:24px;border-radius:50%;background:var(--gold);color:#0a0e17;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.gi-row .t{flex:1}
+.gi-row .t .h{font-weight:700;color:var(--txt);font-size:13.5px;margin-bottom:2px}
+.gi-row .t .d{font-size:12.5px;color:var(--mut);line-height:1.65}
+.gi-row .t .d b{color:var(--gold2)}
+.gi-warn{margin-top:12px;background:#2a1414;border:1px solid #4a2424;border-radius:10px;padding:11px 13px;font-size:12.5px;color:#e0a0a0;line-height:1.6}
+.gi-warn b{color:#ff9b9b}
+.gi-more{margin-top:12px;background:var(--panel3);border:1px solid var(--line);color:var(--gold2);font-family:inherit;font-size:12.5px;font-weight:700;padding:10px 16px;border-radius:9px;cursor:pointer;width:100%}
+.gi-more:hover{background:var(--gold);color:#0a0e17;border-color:var(--gold)}
+/* ===== 선취매 레이더 ===== */
+.radar{margin:16px 0 4px}
+.radar-head{font-size:12px;letter-spacing:.14em;color:var(--grn);text-transform:uppercase;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+.radar-sub{font-size:11px;color:var(--mut);margin:0 0 12px;line-height:1.55}
+.radar-sub b{color:var(--gold2)}
+.radar-funnel{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
+.rf{background:var(--panel3);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:10px;color:var(--mut);font-variant-numeric:tabular-nums}
+.rf b{color:var(--txt);font-size:13px;font-weight:800;display:block;margin-top:1px}
+.rf.on{border-color:var(--grn)}.rf.on b{color:var(--grn)}
+.radar-sec{font-size:10px;letter-spacing:.14em;color:var(--mut);text-transform:uppercase;margin:14px 0 8px;display:flex;align-items:center;gap:9px}
+.radar-sec::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+.ri{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;background:linear-gradient(100deg,var(--panel3),transparent);border:1px solid var(--line);border-left:2px solid var(--grn);border-radius:10px;padding:9px 12px;margin-bottom:6px;cursor:pointer;transition:.15s}
+.ri:hover{border-color:var(--gold);background:var(--panel)}
+.ri-nm{font-size:13px;font-weight:700;color:var(--txt)}
+.ri-nm span{font-size:10px;color:var(--mut);font-weight:500;margin-left:6px}
+.ri-m{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+.ri-m span{font-size:10px;color:#c2cbdb;background:var(--bg);border:1px solid var(--line);padding:2px 7px;border-radius:5px;font-variant-numeric:tabular-nums}
+.ri-m b{color:var(--grn)}
+.ri-go{font-size:10px;color:var(--gold2);white-space:nowrap}
+.rc{background:linear-gradient(105deg,var(--panel2),var(--panel));border:1px solid #2a3552;border-left:3px solid var(--grn);border-radius:12px;padding:11px 13px;margin-bottom:7px;cursor:pointer;transition:.16s}
+.rc:hover{border-color:var(--gold);transform:translateY(-1px)}
+.rc.warn{border-left-color:var(--gold)}
+.rc-r1{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.rc-tk{font-size:14px;font-weight:800;color:var(--txt)}
+.rc-nm{font-size:10px;color:var(--mut)}
+.rc-sec{font-size:9px;color:var(--gold2);background:#1a2438;padding:2px 7px;border-radius:5px;margin-left:auto}
+.rc-m{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
+.rc-m span{font-size:10px;color:#c2cbdb;background:var(--bg);border:1px solid var(--line);padding:2px 7px;border-radius:5px;font-variant-numeric:tabular-nums}
+.rc-m b{color:var(--gold2)}.rc-m.g b{color:var(--grn)}
+.rc-l{font-size:10.5px;line-height:1.55;display:flex;gap:6px;margin-top:3px}
+.rc-l .k{flex-shrink:0;font-weight:700}
+.rc-l.why .k{color:var(--grn)}.rc-l.why{color:#9fc4b2}
+.rc-l.risk .k{color:#e0a0a0}.rc-l.risk{color:#c49a9a}
+.radar-empty{font-size:11.5px;color:var(--mut);background:var(--panel3);border:1px solid var(--line);border-radius:10px;padding:12px 14px;line-height:1.6}
 .tc-ai{background:linear-gradient(135deg,#1a2410,var(--panel3));border:1px solid #3a3420;border-radius:12px;padding:14px;margin:14px 0 0}
 .tc-ai h4{font-size:12px;color:var(--gold2);margin:0 0 4px;letter-spacing:.04em}
 .tc-ai-copy{width:100%;background:var(--gold);color:#0a0e17;border:none;font-family:inherit;font-weight:800;font-size:13px;padding:11px;border-radius:10px;cursor:pointer;margin-top:4px}
@@ -224,12 +290,66 @@ h1{font-size:clamp(24px,5.6vw,42px);font-weight:800;line-height:1.05;margin:8px 
 .ir-btn:hover{background:var(--gold);color:#0a0e17;border-color:var(--gold)}
 .ir-na{font-size:9px;color:var(--mut);font-style:italic;padding:3px 0}
 
+
+/* ===== 가독성 · 시인성 ===== */
+/* 표와 배지에 9~10px 이 50군데 넘게 있어 폰에서 읽기 힘들었다.
+   레이아웃(그리드 폭)이 깨지지 않는 선에서 올리고 대비도 함께 올린다. */
+:root{--mut:#98a6bf}          /* 기존 #7d8aa3 — 작은 글씨에서 대비가 모자랐다 */
+.cap,.th{font-size:10px}
+.rc-l{font-size:11.5px;line-height:1.62}
+.rc-m span,.t5-m,.wl-m,.ri-m span{font-size:11px}
+.radar-sub,.top5-sub,.hint,.wl-intro,.tc-news .nsub,.tc-ai .nsub{font-size:11.5px;line-height:1.68}
+.t5-reasons,.wl-msg{font-size:11.5px;line-height:1.6}
+.top5-disc,.tc-disc{font-size:11px;line-height:1.75}
+.foot{font-size:11.5px;line-height:1.85}
+.def{line-height:1.78}
+.tabs button{font-size:12.5px;padding:10px 8px}
+.modal-body{font-size:14px}
+.tc-case{font-size:12.5px;line-height:1.65}
+.snap-hint,.snap-pick{font-size:11px}
+.ir-btn,.tc-open{font-size:10.5px;padding:4px 10px}
+.drill.sub-d,#sigList,#accList{-webkit-overflow-scrolling:touch}
+
+@media (max-width:640px){
+  /* iOS 는 16px 미만 입력창을 탭하면 화면을 확대해 버린다. 그걸 막는다. */
+  input,textarea,select,.search{font-size:16px}
+  .wrap{max-width:100%}
+  .tabs{gap:5px}
+  .tabs button{min-width:calc(50% - 5px);font-size:13px;padding:12px 6px}
+  .th,.tr{font-size:11.5px}
+  .rc-l,.t5-reasons,.radar-sub,.top5-sub{font-size:12px}
+  .bar{padding:14px 12px}            /* 손가락으로 누를 영역 확보 */
+  .bar.sub{padding:13px 11px}
+  .help-i{width:21px;height:21px;font-size:11px;margin-left:7px}
+  .th .help-i{width:16px;height:16px;font-size:9px}
+  .modal{border-radius:15px}
+  .modal-body{padding:17px 18px 22px}
+  .modal-close{width:36px;height:36px}
+  .gi-sum{padding:15px 15px;font-size:14px}
+  .gi-body{font-size:13.5px}
+  .rc,.top5-card{padding:13px 14px}
+  .tc-news-link{padding:12px 13px}
+  .tc-news-link .nt{font-size:12.5px}
+  .mkt .mval{font-size:19px}
+}
 </style></head><body><div class="wrap">
-<div class="kicker">도토리 · US Edition</div>
+<div class="kicker" style="display:flex;align-items:center;gap:10px;justify-content:space-between"><span>도토리 · US Edition</span><a class="mkt-switch" href="./">🇰🇷 한국판 →</a></div>
 <h1>미국 헤게모니 트리 <span style="font-size:.5em;color:var(--mut);-webkit-text-fill-color:var(--mut)">v1.2</span></h1>
 <div class="def"><b>연간 YoY 옆에 분기 TTM(최근 4분기 연환산)을 나란히.</b> 둘의 차이가 <b>가속/둔화 신호</b>입니다 — 분기가 연간보다 높으면 헤게모니가 막 붙기 시작한 것(형님의 "남보다 먼저"). 3층 구조: 1층 펀더(연간+분기) · 2층 보조(상대강도·갭·VIX) · <b>밸류에이션(PER) 체크</b>. 차트로 고르지 않되, 차트 없이 사지 않는다. <b>종목을 펼치면 최신 8-K 실적 원문(보도자료·CFO 코멘터리)으로 바로가기</b> — 가이던스·톤은 점수화하지 않고 1차 자료를 직접 읽습니다.</div>
+<details class="gi" id="giBox">
+<summary class="gi-sum">📖 이 화면 읽는 법 <span class="gi-hint">· 30초면 충분합니다</span></summary>
+<div class="gi-body">
+<div class="gi-row"><div class="n">1</div><div class="t"><div class="h">헤게모니 스프레드 = 영업이익 증가율 − 매출 증가율</div><div class="d">매출이 10% 늘 때 이익이 30% 늘면 스프레드 +20p. <b>양수면 이익이 매출보다 빨리 느는 것</b> — 가격결정력·규모의 경제가 작동 중이라는 신호입니다. 이 숫자 하나로 산업과 종목을 줄 세웁니다.</div></div></div>
+<div class="gi-row"><div class="n">2</div><div class="t"><div class="h">가속 = 분기가 연간보다 강해짐</div><div class="d">연간은 이미 지나간 1년, <b>분기 TTM은 최근 1년</b>입니다. 분기가 더 높으면 <b>지금 막 붙기 시작한 것</b> — 시장이 아직 모를 때 발견하는 자리입니다.</div></div></div>
+<div class="gi-row"><div class="n">3</div><div class="t"><div class="h">🎯 선취매 레이더부터 보세요 (맨 위)</div><div class="d">가속 탭에는 <b>흑자전환 착시</b>(전년 이익이 바닥이라 비율만 폭발)와 <b>허수 가속</b>(아직 적자인데 덜 나빠진 것)이 섞여 있습니다. 레이더가 그걸 걷어내고 <b>주가가 아직 안 움직인 것</b>만 남깁니다. 카드마다 <b>근거</b>와 <b>조심할 점</b>이 한 줄씩 붙습니다.</div></div></div>
+<div class="gi-row"><div class="n">4</div><div class="t"><div class="h">보는 순서</div><div class="d">레이더 → 트리에서 <b>대섹터 → 세부산업 → 종목</b>으로 좁히기 → 종목 눌러 <b>트레이드 카드</b>(강세·약세 논거, 매수 수량 계산, SEC 공시 바로가기) → 1차 자료로 확인</div></div></div>
+<div class="gi-warn">⚠️ <b>매수·매도 신호가 아닙니다.</b> 목표가도 내지 않습니다. 차트 지표(이동평균·RSI)는 일절 쓰지 않고 공시된 실적 비율만 씁니다. <b>"어디를 깊게 팔지" 좁히는 발견 도구</b>이며, 최종 판단은 1차 자료를 직접 읽고 형님이 내리셔야 합니다. 데이터는 주간 스냅샷입니다.</div>
+<button class="gi-more" onclick="openGuide()">📚 자세한 사용설명서 열기 (실전 예시·컬럼 설명)</button>
+</div>
+</details>
 <div class="mkt" id="mkt"></div>
 <div id="updTag" style="font-size:10px;color:var(--mut);margin:-8px 0 12px;letter-spacing:.05em;text-align:right">데이터 로딩 중…</div>
+<div class="radar" id="radarPanel"></div>
 <div class="top5" id="top5Panel"></div>
 <div class="tabs">
 <button class="on" data-v="tree">🌳 탑다운 트리<i class="help-i" onclick="event.stopPropagation();tip(&quot;tree&quot;)">i</i></button>
@@ -340,7 +460,7 @@ async function loadData(){
   D=await res.json();
   // 누락 필드 안전 기본값 (pe/fpe/peg 포함)
   D.subs.forEach(s=>s.members.forEach(m=>{
-    ['q_rev','q_op','q_spread','accel','rs3','rs6','gap','gaplvl','ir','q_note','pe','fpe','peg'].forEach(k=>{if(!(k in m))m[k]=null;});
+    ['q_rev','q_op','q_spread','accel','rs3','rs6','gap','gaplvl','ir','q_note','pe','fpe','peg','from_high','q_approx','d_until'].forEach(k=>{if(!(k in m))m[k]=null;});
   }));
   MXS=Math.max(...D.sectors.map(s=>Math.abs(s.med)),1);
   MXB=Math.max(...D.subs.map(s=>Math.abs(s.med)),1);
@@ -350,7 +470,7 @@ async function loadData(){
   // 갱신일 표시
   const up=document.getElementById('updTag'); if(up&&D.updated)up.textContent='데이터 갱신: '+D.updated;
   // 시장 배지 + 첫 화면
-  initMarket(); renderTop5(); renderTree(); loadWatch();
+  initMarket(); renderRadar(); renderTop5(); renderTree(); loadWatch();
  }catch(e){
   document.getElementById('secList').innerHTML='<div style="padding:20px;color:var(--red);font-size:13px">⚠️ 데이터 로드 실패: '+e.message+'<br><span style="color:var(--mut);font-size:11px">data/tree.json이 같은 폴더에 있는지 확인하세요. 로컬에서 file://로 열면 CORS로 막히니, Netlify 배포 또는 로컬 서버(python -m http.server)로 여세요.</span></div>';
  }
@@ -449,6 +569,7 @@ document.getElementById('q').style.display='none';
 // ===== 도움말 시스템 =====
 const TIPS={
  watch:{k:"기능 설명",t:"📌 내 워치리스트",b:"<p>보유·관심 종목을 담아 <b>매수 후 관리</b>를 하는 자리입니다(형님 주도주 헤게모니 v3.3 + 일정매매 v3.2의 미국판).</p><p><b>신호등:</b> 🟢가속(보유 유지) · 🟡유지 · 🔴피크아웃(분기TTM이 연간보다 둔화 = 이익 모멘텀 꺾임, 익절·감량 검토).</p><p><b>실적 캘린더:</b> 과거 발표 주기로 다음 실적일을 추정. 미국은 실적 전후 갭이 크니 임박 종목은 미리 대비. 추정치이니 IR로 확정일 확인.</p><p>브라우저에 저장돼 다시 열어도 유지됩니다(localStorage).</p>"},
+ radar:{k:"기능 설명",t:"🎯 선취매 레이더",b:"<p>'헤게모니 가속' 탭은 <b>가속 순으로만</b> 세웁니다. 그래서 그 안에는 두 종류의 가짜가 섞입니다 — ① 전년 이익이 바닥이라 비율만 폭발한 <b>흑자전환 착시</b>, ② 가속은 양수지만 분기 스프레드가 여전히 음수인 <b>'덜 나빠진 것'</b>.</p><p>레이더는 이 둘을 걷어내고 <b>지금 실제로 이익 레버리지가 있으면서 가속 중인 것</b>만 남긴 뒤, 거기서 다시 <b>주가가 아직 안 움직인 것</b>을 고릅니다. 상단 깔때기 숫자가 몇 개에서 몇 개로 줄었는지 보여줍니다.</p><p><b>가장 중요한 구분:</b> 6개월 약세가 같아도 3개월이 보합이면 '바닥 다지는 중', 계속 빠지면 '떨어지는 칼날'입니다. 각 카드의 <b>조심</b> 줄에 그게 적힙니다.</p><p><b>한계:</b> RS가 깊게 빠진 이유가 '아직 안 깨워서'인지 '이유가 있어서'인지는 이 도구가 모릅니다. 반드시 SEC 원문으로 확인하세요.</p>"},
  top5:{k:"기능 설명",t:"⭐ 이상적 매수후보 TOP5",b:"<p>형님의 해석 4단계를 그대로 점수화한 결과입니다.</p><p><b>스코어 구성:</b> 연간 헤게모니 강도(최대25) + 분기TTM 가속 유지(최대20) + 가속 강도(최대30) + 매복 여부(최대25). 피크아웃·과열·갭위험은 감점.</p><p><b>가장 높은 점수 = 펀더 강하고, 최근 더 강해지는데, 시장은 아직 안 깨운 종목.</b> 형님이 말한 '남보다 먼저' 자리입니다. 단, 출발 후보일 뿐 1차 자료 확인 필수.</p>"},
  tree:{k:"탭 설명",t:"🌳 탑다운 트리",b:"<p>형님의 투자 순서 그대로 — <b>대섹터(11개) → 세부산업(79개) → 종목</b>으로 위에서 아래로 좁혀 들어갑니다.</p><p>대섹터 막대는 그 섹터에 속한 모든 종목의 헤게모니 스프레드 <b>중앙값</b>입니다. 막대가 금색(우)이면 이익 레버리지가 붙는 섹터, 회색(좌)이면 마진 압박 섹터.</p><p>대섹터를 누르면 세부산업이, 세부산업을 누르면 종목이 펼쳐집니다.</p>"},
  flat:{k:"탭 설명",t:"📊 세부산업 랭킹",b:"<p>대섹터 구분 없이 <b>79개 세부산업 전체를 헤게모니 순으로</b> 한 줄로 세웁니다.</p><p>검색창에 '반도체', '방산', 'NVDA', 'SIC코드' 등을 치면 즉시 필터됩니다. \"지금 가장 뜨거운 세부산업이 어디든 한눈에\" 보고 싶을 때.</p>"},
@@ -473,7 +594,8 @@ function closeGuide(){document.getElementById('guideModal').classList.remove('sh
 ['guideModal','tipModal'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('show');});});
 // 첫 진입 자동 팝업 (세션 내 1회)
 var GUIDE_SEEN=false;
-setTimeout(()=>{if(!GUIDE_SEEN)openGuide();},700);
+// 자동 팝업은 걷어냈다. 설명은 화면에 인라인으로 붙어 있고,
+// 전체 사용설명서는 상단 "자세히" 버튼으로 필요할 때만 연다.
 
 
 // ===== 트레이드 카드 시스템 =====
@@ -529,7 +651,7 @@ function openTrade(tk){
    <div class="tc-badge"><div class="bl">가속</div><div class="bv ${m.accel==null?'m':m.accel>=0?'g':'n'}">${m.accel==null?'—':(m.accel>0?'+':'')+m.accel+'p'}</div></div>
    <div class="tc-badge"><div class="bl">RS 6M</div><div class="bv ${m.rs6==null?'m':m.rs6>=0?'g':'n'}">${m.rs6==null?'—':(m.rs6>0?'+':'')+m.rs6+'%'}</div></div>
    <div class="tc-badge"><div class="bl">갭위험</div><div class="bv ${m.gaplvl=='H'?'n':m.gaplvl=='L'?'g':'m'}">${m.gap!=null?m.gap+'%':'—'}</div></div>
-   <div class="tc-badge"><div class="bl">PER / Fwd</div><div class="bv ${valColor(m.pe)}">${m.pe!=null?m.pe.toFixed(1):'—'}${m.fpe!=null?' / '+m.fpe.toFixed(1):''}</div></div>
+   <div class="tc-badge"><div class="bl">PER / Fwd</div><div class="bv ${valColor(m.pe!=null?m.pe:m.fpe)}">${peShow(m)}${(m.pe!=null&&m.fpe!=null)?' / '+m.fpe.toFixed(1):''}</div></div>
   </div>
   <div class="tc-2col">
    <div class="tc-case bull"><h4>📈 강세 논거 (Bull)</h4><ul>${bb.bull.map(x=>`<li>${x}</li>`).join('')}</ul></div>
@@ -689,6 +811,139 @@ function scoreCandidate(m){
  }
  return {pts,reasons,grade:q};
 }
+// ===== 선취매 레이더 =====
+// 후행 PER 이 없으면 선행 PER 로 대체하고 뒤에 F 를 붙인다(다른 지표이므로).
+function peShow(m){
+ if(m.pe!=null)return m.pe.toFixed(1);
+ if(m.fpe!=null)return m.fpe.toFixed(1)+'<span style="font-size:8px;color:var(--mut)">F</span>';
+ return '—';
+}
+// 가격 반영도 — 점수 로직이 아니라 표시·판정용
+function priceIn(m){
+ const r6=m.rs6,r3=m.rs3,fh=m.from_high;
+ if(r6!=null&&r3!=null&&r6>0&&r3<0) return {c:'n',t:'🔴 정점 통과·냉각(뒷북 위험)'};
+ if(r6!=null&&r3!=null&&r6<=10&&r3>20) return {c:'p',t:'⚠ 점화 직후(이미 절반 반영)'};
+ if((fh!=null&&fh>-3)||(r6!=null&&r6>30)) return {c:'n',t:'🔴 이미 반영(고점권)'};
+ if((fh==null||fh<=-12)&&(r6==null||r6<=5)) return {c:'g',t:'🌱 선취매 권역(저반영·여력)'};
+ return {c:'m',t:'🟡 진행 중(부분 반영)'};
+}
+function medOf(arr){
+ const v=arr.filter(x=>x!=null).sort((a,b)=>a-b);
+ if(!v.length)return null;
+ const h=Math.floor(v.length/2);
+ return v.length%2 ? v[h] : Math.round((v[h-1]+v[h])/2*10)/10;
+}
+// '진짜 가속' = 가속 중 + 지금 실제로 레버리지가 있음 + 흑자전환 착시 아님.
+// (가속만 양수이고 분기 스프레드는 여전히 음수인 종목은 '덜 나빠진 것'이지 가속이 아니다)
+function realAccel(m){
+ return m.accel!=null && Math.abs(m.accel)<=150 && m.q_spread!=null
+     && m.accel>0 && m.q_spread>0 && m.spread>0 && spreadQuality(m)!=='base';
+}
+// 하락이 멈췄는가 — 선취매 타이밍을 가르는 핵심
+function falling(m){
+ if(m.rs3==null) return {c:'m',t:'3개월 추세 확인 불가'};
+ if(m.rs3>=-5)   return {c:'g',t:'하락 멈춤'};
+ if(m.rs3<=-8)   return {c:'n',t:'아직 하락 중'};
+ return {c:'m',t:'횡보'};
+}
+function radarWhy(m){
+ const w=[];
+ if(m.rev!=null&&m.rev>=5) w.push(`매출 <b>+${m.rev}%</b> 동반성장`);
+ w.push(`분기 <b>+${m.q_spread}p</b>(가속 +${m.accel}p)`);
+ if(m.from_high!=null&&m.from_high<=-15) w.push(`고점比 ${m.from_high}%`);
+ if(falling(m).c==='g') w.push('<b>하락 멈춤</b>');
+ if(m.pe!=null&&m.pe>0&&m.pe<15) w.push(`PER ${m.pe.toFixed(0)}`);
+ return w.join(' · ');
+}
+function radarRisk(m){
+ const r=[];
+ const val=(m.pe!=null&&m.pe>0)?m.pe:((m.fpe!=null&&m.fpe>0)?m.fpe:null);
+ if(m.rs6!=null&&m.rs6<-35) r.push('6개월 −35% 이하 깊은 약세 — <b>매복인지 가치함정인지</b> 10-Q 확인 필수');
+ if(falling(m).c==='n') r.push(`3개월 ${m.rs3}% — <b>아직 떨어지는 중</b>`);
+ if(val!=null&&val>40) r.push(`PER ${val.toFixed(0)} — 많이 눌렸는데도 비싸다`);
+ if(m.rev!=null&&m.rev<3) r.push(`매출 ${m.rev>0?'+':''}${m.rev}% — 성장 미미, 헤게모니라기엔 약함`);
+ if(m.gaplvl==='H') r.push(`갭위험 ${m.gap}% — 실적 전후 변동 큼`);
+ if(m.q_note&&m.q_note!=='정상') r.push(`분기 데이터 한계(${m.q_note})`);
+ return r.length ? r.join(' · ') : '뚜렷한 결격 없음 — 그래도 1차 자료는 확인';
+}
+function gotoIndustry(name){
+ const btn=document.querySelector('.tabs button[data-v="flat"]');
+ if(btn)btn.click();
+ const box=document.getElementById('q');
+ if(box){box.value=name;q=name;renderFlat();box.scrollIntoView({behavior:'smooth',block:'center'});}
+}
+function renderRadar(){
+ const panel=document.getElementById('radarPanel');
+ if(!panel)return;
+ const all=[]; D.subs.forEach(s=>s.members.forEach(m=>all.push({...m,sec:s.ko||s.desc})));
+ const pool=all.filter(m=>m.accel!=null&&Math.abs(m.accel)<=150&&m.q_spread!=null);
+ const real=pool.filter(realAccel);
+ const picksAll=real.filter(m=>priceIn(m).c==='g')
+      .sort((a,b)=>{const A=scoreCandidate(a),B=scoreCandidate(b);
+                    return (B?B.pts:-999)-(A?A.pts:-999);});
+ // 한눈에 보는 게 목적이라 상한을 둔다. 다만 몇 개를 감췄는지는 반드시 밝힌다.
+ const CAP=6, picks=picksAll.slice(0,CAP);
+ const partial=real.filter(m=>priceIn(m).c==='m').sort((a,b)=>b.accel-a.accel).slice(0,3);
+
+ // 산업 단위. 중앙값을 전 종목으로 내면 종목 쪽에서 걷어낸 기저효과가 되살아나므로
+ // 기저효과 종목을 뺀 구성원만으로 계산하고, 실제 후보를 1개 이상 품은 산업만 남긴다.
+ const inds=D.subs.map(s=>{
+     const clean=s.members.filter(m=>m.q_spread!=null && spreadQuality(m)!=='base'
+                                  && (m.accel==null||Math.abs(m.accel)<=150));
+     return {s, clean, hits:s.members.filter(realAccel),
+       acc:medOf(clean.map(m=>m.accel)),
+       qsp:medOf(clean.map(m=>m.q_spread)),
+       rs :medOf(clean.map(m=>m.rs6))};
+   })
+   .filter(x=>x.clean.length>=2 && x.hits.length>=1
+            && x.acc!=null&&x.acc>0 && x.qsp!=null&&x.qsp>0 && x.rs!=null&&x.rs<10)
+   .sort((a,b)=>b.acc-a.acc).slice(0,4);
+
+ const card=(m,warn)=>`<div class="rc ${warn?'warn':''}" onclick="openTrade('${m.tk}')">
+   <div class="rc-r1"><span class="rc-tk">${m.tk}</span><span class="rc-nm">${m.nm}</span>
+    <span class="rc-sec">${m.sec}</span></div>
+   <div class="rc-m">
+    <span>연간 <b>${m.spread>0?'+':''}${m.spread}p</b></span>
+    <span class="g">분기 <b>${m.q_spread>0?'+':''}${m.q_spread}p</b></span>
+    <span class="g">가속 <b>+${m.accel}p</b></span>
+    <span>매출 <b>${m.rev==null?'—':(m.rev>0?'+':'')+m.rev+'%'}</b></span>
+    <span>RS6M <b>${m.rs6==null?'—':(m.rs6>0?'+':'')+m.rs6+'%'}</b></span>
+    <span>고점比 <b>${m.from_high==null?'—':m.from_high+'%'}</b></span>
+    <span>PER <b>${peShow(m)}</b></span>
+   </div>
+   <div class="rc-l why"><span class="k">근거</span><span>${radarWhy(m)}</span></div>
+   <div class="rc-l risk"><span class="k">조심</span><span>${radarRisk(m)}</span></div>
+  </div>`;
+
+ panel.innerHTML=`
+  <div class="radar-head">🎯 선취매 레이더<i class="help-i" onclick="tip('radar')">i</i></div>
+  <div class="radar-sub">"이익은 막 붙는데 <b>주가는 아직 안 움직인</b>" 것만 남깁니다. 가속 탭은 가속 순으로만 세우기 때문에 흑자전환 착시와 허수 가속이 섞여 있어, 그걸 걷어낸 결과입니다.</div>
+  <div class="radar-funnel">
+   <div class="rf">가속 탭 전체<b>${pool.length}</b></div>
+   <div class="rf">→ 진짜 가속<b>${real.length}</b></div>
+   <div class="rf on">→ 아직 저반영<b>${picksAll.length}</b></div>
+  </div>
+
+  <div class="radar-sec">산업 — 가속 중인데 시장이 안 깨운 곳</div>
+  ${inds.length ? inds.map(x=>`
+   <div class="ri" onclick="gotoIndustry('${((x.s.ko||x.s.desc)||'').replace(/'/g,"\\'")}')">
+    <div><div class="ri-nm">${x.s.ko||x.s.desc}<span>${x.s.ko?x.s.desc:''} · ${x.s.n}개${x.hits.length?` · 후보 ${x.hits.length}`:''}</span></div>
+     <div class="ri-m"><span>가속 중앙 <b>+${x.acc}p</b></span><span>분기 중앙 <b>+${x.qsp}p</b></span>
+      <span>RS6M 중앙 ${x.rs>0?'+':''}${x.rs}%</span></div></div>
+    <div class="ri-go">펼쳐보기 →</div>
+   </div>`).join('')
+   : `<div class="radar-empty">지금은 <b>산업 단위로</b> 가속하면서 저평가된 곳이 없습니다. 산업 전체가 움직이는 국면이 아니라 종목별로 갈리는 장이라는 뜻이니, 아래 종목 단위로 보세요.</div>`}
+
+  <div class="radar-sec">종목 — 선취매 권역${picksAll.length>CAP?` (스코어 상위 ${CAP} · 전체 ${picksAll.length})`:''}</div>
+  ${picks.length ? picks.map(m=>card(m,false)).join('')
+   : `<div class="radar-empty">지금은 조건을 다 만족하는 종목이 없습니다. 아래 '부분 반영' 쪽을 보시거나, 다음 주 갱신을 기다리세요.</div>`}
+
+  ${partial.length ? `<div class="radar-sec">종목 — 이미 절반 반영(추격 주의)</div>
+   ${partial.map(m=>card(m,true)).join('')}` : ''}
+
+  <div class="top5-disc">이건 조건으로 걸러낸 <b>출발 후보</b>지 매수 신호가 아닙니다. 특히 RS6M이 깊게 빠진 종목은 "시장이 아직 안 깨운 것"과 "시장이 이유 있게 던지는 것"을 이 도구가 구분하지 못합니다 — 종목을 눌러 트레이드 카드에서 SEC 원문으로 확인하세요.</div>`;
+}
+
 function renderTop5(){
  const cands=[];
  D.subs.forEach(s=>s.members.forEach(m=>{
@@ -990,6 +1245,22 @@ async function toggleLog(tk, force){
 }
 async function delJournal(key,tk){try{await window.storage.delete(key,false);toggleLog(tk,true);}catch(e){}}
 ['tradeModal'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('show');});});
+
+// ── 아이폰 홈 화면 웹앱 대응 ──
+// standalone 으로 띄우면 iOS 가 링크를 사파리로 튕겨내는 경우가 있다.
+// 같은 출처이고 새 창이 아닌 링크(= 한국판↔미국판 전환)는 앱 안에서 이동시킨다.
+if(window.navigator.standalone){
+  document.addEventListener('click',e=>{
+    const a=e.target.closest&&e.target.closest('a');
+    if(a&&a.href&&!a.target&&a.origin===location.origin){e.preventDefault();location.href=a.href;}
+  });
+}
+// 인라인 설명은 처음엔 펼쳐 두고, 접으면 그 상태를 기억한다.
+(function(){
+  const gi=document.getElementById('giBox'); if(!gi)return;
+  try{gi.open=localStorage.getItem('giClosed')!=='1';}catch(e){gi.open=true;}
+  gi.addEventListener('toggle',()=>{try{localStorage.setItem('giClosed',gi.open?'0':'1');}catch(e){}});
+})();
 
 loadData();
 </script></body></html>

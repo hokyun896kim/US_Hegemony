@@ -1,22 +1,69 @@
 name: Update Hegemony Data
+
 on:
   schedule:
     - cron: '0 22 * * 6'   # 매주 토요일 22:00 UTC = 한국 일요일 07:00
-  workflow_dispatch:        # 수동 실행 버튼
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: '결과를 커밋할지 여부'
+        type: boolean
+        default: true
+
+# 이게 없어서 2026-05-31 이후 주간 실행 10회가 전부 push 403 으로 죽었다.
+# 빌드는 매번 성공했고 커밋까지 만들어 놓고 밀어 넣지를 못했다.
+permissions:
+  contents: write
+
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
       - name: Build data
+        env:
+          # SEC 는 실제 연락처가 담긴 User-Agent 를 요구한다. 저장소 Secret 에
+          # SEC_UA 를 넣으면 쓰이고, 없으면 빌더의 기본값으로 동작한다.
+          SEC_UA: ${{ secrets.SEC_UA }}
         run: python build_data.py
-      - name: Commit
+
+      - name: Summarize
         run: |
-          git config user.name "hegemony-bot"
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          d = json.load(open('data/tree.json', encoding='utf-8'))
+          mem = [m for s in d['subs'] for m in s['members']]
+          def cnt(k): return sum(1 for m in mem if m.get(k) is not None)
+          print(f"## US 헤게모니 데이터 · {d['updated']}\n")
+          print(f"- 종목 **{len(mem)}** · 세부산업 **{len(d['subs'])}** · 대섹터 **{len(d['sectors'])}**")
+          print(f"- 분기 TTM **{cnt('q_spread')}/{len(mem)}** · 상대강도 **{cnt('rs6')}/{len(mem)}** "
+                f"· PER **{cnt('pe')}/{len(mem)}** · 52주고점比 **{cnt('from_high')}/{len(mem)}**")
+          print(f"- 시장: {d['market']}\n")
+          print("### 헤게모니 상위 세부산업")
+          print("| 세부산업 | 중앙 스프레드 | 종목수 |")
+          print("|---|---:|---:|")
+          for s in d['subs'][:10]:
+              print(f"| {s.get('ko') or s['desc']} | {s['med']:+.1f}p | {s['n']} |")
+          PY
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tree-${{ github.run_number }}
+          path: data/tree.json
+
+      - name: Commit
+        if: github.event.inputs.commit != 'false'
+        run: |
+          git config user.name  "hegemony-bot"
           git config user.email "bot@users.noreply.github.com"
           git add data/tree.json
-          git commit -m "auto: update $(date +%Y-%m-%d)" || echo "no change"
-          git push
+          git diff --staged --quiet && echo "변경 없음" && exit 0
+          git commit -m "auto: update $(date +%Y-%m-%d)"
+          git push origin "HEAD:${{ github.ref_name }}"
