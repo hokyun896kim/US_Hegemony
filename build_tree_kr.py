@@ -338,7 +338,10 @@ def annual_yoy(inc):
 
 
 def quarterly_ttm(qinc, inc):
-    """분기 TTM YoY. (q_rev, q_op, q_note, q_approx) 를 돌려준다.
+    """분기 TTM YoY. (q_rev, q_op, q_note, q_approx, q_end) 를 돌려준다.
+
+    q_end 는 이 TTM 이 담고 있는 가장 최근 분기의 기말일이다. 화면의
+    실적반영 지연 판정이 이 날짜를 쓴다 — 빌드를 돌린 날짜가 아니라.
 
     8분기가 있으면 진짜 TTM vs 전년 동기 TTM.
     4~7분기뿐이면 TTM 을 직전 회계연도 연간과 비교한 근사치이고 q_approx=True.
@@ -351,7 +354,10 @@ def quarterly_ttm(qinc, inc):
     qrev = series_values(pick_row(qinc, REV_ROWS))
     qop = series_values(pick_row(qinc, OP_ROWS))
     if len(qrev) < 4 or len(qop) < 4:
-        return None, None, "", False
+        return None, None, "", False, None
+
+    # 이 TTM 이 어느 분기까지인지. 날짜만 남기고 시분은 버린다.
+    qend = str(qrev[0][0])[:10] if qrev else None
 
     ttm_rev = sum(v for _, v in qrev[:4])
     ttm_op = sum(v for _, v in qop[:4])
@@ -359,14 +365,14 @@ def quarterly_ttm(qinc, inc):
     if len(qrev) >= 8 and len(qop) >= 8:
         r, o = sane(pct(ttm_rev, sum(v for _, v in qrev[4:8])),
                     pct(ttm_op, sum(v for _, v in qop[4:8])))
-        return r, o, "정상", False
+        return r, o, "정상", False, qend
 
     arev = series_values(pick_row(inc, REV_ROWS))
     aop = series_values(pick_row(inc, OP_ROWS))
     if not arev or not aop:
-        return None, None, "", False
+        return None, None, "", False, None
     r, o = sane(pct(ttm_rev, arev[0][1]), pct(ttm_op, aop[0][1]))
-    return r, o, "정상", True
+    return r, o, "정상", True, qend
 
 
 def num(v):
@@ -401,7 +407,7 @@ def fetch_stock(tk, log=print):
     rev, op = annual_yoy(inc)
     if rev is None or op is None:
         return None
-    q_rev, q_op, q_note, q_approx = quarterly_ttm(qinc, inc)
+    q_rev, q_op, q_note, q_approx, q_end = quarterly_ttm(qinc, inc)
 
     info = {}
     try:
@@ -441,6 +447,7 @@ def fetch_stock(tk, log=print):
         "accel": None if accel is None else round(accel, 1),
         "q_note": q_note,
         "q_approx": q_approx,
+        "q_end": q_end,
         "_info": {
             "sector": info.get("sector"),
             "industry": info.get("industry"),
@@ -787,41 +794,50 @@ def selftest():
     rev, op = annual_yoy(annual)
     check(rev == 0 and op == 50, f"연간 YoY (rev={rev}, op={op})")
 
+    # 분기 컬럼은 실제로 기말일이다. q_end 를 재려면 픽스처도 날짜여야 한다.
+    QCOLS = ["2024-09-30", "2024-12-31", "2025-03-31", "2025-06-30",
+             "2025-09-30", "2025-12-31", "2026-03-31", "2026-06-30"]
     q = FakeDF({
-        "Total Revenue": {f"Q{i}": 260e8 for i in range(8, 0, -1)},
-        "Operating Income": dict(
-            [(f"Q{i}", 90e8) for i in range(8, 4, -1)]
-            + [(f"Q{i}", 60e8) for i in range(4, 0, -1)]
-        ),
+        "Total Revenue": {c: 260e8 for c in QCOLS},
+        "Operating Income": dict([(c, 60e8) for c in QCOLS[:4]]
+                                 + [(c, 90e8) for c in QCOLS[4:]]),
     })
-    q_rev, q_op, note, approx = quarterly_ttm(q, annual)
+    q_rev, q_op, note, approx, q_end = quarterly_ttm(q, annual)
     check(note == "정상" and approx is False, f"8분기 = 정식 TTM (approx={approx})")
     check(q_rev == 0 and q_op == 50, f"TTM YoY (rev={q_rev}, op={q_op})")
+    check(q_end == "2026-06-30", f"q_end = 가장 최근 분기말 (실제 {q_end})")
 
     # 한국 종목의 실제 다수 케이스: 분기가 4~7개뿐 → 직전 연간과 비교
     q5 = FakeDF({
-        "Total Revenue": {f"Q{i}": 260e8 for i in range(5, 0, -1)},
-        "Operating Income": {f"Q{i}": 75e8 for i in range(5, 0, -1)},
+        "Total Revenue": {c: 260e8 for c in QCOLS[3:]},
+        "Operating Income": {c: 75e8 for c in QCOLS[3:]},
     })
-    _, _, note5, approx5 = quarterly_ttm(q5, annual)
+    _, _, note5, approx5, qend5 = quarterly_ttm(q5, annual)
     check(approx5 is True, "4~7분기 = 근사 모드로 표시")
     check(note5 == "정상",
           "근사 모드를 q_note 이상으로 찍지 않음(기저효과 패널티 오작동 방지)")
+    check(qend5 == "2026-06-30", f"근사 모드에서도 q_end 기록 (실제 {qend5})")
+
+    # 분기가 모자라 TTM 자체를 못 내면 q_end 도 없어야 한다 — 없는 걸 지어내지 않는다
+    q3 = FakeDF({"Total Revenue": {c: 260e8 for c in QCOLS[5:]},
+                 "Operating Income": {c: 75e8 for c in QCOLS[5:]}})
+    check(quarterly_ttm(q3, annual) == (None, None, "", False, None),
+          "분기 3개면 TTM·q_end 모두 없음")
 
     members = [
         {"tk": "005930.KS", "nm": "삼성전자", "sector": "Technology",
          "industry": "Semiconductors", "rev": 10.0, "op": 40.0, "spread": 30.0,
          "q_rev": 12.0, "q_op": 55.0, "q_spread": 43.0, "accel": 13.0,
-         "q_note": "정상", "q_approx": False, "pe": 12.3, "fpe": None, "peg": None,
-         "est30": 4.2, "est90": 9.1,
+         "q_note": "정상", "q_approx": False, "q_end": "2026-06-30",
+         "pe": 12.3, "fpe": None, "peg": None, "est30": 4.2, "est90": 9.1,
          "rs3": 4.0, "rs6": -8.0, "gap": 5.0, "gaplvl": "M", "from_high": -14.0,
          "foreign_net": None, "inst_net": None, "foreign_pct": None,
          "supply": None, "d_until": None, "ir": None},
         {"tk": "000660.KS", "nm": "SK하이닉스", "sector": "Technology",
          "industry": "Semiconductors", "rev": 20.0, "op": 15.0, "spread": -5.0,
          "q_rev": None, "q_op": None, "q_spread": None, "accel": None,
-         "q_note": "", "q_approx": True, "pe": None, "fpe": None, "peg": None,
-         "est30": None, "est90": None,
+         "q_note": "", "q_approx": True, "q_end": None,
+         "pe": None, "fpe": None, "peg": None, "est30": None, "est90": None,
          "rs3": None, "rs6": None, "gap": None, "gaplvl": None,
          "from_high": None, "foreign_net": None, "inst_net": None,
          "foreign_pct": None, "supply": None, "d_until": None, "ir": None},
