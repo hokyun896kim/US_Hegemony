@@ -16,7 +16,9 @@ on:
       - 'build_tree_kr.py'
       - 'build_data.py'
       - 'est_trend.py'
-      - '.github/workflows/tests.yml'
+      - 'dart.py'
+      - 'naver.py'
+      - '.github/workflows/*.yml'
   pull_request:
     paths: *paths
   workflow_dispatch:
@@ -56,7 +58,40 @@ jobs:
           python refresh_prices.py --selftest
           python build_tree_kr.py --selftest
           python est_trend.py --selftest
+          python dart.py --selftest
+          python naver.py --selftest
           # build_data.py 는 첫 줄부터 네트워크를 타서 자가진단을 못 붙인다.
           # 최소한 문법은 본다 — 이게 없어서 파이썬만 고친 커밋에 CI 가
           # 아예 안 돌던 적이 있다.
-          python -m py_compile build_data.py refresh_prices.py build_tree_kr.py est_trend.py
+          python -m py_compile build_data.py refresh_prices.py build_tree_kr.py est_trend.py dart.py naver.py
+
+      # 데이터 파이프라인은 워크플로의 셸 한 줄이 틀려도 조용히 결과를 버린다.
+      # 실제로 그런 일이 두 번 있었다(push 경합, git add pathspec) — 다만 그
+      # 둘은 런타임 실패라 문법 검사로는 못 잡는다. 그건 셸 쪽을 방어적으로
+      # 쓰는 걸로 막았고, 여기서는 최소한의 바닥만 깐다: YAML 이 깨졌거나
+      # 셸 문법이 틀리면 워크플로가 아예 안 돌거나 첫 줄에서 죽는다.
+      - name: 워크플로 YAML·셸 문법
+        run: |
+          # 이 러너에는 파이썬만 깔려 있고 PyYAML 은 없다. 로컬에 마침 있어서
+          # 통과하는 걸 보고 올렸다가 CI 에서 ModuleNotFoundError 로 죽었다.
+          pip install --quiet pyyaml
+          python - <<'PY'
+          import yaml, pathlib, sys
+          bad = 0
+          for f in sorted(pathlib.Path('.github/workflows').glob('*.yml')):
+              try:
+                  d = yaml.safe_load(f.read_text())
+              except Exception as e:
+                  print(f'  FAIL {f}: {e}'); bad += 1; continue
+              print(f'  ok   {f} YAML')
+              # run: 블록을 bash -n 으로 문법 검사할 수 있게 뽑아둔다
+              for job in (d.get('jobs') or {}).values():
+                  for i, st in enumerate(job.get('steps') or []):
+                      if 'run' in st:
+                          pathlib.Path(f'/tmp/wf_{f.stem}_{i}.sh').write_text(st['run'])
+          sys.exit(bad)
+          PY
+          for f in /tmp/wf_*.sh; do
+            bash -n "$f" || { echo "  FAIL 셸 문법: $f"; exit 1; }
+          done
+          echo "  ok   모든 run 블록 셸 문법"

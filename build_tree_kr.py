@@ -26,7 +26,9 @@ import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
+import dart
 import est_trend
+import naver
 
 OUT = Path(__file__).resolve().parent / "data" / "tree_kr.json"
 BENCH = "^KS11"  # 코스피 종합
@@ -369,7 +371,7 @@ def earnings_dates(t):
     return (max(past) if past else None, min(future) if future else None)
 
 
-def quarterly_ttm(qinc, inc):
+def quarterly_ttm(qinc, inc, qseries=None):
     """분기 TTM YoY. (q_rev, q_op, q_note, q_approx, q_end) 를 돌려준다.
 
     q_end 는 이 TTM 이 담고 있는 가장 최근 분기의 기말일이다. 화면의
@@ -383,8 +385,13 @@ def quarterly_ttm(qinc, inc):
     230종목이 '비정상'으로 찍혀 화면의 기저효과 패널티가 전부에게 걸렸다.
     q_note 는 진짜 이상일 때만 채우고, 근사 여부는 q_approx 로 따로 알린다.
     """
-    qrev = series_values(pick_row(qinc, REV_ROWS))
-    qop = series_values(pick_row(qinc, OP_ROWS))
+    if qseries is not None:
+        # DART 에서 받은 (기말, 매출, 영업이익). 야후와 같은 모양(최신이 앞)으로.
+        qrev = [(e, r) for e, r, o in reversed(qseries) if r is not None]
+        qop = [(e, o) for e, r, o in reversed(qseries) if o is not None]
+    else:
+        qrev = series_values(pick_row(qinc, REV_ROWS))
+        qop = series_values(pick_row(qinc, OP_ROWS))
     if len(qrev) < 4 or len(qop) < 4:
         return None, None, "", False, None
 
@@ -407,6 +414,36 @@ def quarterly_ttm(qinc, inc):
     return r, o, "정상", True, qend
 
 
+def is_dart(src: str) -> bool:
+    """이 분기 숫자가 DART 계열(확정 또는 확정+잠정)에서 왔는가.
+
+    `q_src == "DART"` 로 비교하면 잠정이 얹힌 종목("DART+잠정")이 빠진다.
+    실제로 그렇게 세다가 DART 성공률을 낮게 집계할 뻔했다.
+    """
+    return (src or "").startswith("DART")
+
+
+def pick_quarterly(qinc, inc, qseries, prelim=0):
+    """분기 TTM 을 어느 소스로 낼지 정한다. (q_src, rev, op, note, approx, end).
+
+    이 분기 흐름은 DART 키가 있는 회차에만 밟히는 코드라 평소엔 아무도 안
+    지나간다. 그래서 함수로 떼어 자가진단이 **실제 코드를** 밟게 한다 —
+    예전엔 테스트가 이 로직을 베껴 갖고 있었는데, 본체만 고치고 사본은 그대로
+    둬서 테스트가 통과하는데 코드는 틀린 상태가 될 뻔했다.
+    """
+    q_src = "yfinance"
+    q_rev = q_op = q_end = None
+    if qseries:
+        q_rev, q_op, q_note, q_approx, q_end = quarterly_ttm(qinc, inc, qseries)
+        if q_rev is not None or q_op is not None:
+            q_src = "DART+잠정" if prelim else "DART"
+    # DART 가 분기를 4개 넘겨줬어도 매출·영익이 군데군데 비면 TTM 이 안 나온다.
+    # 그때 그냥 포기하면 yfinance 로 얻었을 값까지 같이 잃는다 — 다시 시도한다.
+    if not is_dart(q_src):
+        q_rev, q_op, q_note, q_approx, q_end = quarterly_ttm(qinc, inc)
+    return q_src, q_rev, q_op, q_note, q_approx, q_end
+
+
 def num(v):
     """양수 실수만 통과. 그 외(None/NaN/0 이하/문자열)는 None."""
     try:
@@ -414,6 +451,13 @@ def num(v):
     except (TypeError, ValueError):
         return None
     return round(f, 2) if math.isfinite(f) and f > 0 else None
+
+
+# 종목코드 → DART 고유번호. 빌드 시작 때 한 번 받는다(키 없으면 빈 dict).
+DART_CORP: dict = {}
+# 잠정실적(네이버)을 얹을지. 확정(DART)이 있어야 대조가 되므로 DART 와 짝이다.
+# NO_NAVER=1 로 끌 수 있다 — 네이버가 구조를 바꿔 이상해지면 즉시 끄기 위해서다.
+USE_NAVER: bool = not os.environ.get("NO_NAVER")
 
 
 def fetch_stock(tk, log=print):
@@ -444,7 +488,36 @@ def fetch_stock(tk, log=print):
     rev, op = annual_yoy(inc)
     if rev is None or op is None:
         return None
-    q_rev, q_op, q_note, q_approx, q_end = quarterly_ttm(qinc, inc)
+
+    # 분기는 DART 를 먼저 본다. yfinance 는 보고서가 나온 뒤 자기들이 처리한
+    # 다음에야 주기 때문에 매 분기 1~3주가 더 밀린다(실측: 8/8 에 223종목 중
+    # 216종목이 아직 1분기까지였다). DART 는 접수 즉시 정형으로 준다.
+    # 키가 없거나 못 받으면 조용히 yfinance 로 떨어진다 — 화면은 그대로 돈다.
+    code = tk.split(".")[0]
+    qseries, prelim = None, 0
+    if DART_CORP:
+        corp = DART_CORP.get(code)
+        if corp:
+            try:
+                qs = dart.quarters(code, corp, log=lambda *a: None)
+                if len(qs) >= 4:
+                    qseries = qs
+            except Exception as exc:  # noqa: BLE001 — 실패는 폴백으로 흡수
+                log(f"  {tk} DART 실패({exc}) — yfinance 로 대체")
+
+    # DART 가 확정만 주는 사이, 시장은 이미 잠정으로 다음 분기를 보고 있다.
+    # 그 한 분기를 네이버에서 받아 얹는다 — 선취매 도구에서 정작 중요한 구간이다.
+    # 단위가 달라(DART 원 / 네이버 억원) 그냥 붙이면 매출이 1억 배가 되므로,
+    # splice() 가 겹치는 분기로 배수를 대조하고 못 맞추면 붙이지 않는다.
+    if qseries and USE_NAVER:
+        try:
+            nq = naver.quarters(code, log=lambda *a: None)
+            qseries, prelim = naver.splice(qseries, nq, log=lambda *a: None)
+        except Exception as exc:  # noqa: BLE001 — 잠정은 없어도 되는 값이다
+            log(f"  {tk} 네이버 실패({exc}) — 확정(DART)만 씁니다")
+
+    q_src, q_rev, q_op, q_note, q_approx, q_end = pick_quarterly(
+        qinc, inc, qseries, prelim)
 
     info = {}
     try:
@@ -485,6 +558,7 @@ def fetch_stock(tk, log=print):
         "q_note": q_note,
         "q_approx": q_approx,
         "q_end": q_end,
+        "q_src": q_src,
         "_info": {
             "sector": info.get("sector"),
             "industry": info.get("industry"),
@@ -716,6 +790,19 @@ def build(limit, min_cap, sleep, log=print):
     if not rows:
         raise SystemExit("유니버스가 비었습니다. 스크리너 응답을 확인하세요.")
 
+    # DART 고유번호 맵을 먼저 받는다(키 있을 때만). 실패해도 빌드는 계속되고
+    # 분기 데이터는 yfinance 로 떨어진다.
+    global DART_CORP
+    if dart.enabled():
+        try:
+            DART_CORP = dart.corp_map(log=log)
+        except Exception as exc:  # noqa: BLE001
+            log(f"  DART 고유번호 실패({exc}) — 분기는 yfinance 로 받습니다")
+            DART_CORP = {}
+    else:
+        log("  DART_KEY 없음 — 분기는 yfinance 로 받습니다"
+            "(저장소 Secret 에 넣으면 1~3주 빠른 분기 데이터를 씁니다)")
+
     log("[2/4] 재무 + 분류 (종목별)")
     members = []
     for i, r in enumerate(rows, 1):
@@ -743,6 +830,20 @@ def build(limit, min_cap, sleep, log=print):
     log(f"  재무 확보 {len(members)}/{len(rows)}")
     if not members:
         raise SystemExit("재무를 하나도 못 받았습니다.")
+
+    # DART 를 켜놓고 한 건도 못 받았으면 반드시 시끄럽게 알린다.
+    # 이 실패는 조용하다 — 종목마다 yfinance 로 떨어지므로 빌드는 멀쩡히 끝난다.
+    # 실제로 URL 에 .json 확장자를 빼먹어 모든 요청이 101 로 거절당하면서도
+    # 아무 일 없는 것처럼 성공한 적이 있다(프로브를 돌려서야 알았다).
+    if DART_CORP:
+        n_dart = sum(1 for m in members if is_dart(m.get("q_src")))
+        n_prelim = sum(1 for m in members if "잠정" in (m.get("q_src") or ""))
+        log(f"  DART 로 분기를 받은 종목 {n_dart}/{len(members)}"
+            f" (그중 네이버 잠정으로 최근 분기를 메운 종목 {n_prelim})"
+            f" · {dart.status_report()}")
+        if not dart.healthy():
+            log("  ⚠️ DART 응답이 한 건도 정상(000)이 아닙니다 — 전부 yfinance 로 떨어졌습니다.")
+            log("     python dart.py --probe 005930 (또는 Actions 의 probe 입력)으로 원인을 보세요.")
 
     # 분류가 안 붙으면 트리 전체가 한 덩어리가 되어 도구가 무의미해진다.
     known = sum(1 for m in members if m["sector"] != "Unknown")
@@ -866,6 +967,41 @@ def selftest():
     check(quarterly_ttm(q3, annual) == (None, None, "", False, None),
           "분기 3개면 TTM·q_end 모두 없음")
 
+    # DART ↔ yfinance 폴백. 이 분기는 DART 키가 있는 회차에만 밟히는 코드라
+    # 평소엔 아무도 안 지나간다 — 정작 필요한 순간에 처음 실행되는 코드는
+    # 믿을 수 없으므로 세 경로를 여기서 매번 밟는다. (q_note/q_approx 가
+    # 어느 한 경로에서 미할당으로 남으면 빌드 중간에 UnboundLocalError 로 죽는다.)
+    _flow = lambda qseries, prelim=0: pick_quarterly(q, annual, qseries, prelim)
+
+    _dart_ok = [(c, 260e8, 60e8 if i < 4 else 90e8) for i, c in enumerate(QCOLS)]
+    _s, _r, _o, _n, _a, _e = _flow(_dart_ok)
+    check(_s == "DART" and _r == 0 and _o == 50 and _e == "2026-06-30",
+          f"DART 가 제대로 주면 그걸 쓴다 (src={_s}, q_end={_e})")
+
+    # DART 가 분기 개수는 넘겼는데 값이 비어 TTM 이 안 나오는 경우.
+    # 여기서 그냥 포기하면 yfinance 로 얻었을 값까지 같이 잃는다.
+    _s, _r, _o, _n, _a, _e = _flow([(c, None, None) for c in QCOLS])
+    check(_s == "yfinance" and _r == 0 and _o == 50,
+          f"DART 가 부실하면 yfinance 로 되돌아간다 (src={_s}, 매출YoY={_r})")
+
+    _s, _r, _o, _n, _a, _e = _flow(None)
+    check(_s == "yfinance" and _r == 0, f"DART 미사용이면 yfinance (src={_s})")
+
+    # 네이버 잠정이 얹힌 경우. 출처가 달라지므로 화면이 '잠정' 이라고 밝힐 수 있다.
+    _s, _r, _o, _n, _a, _e = _flow(_dart_ok, prelim=1)
+    check(_s == "DART+잠정", f"잠정이 얹히면 출처에 남긴다 (src={_s})")
+    check(_r == 0 and _o == 50, "잠정이 얹혀도 TTM 계산은 그대로")
+    # q_src == "DART" 로 세면 잠정 얹힌 종목이 집계에서 빠진다 — 실제로 그랬다.
+    check(is_dart("DART") and is_dart("DART+잠정"), "DART 계열을 모두 DART 로 센다")
+    check(not is_dart("yfinance") and not is_dart(None) and not is_dart(""),
+          "yfinance·빈값은 DART 가 아니다")
+
+    _empty = FakeDF({"Total Revenue": {}, "Operating Income": {}})
+    _s2 = "yfinance"
+    _r2, _o2, _n2, _a2, _e2 = quarterly_ttm(_empty, annual)
+    check((_r2, _o2, _e2) == (None, None, None) and _n2 == "" and _a2 is False,
+          "양쪽 다 없으면 조용히 None — 지어내지 않는다")
+
     # 실적일 헬퍼 — 야후가 주는 모양(과거·미래 섞인 목록)을 제대로 가르는지
     class _Cal:
         def __init__(self, ds): self.calendar = {"Earnings Date": ds}
@@ -890,7 +1026,7 @@ def selftest():
         {"tk": "005930.KS", "nm": "삼성전자", "sector": "Technology",
          "industry": "Semiconductors", "rev": 10.0, "op": 40.0, "spread": 30.0,
          "q_rev": 12.0, "q_op": 55.0, "q_spread": 43.0, "accel": 13.0,
-         "q_note": "정상", "q_approx": False, "q_end": "2026-06-30",
+         "q_note": "정상", "q_approx": False, "q_end": "2026-06-30", "q_src": "DART",
          "pe": 12.3, "fpe": None, "peg": None, "est30": 4.2, "est90": 9.1,
          "rs3": 4.0, "rs6": -8.0, "gap": 5.0, "gaplvl": "M", "from_high": -14.0,
          "foreign_net": None, "inst_net": None, "foreign_pct": None,
@@ -898,7 +1034,7 @@ def selftest():
         {"tk": "000660.KS", "nm": "SK하이닉스", "sector": "Technology",
          "industry": "Semiconductors", "rev": 20.0, "op": 15.0, "spread": -5.0,
          "q_rev": None, "q_op": None, "q_spread": None, "accel": None,
-         "q_note": "", "q_approx": True, "q_end": None,
+         "q_note": "", "q_approx": True, "q_end": None, "q_src": "yfinance",
          "pe": None, "fpe": None, "peg": None, "est30": None, "est90": None,
          "rs3": None, "rs6": None, "gap": None, "gaplvl": None,
          "from_high": None, "foreign_net": None, "inst_net": None,
