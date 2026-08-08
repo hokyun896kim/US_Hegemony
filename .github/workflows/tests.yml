@@ -16,6 +16,7 @@ on:
       - 'build_tree_kr.py'
       - 'build_data.py'
       - 'est_trend.py'
+      - 'dart.py'
       - '.github/workflows/*.yml'
   pull_request:
     paths: *paths
@@ -56,10 +57,11 @@ jobs:
           python refresh_prices.py --selftest
           python build_tree_kr.py --selftest
           python est_trend.py --selftest
+          python dart.py --selftest
           # build_data.py 는 첫 줄부터 네트워크를 타서 자가진단을 못 붙인다.
           # 최소한 문법은 본다 — 이게 없어서 파이썬만 고친 커밋에 CI 가
           # 아예 안 돌던 적이 있다.
-          python -m py_compile build_data.py refresh_prices.py build_tree_kr.py est_trend.py
+          python -m py_compile build_data.py refresh_prices.py build_tree_kr.py est_trend.py dart.py
 
       # 데이터 파이프라인은 워크플로의 셸 한 줄이 틀려도 조용히 결과를 버린다.
       # 실제로 그런 일이 두 번 있었다(push 경합, git add pathspec) — 다만 그

@@ -26,6 +26,7 @@ import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
+import dart
 import est_trend
 
 OUT = Path(__file__).resolve().parent / "data" / "tree_kr.json"
@@ -369,7 +370,7 @@ def earnings_dates(t):
     return (max(past) if past else None, min(future) if future else None)
 
 
-def quarterly_ttm(qinc, inc):
+def quarterly_ttm(qinc, inc, qseries=None):
     """분기 TTM YoY. (q_rev, q_op, q_note, q_approx, q_end) 를 돌려준다.
 
     q_end 는 이 TTM 이 담고 있는 가장 최근 분기의 기말일이다. 화면의
@@ -383,8 +384,13 @@ def quarterly_ttm(qinc, inc):
     230종목이 '비정상'으로 찍혀 화면의 기저효과 패널티가 전부에게 걸렸다.
     q_note 는 진짜 이상일 때만 채우고, 근사 여부는 q_approx 로 따로 알린다.
     """
-    qrev = series_values(pick_row(qinc, REV_ROWS))
-    qop = series_values(pick_row(qinc, OP_ROWS))
+    if qseries is not None:
+        # DART 에서 받은 (기말, 매출, 영업이익). 야후와 같은 모양(최신이 앞)으로.
+        qrev = [(e, r) for e, r, o in reversed(qseries) if r is not None]
+        qop = [(e, o) for e, r, o in reversed(qseries) if o is not None]
+    else:
+        qrev = series_values(pick_row(qinc, REV_ROWS))
+        qop = series_values(pick_row(qinc, OP_ROWS))
     if len(qrev) < 4 or len(qop) < 4:
         return None, None, "", False, None
 
@@ -416,6 +422,10 @@ def num(v):
     return round(f, 2) if math.isfinite(f) and f > 0 else None
 
 
+# 종목코드 → DART 고유번호. 빌드 시작 때 한 번 받는다(키 없으면 빈 dict).
+DART_CORP: dict = {}
+
+
 def fetch_stock(tk, log=print):
     """한 종목의 연간/분기 스프레드 + 분류(섹터·산업) + 밸류.
 
@@ -444,7 +454,27 @@ def fetch_stock(tk, log=print):
     rev, op = annual_yoy(inc)
     if rev is None or op is None:
         return None
-    q_rev, q_op, q_note, q_approx, q_end = quarterly_ttm(qinc, inc)
+
+    # 분기는 DART 를 먼저 본다. yfinance 는 보고서가 나온 뒤 자기들이 처리한
+    # 다음에야 주기 때문에 매 분기 1~3주가 더 밀린다(실측: 8/8 에 223종목 중
+    # 216종목이 아직 1분기까지였다). DART 는 접수 즉시 정형으로 준다.
+    # 키가 없거나 못 받으면 조용히 yfinance 로 떨어진다 — 화면은 그대로 돈다.
+    qseries = None
+    if DART_CORP:
+        code = tk.split(".")[0]
+        corp = DART_CORP.get(code)
+        if corp:
+            try:
+                qs = dart.quarters(code, corp, log=lambda *a: None)
+                if len(qs) >= 4:
+                    qseries = qs
+            except Exception as exc:  # noqa: BLE001 — 실패는 폴백으로 흡수
+                log(f"  {tk} DART 실패({exc}) — yfinance 로 대체")
+    q_rev, q_op, q_note, q_approx, q_end = quarterly_ttm(qinc, inc, qseries)
+    if qseries:
+        q_src = "DART"
+    else:
+        q_src = "yfinance"
 
     info = {}
     try:
@@ -485,6 +515,7 @@ def fetch_stock(tk, log=print):
         "q_note": q_note,
         "q_approx": q_approx,
         "q_end": q_end,
+        "q_src": q_src,
         "_info": {
             "sector": info.get("sector"),
             "industry": info.get("industry"),
@@ -716,6 +747,19 @@ def build(limit, min_cap, sleep, log=print):
     if not rows:
         raise SystemExit("유니버스가 비었습니다. 스크리너 응답을 확인하세요.")
 
+    # DART 고유번호 맵을 먼저 받는다(키 있을 때만). 실패해도 빌드는 계속되고
+    # 분기 데이터는 yfinance 로 떨어진다.
+    global DART_CORP
+    if dart.enabled():
+        try:
+            DART_CORP = dart.corp_map(log=log)
+        except Exception as exc:  # noqa: BLE001
+            log(f"  DART 고유번호 실패({exc}) — 분기는 yfinance 로 받습니다")
+            DART_CORP = {}
+    else:
+        log("  DART_KEY 없음 — 분기는 yfinance 로 받습니다"
+            "(저장소 Secret 에 넣으면 1~3주 빠른 분기 데이터를 씁니다)")
+
     log("[2/4] 재무 + 분류 (종목별)")
     members = []
     for i, r in enumerate(rows, 1):
@@ -890,7 +934,7 @@ def selftest():
         {"tk": "005930.KS", "nm": "삼성전자", "sector": "Technology",
          "industry": "Semiconductors", "rev": 10.0, "op": 40.0, "spread": 30.0,
          "q_rev": 12.0, "q_op": 55.0, "q_spread": 43.0, "accel": 13.0,
-         "q_note": "정상", "q_approx": False, "q_end": "2026-06-30",
+         "q_note": "정상", "q_approx": False, "q_end": "2026-06-30", "q_src": "DART",
          "pe": 12.3, "fpe": None, "peg": None, "est30": 4.2, "est90": 9.1,
          "rs3": 4.0, "rs6": -8.0, "gap": 5.0, "gaplvl": "M", "from_high": -14.0,
          "foreign_net": None, "inst_net": None, "foreign_pct": None,
@@ -898,7 +942,7 @@ def selftest():
         {"tk": "000660.KS", "nm": "SK하이닉스", "sector": "Technology",
          "industry": "Semiconductors", "rev": 20.0, "op": 15.0, "spread": -5.0,
          "q_rev": None, "q_op": None, "q_spread": None, "accel": None,
-         "q_note": "", "q_approx": True, "q_end": None,
+         "q_note": "", "q_approx": True, "q_end": None, "q_src": "yfinance",
          "pe": None, "fpe": None, "peg": None, "est30": None, "est90": None,
          "rs3": None, "rs6": None, "gap": None, "gaplvl": None,
          "from_high": None, "foreign_net": None, "inst_net": None,

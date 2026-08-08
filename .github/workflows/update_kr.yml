@@ -60,6 +60,10 @@ jobs:
           fi
 
       - name: Build data
+        env:
+          # 분기 재무를 DART 에서 받는다 — yfinance 보다 1~3주 빠르다.
+          # 키가 없으면 빌더가 조용히 yfinance 로 떨어지므로 없어도 돈다.
+          DART_KEY: ${{ secrets.DART_KEY }}
         run: python build_tree_kr.py --limit ${{ steps.mode.outputs.limit }}
 
       - name: Summarize
@@ -104,6 +108,8 @@ jobs:
           git config user.name  "hegemony-bot"
           git config user.email "bot@users.noreply.github.com"
           git add data/tree_kr.json
+          # DART 고유번호 캐시도 남긴다 — 매 회차 다시 받을 이유가 없다.
+          [ -f data/dart_corp.json ] && git add data/dart_corp.json || true
           git diff --staged --quiet && echo "변경 없음" && exit 0
           git commit -m "auto(kr): update $(date +%Y-%m-%d)"
           # 두 빌더가 같은 브랜치에 민다. 동시에 돌면 뒤늦은 쪽이 거부당하는데,
