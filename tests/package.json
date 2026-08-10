@@ -3,13 +3,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "python3 make_fixture.py && node smoke_kr.mjs && node smoke_ux.mjs && node parity.mjs && node stale.mjs && node industry.mjs && node freshness.mjs && node webapp.mjs",
+    "test": "python3 make_fixture.py && node smoke_kr.mjs && node smoke_ux.mjs && node parity.mjs && node stale.mjs && node industry.mjs && node drill.mjs && node freshness.mjs && node webapp.mjs",
     "test:ux": "node smoke_ux.mjs",
     "test:parity": "node parity.mjs",
     "test:stale": "node stale.mjs",
     "test:fresh": "node freshness.mjs",
     "test:webapp": "node webapp.mjs",
-    "test:industry": "node industry.mjs"
+    "test:industry": "node industry.mjs",
+    "test:drill": "node drill.mjs"
   },
   "devDependencies": {
     "jsdom": "^30.0.0"
