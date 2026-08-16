@@ -120,6 +120,18 @@ CARRY = ("rev", "op", "spread", "q_rev", "q_op", "q_spread", "accel",
          "pe", "fpe", "peg", "est30", "est90", "last_earn", "next_earn")
 
 
+def coverage_line(cov: dict) -> str:
+    """실적층 이월 한 줄 요약.
+
+    main() 안에 f-string 으로 인라인해 뒀다가, coverage 키를 got/asked 에서
+    fresh/carried 로 바꾸면서 여기만 빠뜨려 KeyError 로 죽었다(실측 8/16).
+    자체검증은 main() 을 부르지 않으니 못 잡았다. 함수로 빼서 검증이 실제로
+    불러 보게 한다 — 키 이름을 또 바꾸면 이번에는 테스트가 먼저 깨진다.
+    """
+    return (f"  ⚠️ 실적층: 이번 회차 {cov['fresh']}종목 · 지난 회차 이월 "
+            f"{cov['carried']}종목 / 전체 {cov['total']}종목 — {cov['why']}")
+
+
 def too_thin(new_n: int, prev_n: int, floor: float) -> bool:
     """이번 수집이 직전 파일을 덮어쓰기에는 너무 얇은가.
 
@@ -1437,6 +1449,22 @@ def selftest():
     check(json.loads(json.dumps(part, ensure_ascii=False))["coverage"]["skipped"] == 120,
           "coverage 가 JSON 으로 나간다 — 화면이 배너를 띄울 근거")
     check("coverage" not in data, "정상 회차에는 coverage 가 없다")
+    # 이 한 줄이 실제로 죽었다(KeyError: 'got'). 빌더가 만든 dict 로 직접
+    # 불러 본다 — 키 이름을 한쪽만 바꾸면 여기서 먼저 깨진다.
+    cov = {"fresh": 33, "carried": 190, "total": 223, "asked": 300,
+           "skipped": 267, "why": "수집 시간 예산 소진"}
+    line = coverage_line(cov)
+    check("33" in line and "190" in line and "223" in line,
+          f"요약 한 줄이 세 숫자를 다 찍는다 ({line.strip()})")
+    for k in cov:
+        if k in ("asked", "skipped"):
+            continue
+        broken = {x: v for x, v in cov.items() if x != k}
+        try:
+            coverage_line(broken)
+            check(False, f"'{k}' 가 빠지면 알아채야 한다")
+        except KeyError:
+            check(True, f"'{k}' 키가 빠지면 즉시 드러난다")
     # 'partial' 은 미국판이 '가격층만 갱신'(문자열 'prices')에 이미 쓰고 있다.
     # 같은 키에 뜻을 하나 더 얹으면 화면이 조용히 엉뚱한 배너를 띄운다.
     check("partial" not in part, "미국판의 partial 키와 겹치지 않는다")
@@ -1547,11 +1575,18 @@ def main():
 
     out.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")),
                    encoding="utf-8")
-    print(f"\n{out} 저장 완료 · {time.time()-t0:.0f}초")
-    print(f"  갱신일 {data['updated']} · 세부산업 {len(data['subs'])} · 종목 {new_n}")
-    if data.get("coverage"):
-        p = data["coverage"]
-        print(f"  ⚠️ 부분 수집 {p['got']}/{p['asked']} — {p['why']}")
+    # 여기서부터는 이미 파일이 디스크에 있다. 요약 출력은 곁가지이므로 여기서
+    # 터져도 회차를 잃으면 안 된다 — 실측 8/16: coverage 키를 got→fresh 로
+    # 바꾸면서 이 한 줄만 빠뜨려 KeyError 로 죽었고, 파일은 멀쩡한데 종료코드가
+    # 1이 되어 커밋 단계가 통째로 건너뛰어졌다. 44분치 수집이 마지막 한 줄
+    # 때문에 버려졌다. 조용히 삼키지는 않는다 — 시끄럽게 찍되 회차는 살린다.
+    try:
+        print(f"\n{out} 저장 완료 · {time.time()-t0:.0f}초")
+        print(f"  갱신일 {data['updated']} · 세부산업 {len(data['subs'])} · 종목 {new_n}")
+        if data.get("coverage"):
+            print(coverage_line(data["coverage"]))
+    except Exception as exc:  # noqa: BLE001
+        print(f"⚠️ 요약 출력 실패({exc!r}) — 데이터 파일은 정상 저장됐습니다: {out}")
     return 0
 
 
