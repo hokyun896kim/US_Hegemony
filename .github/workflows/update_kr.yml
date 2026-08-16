@@ -118,17 +118,24 @@ jobs:
           # 커밋 메시지는 신뢰할 수 없는 입력이라 셸에 직접 보간하지 않는다
           MSG: ${{ github.event.head_commit.message }}
         run: |
+          # floor = 직전 파일 대비 최소 종목 비율. 반쪽짜리가 멀쩡한 데이터를
+          # 덮어쓰는 걸 막는 장치라, 애초에 커밋하지 않는 스모크에는 지킬 것이
+          # 없다. 40종목은 223종목의 70% 를 절대 못 넘으므로 그대로 두면
+          # 개발 브랜치 CI 가 영구히 빨갛게 뜬다 — 그러면 아무도 안 본다.
           if [ "${{ github.event_name }}" != "push" ]; then
             echo "limit=${{ github.event.inputs.limit || 300 }}" >> "$GITHUB_OUTPUT"
             echo "commit=${{ github.event.inputs.commit != 'false' }}" >> "$GITHUB_OUTPUT"
+            echo "floor=0.7" >> "$GITHUB_OUTPUT"
           elif printf '%s' "$MSG" | grep -qF '[build-data]'; then
             echo "limit=300"  >> "$GITHUB_OUTPUT"
             echo "commit=true" >> "$GITHUB_OUTPUT"
+            echo "floor=0.7" >> "$GITHUB_OUTPUT"
             echo "::notice::[build-data] 감지 — 전체 빌드 후 데이터를 커밋합니다"
           else
             echo "limit=40"     >> "$GITHUB_OUTPUT"
             echo "commit=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::개발 브랜치 스모크 빌드 — 40종목만 받고 커밋하지 않습니다"
+            echo "floor=0"      >> "$GITHUB_OUTPUT"
+            echo "::notice::개발 브랜치 스모크 빌드 — 40종목만 받고 커밋하지 않습니다(덮어쓰기 문턱 해제)"
           fi
 
       # --deadline 은 위 timeout-minutes 보다 40분 낮게 잡는다. 러너 한도에
@@ -144,7 +151,8 @@ jobs:
         run: |
           python build_tree_kr.py \
             --limit ${{ steps.mode.outputs.limit }} \
-            --deadline 170
+            --deadline 170 \
+            --floor ${{ steps.mode.outputs.floor }}
 
       - name: Summarize
         if: inputs.probe == '' && steps.need.outputs.run == 'true'
