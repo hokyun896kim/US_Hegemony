@@ -89,13 +89,17 @@ for (const [label, page, data, wf] of [
     t(/가격[·\s]*상대강도.*최신|최신/.test(note.textContent), '시세는 전부 최신이라고 밝힌다');
     t(/지난 회차 실적/.test(note.textContent), '이월분이 지난 회차 실적임을 명시');
   }
-  t(!wOk.document.getElementById('coverageNote'),
-    '정상 회차에는 배너가 없다 — 없는 문제를 지어내지 않는다');
+  // '배너가 없어야 하는' 경우는 coverage 를 명시적으로 지운 채로 본다.
+  // 실데이터 파일에 coverage 가 있느냐 없느냐에 테스트가 기대면 안 된다 —
+  // 실제로 8/16 빌드가 coverage 를 달고 나오자마자 이 두 줄이 깨졌다.
+  const wNone = await load({ coverage: undefined });
+  t(!wNone.document.getElementById('coverageNote'),
+    '이월이 없으면 배너가 없다 — 없는 문제를 지어내지 않는다');
   // 미국판의 partial:'prices'(가격층만 갱신) 와 키가 겹치면 안 된다 —
-  // 문자열에 .got 을 읽으려다 조용히 엉뚱한 배너가 뜬다.
-  const wPrices = await load({ partial: 'prices' });
+  // 문자열에 .fresh 를 읽으려다 조용히 엉뚱한 배너가 뜬다.
+  const wPrices = await load({ coverage: undefined, partial: 'prices' });
   t(!wPrices.document.getElementById('coverageNote'),
-    "partial:'prices' 를 수집 누락으로 오해하지 않는다");
+    "partial:'prices' 를 실적층 이월로 오해하지 않는다");
 }
 
 console.log(ok ? '\n✅ 신선도 표시 통과' : '\n❌ 실패');
