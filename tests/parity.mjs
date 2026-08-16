@@ -50,7 +50,8 @@ const SHARED = ['priceIn', 'cooling', 'realAccel', 'accelCheck', 'turnaround',
                 'falling', 'earnSoon', 'detectBaseEffect', 'hugeSpread',
                 'revClass', 'ttmConflict', 'radarRel', 'estTrend', 'spreadQuality', 'medOf',
                 'peShow', 'valColor', 'verdict', 'radarWhy',
-                'computeAlerts', 'renderAlerts', 'alertStore', 'ackAlert'];
+                'computeAlerts', 'renderAlerts', 'alertStore', 'ackAlert',
+                'coverageNote'];
 console.log('\n━━ 시장 무관 판정 로직은 두 페이지가 같아야 한다 ━━');
 for (const name of SHARED) {
   const a = fnBody(KR, name), b = fnBody(US, name);
