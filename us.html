@@ -1307,10 +1307,11 @@ function coverageNote(D){
  const host = document.getElementById('updTag'); if(!host || document.getElementById('coverageNote')) return;
  const b = document.createElement('div');
  b.id = 'coverageNote'; b.className = 'coverage-note';
- b.innerHTML = '⚠️ <b>이번 회차는 '+p.got+'/'+p.asked+'종목만 수집됐습니다</b> ('
-   + p.skipped + '종목 누락 · ' + (p.why||'원인 미상') + '). '
-   + '빠진 종목은 화면에 아예 없으니, 산업이 비거나 후보가 적은 것을 '
-   + '시장 신호로 읽지 마십시오. 다음 회차에 복구됩니다.';
+ b.innerHTML = '⚠️ <b>이번 회차에 실적을 새로 받은 종목은 '+p.fresh+'/'+p.total+'개입니다.</b> '
+   + '나머지 ' + p.carried + '종목은 <b>지난 회차 실적</b>을 그대로 씁니다(' + (p.why||'원인 미상') + '). '
+   + '실적은 분기당 한 번 바뀌므로 대개 문제되지 않지만, 그 사이 발표된 실적은 '
+   + '아직 안 들어갔습니다 — 종목별 결격 항목에 실적층 기준일이 적힙니다. '
+   + '가격·상대강도·갭은 ' + p.total + '종목 전부 최신입니다.';
  host.parentNode.insertBefore(b, host.nextSibling);
 }
 function freshness(D){
@@ -1449,6 +1450,9 @@ function radarRisk(m){
  if(stl.s==='due')     r.push(`⏳ ${stl.t} — 발표 뒤 숫자가 바뀔 수 있다`);
  if(stl.s==='unknown') r.push('분기 시점 미확인 — 최근 실적이 반영됐는지 확인 필요');
  if(m.q_approx) r.push('분기TTM은 근사치');
+ // 이번 회차에 실적을 새로 못 받은 종목. 가격은 최신인데 실적층만 지난 회차라
+ // 두 날짜가 한 카드에 섞인다 — 그 사실을 종목마다 적는다.
+ if(m.f_as_of&&D.updated&&m.f_as_of!==D.updated) r.push(`실적층은 <b>${m.f_as_of}</b> 기준 — 이번 회차에 새로 받지 못했다(가격은 최신)`);
  return r.length ? r.join(' · ') : '뚜렷한 결격 없음 — 그래도 1차 자료는 확인';
 }
 function gotoIndustry(name){

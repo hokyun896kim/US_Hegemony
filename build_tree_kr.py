@@ -72,6 +72,54 @@ class Budget:
         return self.left(reserve) <= 0
 
 
+def load_prev(path) -> dict:
+    """직전 결과를 {종목코드: member} 로 되돌린다.
+
+    왜 필요한가 — 매주 223종목의 '실적'을 전부 다시 받는 설계가 틀렸다.
+    실적은 분기당 한 번 바뀌는데 매주 전부 다시 받고 있었다. 시세는 대량
+    API 라 34종목에 2초면 끝나는데(실측), 종목별 재무 엔드포인트는 야후가
+    스로틀을 걸면 종목당 59초까지 간다(실측 8/16). 그래서 스로틀이 걸린 주는
+    한 종목도 못 내놓는 전부-아니면-전무가 됐다.
+
+    이번 회차에 못 받은 종목은 지난 회차 실적을 그대로 들고 간다. 대신 그
+    종목이 '언제 받은 실적인지'(f_as_of)를 각자 달고 다니게 해서, 화면이
+    두 날짜를 한 날짜인 척 보여주지 않게 한다.
+
+    assemble() 이 sector/industry 를 member 에서 빼내 sub 로 올렸으므로
+    여기서 되돌린다(gics 는 한글화돼 있어 역매핑한다).
+    """
+    p = Path(path)
+    if not p.exists():
+        return {}
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001 — 깨진 파일 때문에 빌드를 못 하면 안 된다
+        return {}
+    ko2en = {v: k for k, v in SECTOR_KO.items()}
+    stamp = d.get("updated") or ""
+    out = {}
+    for sub in d.get("subs", []):
+        sector = ko2en.get(sub.get("gics"), sub.get("gics") or "Unknown")
+        for m in sub.get("members", []):
+            if not m.get("tk"):
+                continue
+            m = dict(m)
+            m["sector"], m["industry"] = sector, sub.get("desc") or sector
+            # 예전 파일에는 f_as_of 가 없다 — 그 파일의 갱신일로 친다.
+            m.setdefault("f_as_of", stamp)
+            if not m.get("f_as_of"):
+                m["f_as_of"] = stamp
+            out[m["tk"]] = m
+    return out
+
+
+# 실적층에서 회차마다 새로 받아야 하는 값(느린 것들). 시세층은 매 회차 전부
+# 새로 받으므로 이월 대상이 아니다 — 아래 목록만 지난 회차 값을 물려받는다.
+CARRY = ("rev", "op", "spread", "q_rev", "q_op", "q_spread", "accel",
+         "q_note", "q_approx", "q_end", "q_src", "lq_rev", "lq_op",
+         "pe", "fpe", "peg", "est30", "est90", "last_earn", "next_earn")
+
+
 def too_thin(new_n: int, prev_n: int, floor: float) -> bool:
     """이번 수집이 직전 파일을 덮어쓰기에는 너무 얇은가.
 
@@ -944,8 +992,10 @@ def assemble(members, market, log=print):
     }
 
 
-def build(limit, min_cap, sleep, log=print, budget=None, stall=0):
+def build(limit, min_cap, sleep, log=print, budget=None, stall=0, prev=None):
     budget = budget or Budget(0)
+    prev = prev or {}
+    today = datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d")
     log("[1/4] 유니버스")
     rows = fetch_universe(limit, min_cap, log)
     log(f"  유효 {len(rows)}종목")
@@ -966,6 +1016,17 @@ def build(limit, min_cap, sleep, log=print, budget=None, stall=0):
             "(저장소 Secret 에 넣으면 1~3주 빠른 분기 데이터를 씁니다)")
 
     log("[2/4] 재무 + 분류 (종목별)")
+    # 실적이 가장 오래된 종목부터 받는다. 예산이 중간에 끊겨도 매 회차 다른
+    # 종목이 갱신되므로 몇 회차에 걸쳐 전체가 돌아간다 — 늘 앞쪽 300종목만
+    # 새로 받고 뒤쪽은 영영 안 받는 일이 없다. 동률이면 담고 있는 분기가
+    # 오래된 쪽(새 실적이 나왔을 가능성이 큰 쪽)을 먼저 본다.
+    if prev:
+        rows.sort(key=lambda r: (
+            prev.get(r["tk"], {}).get("f_as_of") or "",
+            prev.get(r["tk"], {}).get("q_end") or "",
+        ))
+        log(f"  실적이 오래된 종목부터 받습니다 (직전 회차 {len(prev)}종목 보유)")
+
     members, skipped = [], 0
     for i, r in enumerate(rows, 1):
         # 예산이 마무리 몫만 남았으면 여기서 끊는다. 남은 종목을 버리는 것이
@@ -997,6 +1058,7 @@ def build(limit, min_cap, sleep, log=print, budget=None, stall=0):
             # 컨센서스 추정치 방향 — 없으면 None 그대로(화면이 중립 처리)
             for k in ("est30", "est90", "last_earn", "next_earn"):
                 m[k] = info.get(k)
+            m["f_as_of"] = today          # 이번 회차에 새로 받은 실적
             members.append(m)
         if i % 25 == 0:
             # 경과·잔여를 같이 찍는다. 취소된 회차를 사후에 읽을 때
@@ -1007,8 +1069,35 @@ def build(limit, min_cap, sleep, log=print, budget=None, stall=0):
                 f"· {budget.spent()/60:.0f}분 경과 · 남은 예상 {eta:.0f}분")
         time.sleep(sleep)
     log(f"  재무 확보 {len(members)}/{len(rows)}")
+    fresh_n = len(members)
+
+    # 이번 회차에 못 받은 종목은 지난 회차 실적을 그대로 들고 간다. 실적은
+    # 분기당 한 번 바뀌므로 한 주 묵은 실적은 '없는 것'보다 훨씬 낫다.
+    # 시세는 아래에서 이월분까지 전부 새로 받으므로 상대강도·갭은 최신이다.
+    got = {m["tk"] for m in members}
+    carried = 0
+    for tk, old in prev.items():
+        if tk in got:
+            continue
+        if old.get("rev") is None or old.get("spread") is None:
+            continue          # 지난 회차에도 실적이 없던 종목은 되살리지 않는다
+        m = {"tk": tk, "nm": old.get("nm") or tk,
+             "sector": old.get("sector") or "Unknown",
+             "industry": old.get("industry") or old.get("sector") or "Unknown",
+             "f_as_of": old.get("f_as_of") or ""}
+        for k in CARRY:
+            m[k] = old.get(k)
+        members.append(m)
+        carried += 1
+    if carried:
+        log(f"  지난 회차 실적 이월 {carried}종목 (이번에 새로 받은 것 {fresh_n})")
+
     if not members:
         raise SystemExit("재무를 하나도 못 받았습니다.")
+    if not fresh_n:
+        # 전부 이월이면 갱신이 아니다. 조용히 지난주 파일을 다시 쓰는 셈이라
+        # 화면은 멀쩡해 보이는데 실제로는 아무것도 안 받은 것이다.
+        raise SystemExit("이번 회차에 새로 받은 실적이 한 종목도 없습니다 — 갱신이 아닙니다.")
 
     # DART 를 켜놓고 한 건도 못 받았으면 반드시 시끄럽게 알린다.
     # 이 실패는 조용하다 — 종목마다 yfinance 로 떨어지므로 빌드는 멀쩡히 끝난다.
@@ -1052,14 +1141,18 @@ def build(limit, min_cap, sleep, log=print, budget=None, stall=0):
         })
 
     log("[4/4] 조립")
+    total = len(members)
     data = assemble(members, market, log)
-    if skipped:
-        # 감춘 것을 데이터에 적어 둔다. 화면이 이 값을 보고 배너를 띄운다 —
-        # 종목이 줄어든 걸 사용자가 '시장이 식었나' 로 오해하면 안 된다.
-        data["coverage"] = {"got": len(members), "asked": len(rows),
-                            "skipped": skipped, "why": "수집 시간 예산 소진"}
-        log(f"  ⚠️ 부분 수집: {len(members)}/{len(rows)}종목 "
-            f"({skipped}종목이 시간 부족으로 빠졌습니다)")
+    if carried or skipped:
+        # 무엇이 이번 것이고 무엇이 지난 것인지 데이터에 적어 둔다. 화면이
+        # 이 값으로 배너를 띄운다 — 두 날짜를 한 날짜인 척 보여주면 안 된다.
+        data["coverage"] = {
+            "fresh": fresh_n, "carried": carried, "total": total,
+            "asked": len(rows), "skipped": skipped,
+            "why": "수집 시간 예산 소진" if skipped else "이번 회차에 못 받음",
+        }
+        log(f"  ⚠️ 실적층: 이번 회차 {fresh_n}종목 · 지난 회차 이월 {carried}종목 "
+            f"(시세는 {total}종목 전부 최신)")
     return data
 
 
@@ -1348,6 +1441,47 @@ def selftest():
     # 같은 키에 뜻을 하나 더 얹으면 화면이 조용히 엉뚱한 배너를 띄운다.
     check("partial" not in part, "미국판의 partial 키와 겹치지 않는다")
 
+    # ── 지난 회차 실적 이월 ──────────────────────────────────────────
+    # 실측 8/16: 야후 스로틀로 종목당 59초가 걸려 40종목에 39분이 들었다.
+    # 300종목을 한 회차에 다 받는 건 불가능하다. 그런데 시세는 34종목에 2초다
+    # (대량 API 는 멀쩡하다). 느린 건 종목별 재무 엔드포인트뿐이다.
+    # 실적은 분기당 한 번 바뀌므로 매주 전부 다시 받을 이유가 없다.
+    print("\n── 지난 회차 실적을 이월하는가 (assemble 이 만든 실제 모양으로) ──")
+    import tempfile
+    with tempfile.TemporaryDirectory() as td:
+        f = Path(td) / "tree_kr.json"
+        saved = dict(data)
+        saved["updated"] = "2026-08-08"
+        f.write_text(json.dumps(saved, ensure_ascii=False), encoding="utf-8")
+        prev = load_prev(f)
+        check(len(prev) == 2, f"직전 파일에서 종목을 복원 (실제 {len(prev)})")
+        one = prev.get("005930.KS")
+        check(one is not None, "종목코드로 찾힌다")
+        if one:
+            # assemble 이 member 에서 빼내 sub 로 올린 값을 되돌려야 한다.
+            # 못 되돌리면 이월 종목이 전부 Unknown 으로 몰려 트리가 무너진다.
+            check(one["sector"] == "Technology",
+                  f"한글 gics 를 영문 sector 로 역매핑 (실제 {one['sector']})")
+            check(one["industry"] == "Semiconductors",
+                  f"industry 복원 (실제 {one['industry']})")
+            check(one["f_as_of"] == "2026-08-08",
+                  f"f_as_of 없던 옛 파일은 그 파일 갱신일로 (실제 {one['f_as_of']})")
+            check(one["spread"] == data["subs"][0]["members"][0]["spread"],
+                  "스프레드가 그대로 넘어온다")
+        check(load_prev(Path(td) / "없는파일.json") == {},
+              "파일이 없으면 빈 dict — 첫 빌드도 돌아야 한다")
+        (Path(td) / "깨진.json").write_text("{not json", encoding="utf-8")
+        check(load_prev(Path(td) / "깨진.json") == {},
+              "깨진 파일 때문에 빌드가 죽지 않는다")
+
+    print("\n── 이월이 시세층까지 물려받지는 않는가 ──")
+    # 시세·상대강도는 매 회차 전부 새로 받는다(2초면 된다). 이월 목록에
+    # 들어가면 지난주 상대강도가 최신인 척 남는다 — 제일 위험한 실수다.
+    for k in ("rs3", "rs6", "gap", "gaplvl", "from_high", "d_until", "ir"):
+        check(k not in CARRY, f"{k} 는 이월하지 않는다(매 회차 새로 받음)")
+    for k in ("rev", "op", "spread", "q_spread", "q_end", "lq_op"):
+        check(k in CARRY, f"{k} 는 이월한다(분기당 한 번 바뀜)")
+
     print("\n── 반쪽짜리가 멀쩡한 직전 파일을 덮어쓰지 않는가 ──")
     check(too_thin(40, 223, 0.7), "40종목이 223종목을 밀어내지 못한다")
     check(too_thin(155, 223, 0.7), "155/223(69%)도 막는다")
@@ -1374,6 +1508,8 @@ def main():
                     help="한 종목에 허용할 최대 초. 0=무제한")
     ap.add_argument("--floor", type=float, default=0.7,
                     help="직전 파일 대비 최소 종목 비율. 밑돌면 덮어쓰지 않는다")
+    ap.add_argument("--no-carry", action="store_true",
+                    help="지난 회차 실적 이월을 끄고 이번에 받은 것만 쓴다(처음부터 다시)")
     ap.add_argument("--out", default=str(OUT))
     ap.add_argument("--selftest", action="store_true",
                     help="네트워크 없이 로직·스키마만 검증")
@@ -1383,9 +1519,10 @@ def main():
         return selftest()
 
     t0 = time.time()
-    data = build(args.limit, args.min_cap, args.sleep,
-                 budget=Budget(args.deadline), stall=args.stall)
     out = Path(args.out)
+    prev = {} if args.no_carry else load_prev(out)
+    data = build(args.limit, args.min_cap, args.sleep,
+                 budget=Budget(args.deadline), stall=args.stall, prev=prev)
     out.parent.mkdir(parents=True, exist_ok=True)
 
     # 반쪽짜리가 멀쩡한 직전 파일을 덮어쓰면 안 된다. 부분 수집은 '없는 것보다

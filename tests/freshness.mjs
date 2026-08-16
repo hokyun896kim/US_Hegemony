@@ -74,18 +74,20 @@ for (const [label, page, data, wf] of [
   t(!/예정일이 지났는데/.test(wOk.document.getElementById('hdNext').textContent),
     '3일 지난 데이터에는 지연 경고 없음(정상 주기 안)');
 
-  // 6) 부분 수집 배너 — 종목이 적은 게 '시장이 식어서'가 아님을 밝힌다.
-  //    실측 사고(2026-08-15): 야후 스로틀로 빌드가 한도에 걸려 통째로 취소됐다.
-  //    이제는 받은 데까지 만들고 멈추는데, 그 사실을 말하지 않으면 사용자는
-  //    산업이 빈 것을 시장 신호로 읽는다.
-  const wPart = await load({ coverage: { got: 180, asked: 300, skipped: 120, why: '수집 시간 예산 소진' } });
+  // 6) 실적층 이월 배너 — 두 날짜를 한 날짜인 척 보여주지 않는다.
+  //    실측(2026-08-16): 야후 스로틀로 종목당 59초가 걸려 300종목을 한 회차에
+  //    다 받는 게 불가능해졌다. 시세는 34종목에 2초라 전부 최신인데 실적층만
+  //    일부가 지난 회차 것이다. 그 차이를 말하지 않으면 사용자는 카드의 모든
+  //    숫자가 같은 날짜인 줄 안다.
+  const wPart = await load({ coverage: { fresh: 120, carried: 103, total: 223, asked: 300, skipped: 180, why: '수집 시간 예산 소진' } });
   const note = wPart.document.getElementById('coverageNote');
-  t(!!note, '부분 수집이면 배너가 뜬다');
+  t(!!note, '실적층 일부가 이월되면 배너가 뜬다');
   if (note) {
-    t(/180\/300/.test(note.textContent), '몇 개를 받았는지 숫자로 밝힌다');
-    t(/120/.test(note.textContent), '몇 개가 빠졌는지 밝힌다');
-    t(/수집 시간 예산 소진/.test(note.textContent), '왜 빠졌는지 밝힌다');
-    t(/시장 신호로 읽지/.test(note.textContent), '시장 신호로 오독하지 말라고 경고');
+    t(/120\/223/.test(note.textContent), '이번 회차에 새로 받은 수를 밝힌다');
+    t(/103/.test(note.textContent), '이월된 수를 밝힌다');
+    t(/수집 시간 예산 소진/.test(note.textContent), '왜 이월됐는지 밝힌다');
+    t(/가격[·\s]*상대강도.*최신|최신/.test(note.textContent), '시세는 전부 최신이라고 밝힌다');
+    t(/지난 회차 실적/.test(note.textContent), '이월분이 지난 회차 실적임을 명시');
   }
   t(!wOk.document.getElementById('coverageNote'),
     '정상 회차에는 배너가 없다 — 없는 문제를 지어내지 않는다');

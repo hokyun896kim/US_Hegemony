@@ -163,20 +163,32 @@ jobs:
           mem = [m for s in d['subs'] for m in s['members']]
           def cnt(k): return sum(1 for m in mem if m.get(k) is not None)
           print(f"## KR 헤게모니 데이터 · {d['updated']}\n")
-          # 부분 수집을 조용히 넘기지 않는다 — 종목이 줄어든 이유를 여기서 밝힌다
+          # 실적층 이월을 조용히 넘기지 않는다 — 무엇이 이번 것이고 무엇이 지난 것인지.
           # ('partial' 은 미국판이 '가격층만 갱신'에 이미 쓰는 키다. 겹치지 않게 coverage.)
           p = d.get('coverage')
           if p:
-              print(f"> ⚠️ **부분 수집** — {p['got']}/{p['asked']}종목. "
-                    f"{p['skipped']}종목이 빠졌습니다({p['why']}).\n")
+              print(f"> ⚠️ **실적층 일부 이월** — 이번 회차에 새로 받은 종목 "
+                    f"{p['fresh']}/{p['total']} · 지난 회차 이월 {p['carried']}종목 "
+                    f"({p['why']}). 시세는 {p['total']}종목 전부 최신입니다.\n")
           print(f"- 종목 **{len(mem)}** · 세부산업 **{len(d['subs'])}** · 대섹터 **{len(d['sectors'])}**")
           print(f"- 분기 TTM 확보 **{cnt('q_spread')}/{len(mem)}** · 상대강도 **{cnt('rs6')}/{len(mem)}** "
                 f"· PER **{cnt('pe')}/{len(mem)}**")
+          # 2분기 반영률 — 반기보고서 기한(6월말+45일) 뒤에는 이게 올라가야 정상이다
+          import collections
+          qe = collections.Counter(m.get('q_end') for m in mem)
+          print(f"- 분기말 분포: " + " · ".join(
+              f"**{k or '미기록'}** {v}" for k, v in sorted(qe.items(), key=lambda x: (x[0] or ''), reverse=True)))
           # 분류가 무너지면 트리가 한 덩어리가 되므로 눈에 띄게 남긴다
           unk = sum(s['n'] for s in d['subs'] if s['gics'] == 'Unknown')
           if len(d['subs']) < 3 or unk > len(mem) * 0.3:
               print(f"- ⚠️ **분류 이상**: 세부산업 {len(d['subs'])}개 · 미분류 {unk}종목")
-          print(f"- 시장: {d['market']}\n")
+          # market 은 dict 라 그냥 찍으면 통째로 쏟아진다 — 읽을 값만 뽑는다
+          mk = d.get('market') or {}
+          if isinstance(mk, dict):
+              print(f"- 시장: 코스피 3M **{mk.get('spy3')}%** · 6M **{mk.get('spy6')}%** "
+                    f"· 변동성 **{mk.get('vix')}%**({mk.get('vix_state')})\n")
+          else:
+              print(f"- 시장: {mk}\n")
           print("### 헤게모니 상위 세부산업")
           print("| 세부산업 | 중앙 스프레드 | 종목수 |")
           print("|---|---:|---:|")
