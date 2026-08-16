@@ -2,3 +2,5 @@ node_modules/
 tests/fixture_kr.json
 package-lock.json
 __pycache__/
+# 덮어쓰기를 거부한 회차가 남기는 반쪽 결과물. 검사용이지 배포용이 아니다.
+data/*.partial.json

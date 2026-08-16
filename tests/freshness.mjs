@@ -73,6 +73,27 @@ for (const [label, page, data, wf] of [
   const wOk = await load({ updated: iso(3), fund_updated: iso(3) });
   t(!/예정일이 지났는데/.test(wOk.document.getElementById('hdNext').textContent),
     '3일 지난 데이터에는 지연 경고 없음(정상 주기 안)');
+
+  // 6) 부분 수집 배너 — 종목이 적은 게 '시장이 식어서'가 아님을 밝힌다.
+  //    실측 사고(2026-08-15): 야후 스로틀로 빌드가 한도에 걸려 통째로 취소됐다.
+  //    이제는 받은 데까지 만들고 멈추는데, 그 사실을 말하지 않으면 사용자는
+  //    산업이 빈 것을 시장 신호로 읽는다.
+  const wPart = await load({ coverage: { got: 180, asked: 300, skipped: 120, why: '수집 시간 예산 소진' } });
+  const note = wPart.document.getElementById('coverageNote');
+  t(!!note, '부분 수집이면 배너가 뜬다');
+  if (note) {
+    t(/180\/300/.test(note.textContent), '몇 개를 받았는지 숫자로 밝힌다');
+    t(/120/.test(note.textContent), '몇 개가 빠졌는지 밝힌다');
+    t(/수집 시간 예산 소진/.test(note.textContent), '왜 빠졌는지 밝힌다');
+    t(/시장 신호로 읽지/.test(note.textContent), '시장 신호로 오독하지 말라고 경고');
+  }
+  t(!wOk.document.getElementById('coverageNote'),
+    '정상 회차에는 배너가 없다 — 없는 문제를 지어내지 않는다');
+  // 미국판의 partial:'prices'(가격층만 갱신) 와 키가 겹치면 안 된다 —
+  // 문자열에 .got 을 읽으려다 조용히 엉뚱한 배너가 뜬다.
+  const wPrices = await load({ partial: 'prices' });
+  t(!wPrices.document.getElementById('coverageNote'),
+    "partial:'prices' 를 수집 누락으로 오해하지 않는다");
 }
 
 console.log(ok ? '\n✅ 신선도 표시 통과' : '\n❌ 실패');

@@ -3,6 +3,10 @@ name: Update KR Hegemony Data
 on:
   schedule:
     - cron: '0 21 * * 6'    # 토 21:00 UTC = 한국 일요일 06:00
+    # 백업. 정규 회차가 실패하면 다음 기회가 일주일 뒤라 한 분기치 갱신을
+    # 통째로 놓친다(실측: 8/15 회차가 잘리면서 반기보고서 법정기한 8/14 직후의
+    # 2분기 확정 실적을 못 받았다). 이 회차는 데이터가 이미 최신이면 스스로 빠진다.
+    - cron: '0 21 * * 0'    # 일 21:00 UTC = 한국 월요일 06:00
   workflow_dispatch:
     inputs:
       limit:
@@ -31,6 +35,11 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # 러너 stdout 은 TTY 가 아니라 파이썬이 블록 버퍼링을 건다. 실측: 8/15
+      # 회차가 210분 만에 취소됐는데 진행 로그가 한 줄도 안 남았다 — 전부
+      # 버퍼 안에서 프로세스와 같이 죽었다. 어디서 느려졌는지 알 방법이 없었다.
+      PYTHONUNBUFFERED: '1'
     # 실측: 미국 장 밖에서는 51~66분, 미국 장중(13:30~20:00 UTC)에는 야후가
     # 스로틀링을 세게 걸어 90분·135분 한도가 연달아 잘렸다(2026-08-08 두 번,
     # 합쳐서 3시간 45분어치 빌드가 버려짐). 주간 크론(토 21:00 UTC)이 한 번도
@@ -40,6 +49,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 백업 회차(월 06:00 KST)는 정규 회차가 실패했을 때만 의미가 있다.
+      # 데이터가 이미 이번 주 것이면 러너 시간을 태울 이유가 없다.
+      - name: 백업 회차는 데이터가 낡았을 때만
+        id: need
+        run: |
+          if [ "${{ github.event.schedule }}" != "0 21 * * 0" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          UPD=$(python3 -c "import json;print(json.load(open('data/tree_kr.json'))['updated'])" 2>/dev/null || echo 1970-01-01)
+          AGE=$(( ( $(date -u +%s) - $(date -u -d "$UPD" +%s) ) / 86400 ))
+          if [ "$AGE" -ge 3 ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::백업 회차 — 데이터가 ${AGE}일 낡았습니다($UPD). 정규 회차가 실패했군요. 빌드합니다."
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::백업 회차 — 데이터가 ${AGE}일 전($UPD)로 최신입니다. 건너뜁니다."
+          fi
+
+      # 셋업·자체검증은 30초짜리라 백업 회차에서도 그냥 돌린다(공짜 검증이다).
+      # 시간을 먹거나 커밋을 남기는 단계만 위 게이트를 본다.
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -102,16 +131,23 @@ jobs:
             echo "::notice::개발 브랜치 스모크 빌드 — 40종목만 받고 커밋하지 않습니다"
           fi
 
+      # --deadline 은 위 timeout-minutes 보다 40분 낮게 잡는다. 러너 한도에
+      # 먼저 걸리면 결과가 통째로 사라지지만(실측 8/15: 210분 쓰고 0바이트),
+      # 빌더가 먼저 끊으면 받은 데까지로 만들어 저장하고 커밋까지 마친다.
+      # 남은 40분은 시세·조립·저장·커밋 몫이다.
       - name: Build data
-        if: inputs.probe == ''
+        if: inputs.probe == '' && steps.need.outputs.run == 'true'
         env:
           # 분기 재무를 DART 에서 받는다 — yfinance 보다 1~3주 빠르다.
           # 키가 없으면 빌더가 조용히 yfinance 로 떨어지므로 없어도 돈다.
           DART_KEY: ${{ secrets.DART_KEY }}
-        run: python build_tree_kr.py --limit ${{ steps.mode.outputs.limit }}
+        run: |
+          python build_tree_kr.py \
+            --limit ${{ steps.mode.outputs.limit }} \
+            --deadline 170
 
       - name: Summarize
-        if: inputs.probe == ''
+        if: inputs.probe == '' && steps.need.outputs.run == 'true'
         run: |
           python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import json
@@ -119,6 +155,12 @@ jobs:
           mem = [m for s in d['subs'] for m in s['members']]
           def cnt(k): return sum(1 for m in mem if m.get(k) is not None)
           print(f"## KR 헤게모니 데이터 · {d['updated']}\n")
+          # 부분 수집을 조용히 넘기지 않는다 — 종목이 줄어든 이유를 여기서 밝힌다
+          # ('partial' 은 미국판이 '가격층만 갱신'에 이미 쓰는 키다. 겹치지 않게 coverage.)
+          p = d.get('coverage')
+          if p:
+              print(f"> ⚠️ **부분 수집** — {p['got']}/{p['asked']}종목. "
+                    f"{p['skipped']}종목이 빠졌습니다({p['why']}).\n")
           print(f"- 종목 **{len(mem)}** · 세부산업 **{len(d['subs'])}** · 대섹터 **{len(d['sectors'])}**")
           print(f"- 분기 TTM 확보 **{cnt('q_spread')}/{len(mem)}** · 상대강도 **{cnt('rs6')}/{len(mem)}** "
                 f"· PER **{cnt('pe')}/{len(mem)}**")
@@ -142,14 +184,19 @@ jobs:
           PY
 
       - name: Upload artifact
-        if: inputs.probe == ''
+        # 빌드가 실패해도 올린다 — 실패한 결과물이야말로 봐야 할 물건이다.
+        # (덮어쓰기를 거부한 회차는 tree_kr.partial.json 이 남는다)
+        if: always() && inputs.probe == '' && steps.need.outputs.run == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: tree_kr-${{ github.run_number }}
-          path: data/tree_kr.json
+          path: |
+            data/tree_kr.json
+            data/tree_kr.partial.json
+          if-no-files-found: warn
 
       - name: Commit
-        if: steps.mode.outputs.commit == 'true' && inputs.probe == ''
+        if: steps.mode.outputs.commit == 'true' && inputs.probe == '' && steps.need.outputs.run == 'true'
         run: |
           git config user.name  "hegemony-bot"
           git config user.email "bot@users.noreply.github.com"

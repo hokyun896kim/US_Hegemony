@@ -152,6 +152,7 @@ h1{font-size:clamp(24px,5.6vw,42px);font-weight:800;line-height:1.05;margin:8px 
 /* ===== 선취매 레이더 ===== */
 /* 이번 주 급소 — 최상단 알람. 정보가 많아 묻히지 않게 '열자마자 볼 것'만. */
 .alert{margin:14px 0 4px}
+.coverage-note{margin:8px 0 4px;padding:9px 12px;border-radius:9px;background:#fff6e5;border:1px solid #f0c880;color:#7a4f00;font-size:11.5px;line-height:1.6}
 .alert-head{font-size:14px;letter-spacing:.14em;color:var(--gold2);text-transform:uppercase;font-weight:800;margin:0 0 4px;display:flex;align-items:center;gap:8px}
 .alert-sub{font-size:12.5px;color:var(--mut);margin:0 0 10px;line-height:1.5}
 .alert-sub b{color:var(--gold2)}
@@ -692,6 +693,7 @@ async function loadData(){
    }}
   const up=document.getElementById('updTag');
   if(up&&D.updated)up.textContent='자료: '+(D.source||'yfinance (KOSPI/KOSDAQ)')+' · 갱신 '+D.updated;
+  coverageNote(D);
   // 데모(합성) 데이터 경고 배너 — 실빌드에서는 D.demo 가 없어 뜨지 않는다
   if(D.demo){
     const b=document.createElement('div');
@@ -1297,7 +1299,8 @@ function medOf(arr){
 // "이 숫자가 언제 것이고 다음에 언제 바뀌는가" 는 화면에 있어야 한다.
 // 워크플로의 cron 과 같은 값을 여기 둔다(UTC 요일·시각). 한쪽만 고치면
 // 화면이 거짓말을 하므로 아래 SCHED_NOTE 에 대응 워크플로를 적어둔다.
-const SCHED = [{d:6,h:21,m:0}];
+// 토=정규, 일=백업(정규가 실패했을 때만 실제로 빌드한다).
+const SCHED = [{d:6,h:21,m:0},{d:0,h:21,m:0}];
 const SCHED_NOTE = '.github/workflows/update_kr.yml';
 
 // 다음 예정 시각. 보는 사람의 시간대로 표시한다.
@@ -1325,6 +1328,24 @@ function daysOld(iso){
  if(isNaN(d)) return null;
  const t = new Date(); t.setHours(0,0,0,0);
  return Math.round((t - d) / 864e5);
+}
+// 부분 수집 배너. 빌더가 시간 예산을 다 쓰면 받은 종목까지만 담고
+// D.partial 에 몇 개가 빠졌는지 적어 보낸다.
+//
+// 왜 화면에 띄우는가 — 종목이 300에서 180으로 줄면 산업 하나가 통째로
+// 사라질 수 있다. 그걸 '시장이 식었다'로 읽으면 정확히 반대 결론이 난다.
+// 데이터가 모자란 것과 시장이 식은 것은 다른 사건이고, 그 차이를 말해주지
+// 않으면 사용자가 구분할 방법이 없다.
+function coverageNote(D){
+ const p = D && D.coverage; if(!p) return;
+ const host = document.getElementById('updTag'); if(!host || document.getElementById('coverageNote')) return;
+ const b = document.createElement('div');
+ b.id = 'coverageNote'; b.className = 'coverage-note';
+ b.innerHTML = '⚠️ <b>이번 회차는 '+p.got+'/'+p.asked+'종목만 수집됐습니다</b> ('
+   + p.skipped + '종목 누락 · ' + (p.why||'원인 미상') + '). '
+   + '빠진 종목은 화면에 아예 없으니, 산업이 비거나 후보가 적은 것을 '
+   + '시장 신호로 읽지 마십시오. 다음 회차에 복구됩니다.';
+ host.parentNode.insertBefore(b, host.nextSibling);
 }
 function freshness(D){
  const old = daysOld(D.updated);

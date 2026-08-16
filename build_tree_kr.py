@@ -33,6 +33,91 @@ import naver
 OUT = Path(__file__).resolve().parent / "data" / "tree_kr.json"
 BENCH = "^KS11"  # 코스피 종합
 
+
+# ── 시간 예산 ────────────────────────────────────────────────────────
+class Budget:
+    """빌드에 쓸 수 있는 벽시계 예산.
+
+    왜 필요한가 — 실측(2026-08-15 정기 크론). 야후가 이 러너의 출구 IP 에
+    스로틀을 걸어, 일주일 전 55분이면 끝나던 같은 빌드가 3시간 30분을 넘겼고
+    한도(210분)에 걸려 통째로 취소됐다. 남은 결과는 0바이트다. 그 주의 갱신은
+    사라졌고, 하필 반기보고서 법정기한(6월말 +45일 = 8/14) 직후라 2분기 확정
+    실적을 쓸어담을 유일한 회차였다.
+
+    야후가 느린 것은 우리가 못 고친다. 고칠 수 있는 것은 '느리면 전부 잃는'
+    구조다. 예산을 두고, 다 쓰면 거기까지 받은 것으로 만든다. 대신 몇 종목이
+    빠졌는지를 데이터·요약·화면 세 곳에 남긴다 — 조용한 절삭은 금지다.
+    """
+
+    def __init__(self, minutes: float, reserve_min: float = 25.0):
+        # reserve = 시세·조립·저장에 남겨둘 몫. 종목 수집이 이걸 먹어치우면
+        # 재무만 잔뜩 받고 상대강도가 없는 반쪽짜리가 나온다.
+        self.total = max(0.0, float(minutes or 0)) * 60
+        self.reserve = max(0.0, float(reserve_min)) * 60
+        self.t0 = time.time()
+
+    def on(self) -> bool:
+        return self.total > 0
+
+    def spent(self) -> float:
+        return time.time() - self.t0
+
+    def left(self, reserve: bool = False) -> float:
+        """남은 초. reserve=True 면 마무리 몫을 뺀 값(수집 단계용)."""
+        if not self.on():
+            return float("inf")
+        return self.total - (self.reserve if reserve else 0) - self.spent()
+
+    def over(self, reserve: bool = False) -> bool:
+        return self.left(reserve) <= 0
+
+
+def too_thin(new_n: int, prev_n: int, floor: float) -> bool:
+    """이번 수집이 직전 파일을 덮어쓰기에는 너무 얇은가.
+
+    부분 수집은 '없는 것보다 나은 결과'이지 '지난주보다 나은 결과'가 아니다.
+    40종목이 223종목을 밀어내면 화면에서 산업이 통째로 사라지고, 사용자는 그
+    이유를 알 방법이 없다. 직전 파일이 없거나(첫 빌드) 문턱을 넘으면 쓴다.
+    """
+    if prev_n <= 0 or floor <= 0:
+        return False
+    return new_n < prev_n * floor
+
+
+class Stall(Exception):
+    """한 종목이 정해진 시간을 넘겨 매달렸다."""
+
+
+def _stall_guard(seconds: int):
+    """한 종목에 쓰는 시간을 강제로 끊는 컨텍스트.
+
+    yfinance 는 curl_cffi 위에서 도는데 우리가 요청 타임아웃을 주입할 자리가
+    없다. 소켓 하나가 매달리면 예산이 통째로 그리로 샌다(실측 로그에 2시간
+    39분 동안 아무 출력도 없는 구간이 있었다). SIGALRM 은 표준 라이브러리만
+    쓰고 메인 스레드에서 확실히 끊긴다. 지원 안 되는 환경이면 그냥 통과한다.
+    """
+    import contextlib
+    import signal
+
+    @contextlib.contextmanager
+    def guard():
+        if seconds <= 0 or not hasattr(signal, "SIGALRM"):
+            yield
+            return
+
+        def blow(_sig, _frm):
+            raise Stall(f"{seconds}초 초과")
+
+        old = signal.signal(signal.SIGALRM, blow)
+        signal.alarm(seconds)
+        try:
+            yield
+        finally:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, old)
+
+    return guard()
+
 # ── 섹터/산업 한글 라벨 ───────────────────────────────────────────────
 SECTOR_KO = {
     "Technology": "정보기술",
@@ -638,7 +723,7 @@ def fetch_stock(tk, log=print):
 
 
 # ── 가격 ─────────────────────────────────────────────────────────────
-def fetch_prices(tickers, log=print):
+def fetch_prices(tickers, log=print, budget=None):
     """RS3/RS6(코스피 대비), 갭위험, 52주 고점 대비를 한 번에."""
     import pandas as pd   # yfinance 의존성이라 항상 존재
     import yfinance as yf
@@ -648,6 +733,11 @@ def fetch_prices(tickers, log=print):
     chunk = 50
     for i in range(0, len(symbols), chunk):
         part = symbols[i : i + chunk]
+        # 시세까지 예산을 넘기면 조립·저장을 못 하고 전부 잃는다. 상대강도가
+        # 빈 종목은 화면이 '—' 로 처리하지만, 파일이 없으면 처리할 것도 없다.
+        if budget and budget.on() and budget.left() < 180:
+            log(f"  시세 중단 — 시간 부족({len(symbols)-i}종목이 상대강도 없이 남습니다)")
+            break
         try:
             df = yf.download(
                 part,
@@ -678,9 +768,17 @@ def fetch_prices(tickers, log=print):
     # 병렬 다운로드는 yfinance 의 sqlite 캐시 경합으로 일부가 흘린다
     # ("database is locked"). 빠진 것만 단일 스레드로 한 번 더 줍는다.
     missing = [s for s in symbols if s not in frames]
-    if missing:
+    if missing and budget and budget.on() and budget.left() < 300:
+        # 줍기는 한 종목씩이라 느리다. 예산 끝자락이면 포기하는 게 낫다 —
+        # 여기서 한도에 걸리면 조립도 저장도 못 하고 전부 잃는다.
+        log(f"  누락 {len(missing)}종목 — 시간이 없어 재시도를 건너뜁니다"
+            f"(상대강도가 빈 종목으로 남습니다)")
+    elif missing:
         log(f"  누락 {len(missing)}종목 재시도")
         for sym in missing:
+            if budget and budget.on() and budget.left() < 120:
+                log(f"  재시도 중단 — 시간 부족")
+                break
             try:
                 d = yf.download(sym, period="1y", interval="1d",
                                 auto_adjust=False, progress=False, threads=False)
@@ -846,7 +944,8 @@ def assemble(members, market, log=print):
     }
 
 
-def build(limit, min_cap, sleep, log=print):
+def build(limit, min_cap, sleep, log=print, budget=None, stall=0):
+    budget = budget or Budget(0)
     log("[1/4] 유니버스")
     rows = fetch_universe(limit, min_cap, log)
     log(f"  유효 {len(rows)}종목")
@@ -867,9 +966,21 @@ def build(limit, min_cap, sleep, log=print):
             "(저장소 Secret 에 넣으면 1~3주 빠른 분기 데이터를 씁니다)")
 
     log("[2/4] 재무 + 분류 (종목별)")
-    members = []
+    members, skipped = [], 0
     for i, r in enumerate(rows, 1):
-        fin = fetch_stock(r["tk"], log)
+        # 예산이 마무리 몫만 남았으면 여기서 끊는다. 남은 종목을 버리는 것이
+        # 아깝지만, 다 받으려다 한도에 걸려 전부 잃는 것보다는 낫다.
+        if budget.over(reserve=True):
+            skipped = len(rows) - i + 1
+            log(f"  ⏳ 시간 예산 소진({budget.spent()/60:.0f}분) — 남은 {skipped}종목을 "
+                f"건너뜁니다. 받은 {len(members)}종목으로 만듭니다.")
+            break
+        try:
+            with _stall_guard(stall):
+                fin = fetch_stock(r["tk"], log)
+        except Stall as exc:
+            log(f"  {r['tk']} 매달림({exc}) — 건너뜁니다")
+            fin = None
         if fin:
             info = fin.pop("_info", {})
             sector = info.get("sector") or r.get("sector") or "Unknown"
@@ -888,7 +999,12 @@ def build(limit, min_cap, sleep, log=print):
                 m[k] = info.get(k)
             members.append(m)
         if i % 25 == 0:
-            log(f"  {i}/{len(rows)} (확보 {len(members)})")
+            # 경과·잔여를 같이 찍는다. 취소된 회차를 사후에 읽을 때
+            # '어디서 느려졌는가' 를 알 수 있는 유일한 단서다.
+            pace = budget.spent() / max(i, 1)
+            eta = pace * (len(rows) - i) / 60
+            log(f"  {i}/{len(rows)} (확보 {len(members)}) "
+                f"· {budget.spent()/60:.0f}분 경과 · 남은 예상 {eta:.0f}분")
         time.sleep(sleep)
     log(f"  재무 확보 {len(members)}/{len(rows)}")
     if not members:
@@ -918,7 +1034,7 @@ def build(limit, min_cap, sleep, log=print):
         )
 
     log("[3/4] 시세")
-    price, market = fetch_prices([m["tk"] for m in members], log)
+    price, market = fetch_prices([m["tk"] for m in members], log, budget)
     for m in members:
         p = price.get(m["tk"], {})
         m.update({
@@ -936,7 +1052,15 @@ def build(limit, min_cap, sleep, log=print):
         })
 
     log("[4/4] 조립")
-    return assemble(members, market, log)
+    data = assemble(members, market, log)
+    if skipped:
+        # 감춘 것을 데이터에 적어 둔다. 화면이 이 값을 보고 배너를 띄운다 —
+        # 종목이 줄어든 걸 사용자가 '시장이 식었나' 로 오해하면 안 된다.
+        data["coverage"] = {"got": len(members), "asked": len(rows),
+                            "skipped": skipped, "why": "수집 시간 예산 소진"}
+        log(f"  ⚠️ 부분 수집: {len(members)}/{len(rows)}종목 "
+            f"({skipped}종목이 시간 부족으로 빠졌습니다)")
+    return data
 
 
 # ── 자체 검증 (네트워크 없이) ────────────────────────────────────────
@@ -1178,6 +1302,61 @@ def selftest():
 
     json.dumps(data, ensure_ascii=False)
     check(True, "JSON 직렬화")
+
+    # ── 시간 예산 ────────────────────────────────────────────────────
+    # 실측 사고(2026-08-15): 야후 스로틀로 빌드가 210분 한도에 걸려 취소됐고
+    # 결과가 0바이트였다. '느리면 전부 잃는' 구조를 고쳤으니 그 규칙을 고정한다.
+    print("\n── 시간 예산 (느려도 전부 잃지 않는가) ──")
+    b0 = Budget(0)
+    check(not b0.on() and b0.left() == float("inf"), "0분이면 예산 없음 — 무제한")
+    check(not b0.over() and not b0.over(reserve=True), "무제한은 절대 소진되지 않는다")
+    b = Budget(100, reserve_min=25)
+    b.t0 = time.time() - 80 * 60           # 80분 쓴 것으로 위조
+    check(not b.over(), "80/100분 — 아직 전체 예산은 남았다")
+    check(b.over(reserve=True),
+          "하지만 마무리 몫(25분)을 빼면 소진 — 여기서 수집을 끊는다")
+    b.t0 = time.time() - 50 * 60
+    check(not b.over(reserve=True), "50/100분이면 계속 수집한다")
+    check(round(b.left(reserve=True) / 60) == 25, "남은 수집 시간 계산 (25분)")
+    # 마무리 몫이 반드시 남는가 — 이게 0 이면 재무만 받고 시세 없이 끝난다
+    b2 = Budget(100, reserve_min=25)
+    b2.t0 = time.time() - 75 * 60
+    check(b2.over(reserve=True) and not b2.over(),
+          "수집을 끊는 시점에도 시세·조립·저장 몫은 남아 있다")
+
+    print("\n── 한 종목이 매달리면 끊는가 ──")
+    try:
+        with _stall_guard(1):
+            time.sleep(2)
+        check(False, "매달린 종목을 끊는다")
+    except Stall:
+        check(True, "매달린 종목을 1초에 끊는다")
+    except Exception as exc:  # noqa: BLE001  (SIGALRM 없는 환경)
+        check(True, f"이 환경은 SIGALRM 미지원 — 통과 처리 ({exc})")
+    with _stall_guard(0):
+        check(True, "0 이면 끊지 않는다(무제한)")
+    with _stall_guard(30):
+        check(True, "제한 안에서 끝나면 아무 일 없다")
+
+    print("\n── 부분 수집을 조용히 넘기지 않는가 ──")
+    part = dict(data)
+    part["coverage"] = {"got": 180, "asked": 300, "skipped": 120, "why": "수집 시간 예산 소진"}
+    check(json.loads(json.dumps(part, ensure_ascii=False))["coverage"]["skipped"] == 120,
+          "coverage 가 JSON 으로 나간다 — 화면이 배너를 띄울 근거")
+    check("coverage" not in data, "정상 회차에는 coverage 가 없다")
+    # 'partial' 은 미국판이 '가격층만 갱신'(문자열 'prices')에 이미 쓰고 있다.
+    # 같은 키에 뜻을 하나 더 얹으면 화면이 조용히 엉뚱한 배너를 띄운다.
+    check("partial" not in part, "미국판의 partial 키와 겹치지 않는다")
+
+    print("\n── 반쪽짜리가 멀쩡한 직전 파일을 덮어쓰지 않는가 ──")
+    check(too_thin(40, 223, 0.7), "40종목이 223종목을 밀어내지 못한다")
+    check(too_thin(155, 223, 0.7), "155/223(69%)도 막는다")
+    check(not too_thin(157, 223, 0.7), "157/223(70%)은 통과 — 문턱을 넘었다")
+    check(not too_thin(223, 223, 0.7), "같은 규모면 당연히 통과")
+    check(not too_thin(260, 223, 0.7), "늘어난 회차를 막지 않는다")
+    check(not too_thin(40, 0, 0.7), "직전 파일이 없으면(첫 빌드) 막지 않는다")
+    check(not too_thin(1, 223, 0), "문턱 0 이면 검사를 끈다 — 강제 덮어쓰기용")
+
     print("\n" + ("전부 통과" if ok else "실패 있음"))
     return 0 if ok else 1
 
@@ -1189,6 +1368,12 @@ def main():
                     help="최소 시가총액(원). 기본 3000억")
     ap.add_argument("--sleep", type=float, default=0.35,
                     help="종목별 요청 간격(초)")
+    ap.add_argument("--deadline", type=float, default=0,
+                    help="벽시계 예산(분). 넘기면 받은 데까지로 만든다. 0=무제한")
+    ap.add_argument("--stall", type=int, default=90,
+                    help="한 종목에 허용할 최대 초. 0=무제한")
+    ap.add_argument("--floor", type=float, default=0.7,
+                    help="직전 파일 대비 최소 종목 비율. 밑돌면 덮어쓰지 않는다")
     ap.add_argument("--out", default=str(OUT))
     ap.add_argument("--selftest", action="store_true",
                     help="네트워크 없이 로직·스키마만 검증")
@@ -1198,14 +1383,38 @@ def main():
         return selftest()
 
     t0 = time.time()
-    data = build(args.limit, args.min_cap, args.sleep)
+    data = build(args.limit, args.min_cap, args.sleep,
+                 budget=Budget(args.deadline), stall=args.stall)
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
+
+    # 반쪽짜리가 멀쩡한 직전 파일을 덮어쓰면 안 된다. 부분 수집은 '없는 것보다
+    # 나은 결과'이지 '지난주보다 나은 결과'가 아니다 — 40종목이 223종목을
+    # 밀어내면 화면에서 산업이 통째로 사라지고, 사용자는 그 이유를 알 수 없다.
+    new_n = sum(s["n"] for s in data["subs"])
+    prev_n = 0
+    if out.exists():
+        try:
+            prev_n = sum(s["n"] for s in json.loads(out.read_text(encoding="utf-8"))["subs"])
+        except Exception:  # noqa: BLE001
+            prev_n = 0
+    if too_thin(new_n, prev_n, args.floor):
+        side = out.with_suffix(".partial.json")
+        side.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")),
+                        encoding="utf-8")
+        print(f"\n❌ 덮어쓰지 않았습니다 — 이번 수집 {new_n}종목이 직전 {prev_n}종목의 "
+              f"{args.floor:.0%}({prev_n*args.floor:.0f}종목)에 못 미칩니다.")
+        print(f"   직전 데이터를 그대로 둡니다. 이번 결과는 {side.name} 에 남겼습니다.")
+        print("   원인이 일시적 스로틀링이면 재실행으로 해결됩니다.")
+        return 2
+
     out.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")),
                    encoding="utf-8")
     print(f"\n{out} 저장 완료 · {time.time()-t0:.0f}초")
-    print(f"  갱신일 {data['updated']} · 세부산업 {len(data['subs'])} · "
-          f"종목 {sum(s['n'] for s in data['subs'])}")
+    print(f"  갱신일 {data['updated']} · 세부산업 {len(data['subs'])} · 종목 {new_n}")
+    if data.get("coverage"):
+        p = data["coverage"]
+        print(f"  ⚠️ 부분 수집 {p['got']}/{p['asked']} — {p['why']}")
     return 0
 
 
