@@ -177,6 +177,10 @@ def main(fetch=None, path=None, statements=None, deadline=0, stall=90, fund=True
         print(f"[!] {path} 가 없다 — 부분 갱신은 기존 데이터가 있어야 한다.",
               file=sys.stderr)
         return 1
+    # 예산은 여기서 시작한다. 시세 구간을 예산 밖에 두면 야후가 스로틀을 걸 때
+    # 시세만으로 한도를 다 먹고(실측 KR: 호출당 9초 → 401종목이면 60분) 실적층은
+    # 시작도 못 한 채 러너 한도에 걸려 회차가 통째로 사라진다.
+    budget = buildlib.Budget(deadline)
     D = json.load(open(path, encoding="utf-8"))
     # 펀더멘털이 언제 것인지. 이미 부분 갱신을 한 번 거친 파일이면 그 값을 잇는다.
     fund_day = D.get("fund_updated") or D.get("updated")
@@ -192,8 +196,19 @@ def main(fetch=None, path=None, statements=None, deadline=0, stall=90, fund=True
     members = [m for r in D.get("subs", []) for m in r.get("members", [])]
     print(f"[1/3] 가격층 갱신 — {len(members)}종목 (펀더멘털 기준일 {fund_day})")
 
-    ok = miss = 0
+    ok = miss = cut = 0
     for i, m in enumerate(members):
+        # 예산이 마무리 몫만 남으면 시세 수집을 끊는다. 남은 종목은 아래
+        # '못 받은 종목'과 똑같이 가격 지표를 비운다 — 지난주 상대강도를
+        # 오늘 것인 양 남기면 선취매 판정이 지난주 가격으로 내려진다.
+        if budget.over(reserve=True):
+            cut = len(members) - i
+            print(f"   ⏳ 시간 예산 소진({budget.spent()/60:.0f}분) — 남은 {cut}종목은 "
+                  f"가격 지표를 비웁니다")
+            for mm in members[i:]:
+                for k in ("rs3", "rs6", "gap", "gaplvl", "from_high", "pe"):
+                    mm[k] = None
+            break
         s = fetch(m["tk"])
         if not s:
             miss += 1
@@ -227,7 +242,6 @@ def main(fetch=None, path=None, statements=None, deadline=0, stall=90, fund=True
     # '분기에 한 번 바뀌니 지난주 값과 같다'는 전제가 바로 그 분기가 바뀌면서
     # 깨진 것이다. 그래서 야후로라도 실적층을 갱신한다.
     today = str(date.today())
-    budget = buildlib.Budget(deadline)
     fresh = carried = 0
     if fund:
         # 실적이 오래된 종목부터. 예산이 끊겨도 회차를 거치며 전체가 돌아간다.
@@ -289,7 +303,8 @@ def main(fetch=None, path=None, statements=None, deadline=0, stall=90, fund=True
     # 새로 받았으면 더는 사실이 아니다.
     D["partial"] = None if fresh else "prices"
     json.dump(D, open(path, "w", encoding="utf-8"), ensure_ascii=False)
-    print(f"완료: {path} · 가격 {ok}종목(실패 {miss}) · 실적 {fresh}종목 갱신"
+    print(f"완료: {path} · 가격 {ok}종목(실패 {miss}"
+          + (f", 시간부족 {cut}" if cut else "") + f") · 실적 {fresh}종목 갱신"
           + (f", {carried}종목은 {fund_day} 기준 유지" if carried else ""))
     return 0
 
@@ -483,6 +498,31 @@ def selftest():
       "하나라도 새로 받았으면 '가격층만'이 아니다")
     t(D3["fund_updated"] == str(date.today()), "실적층을 들여다본 날짜가 올라간다")
     os.unlink(tmp2)
+
+    print("\n── 예산이 시세 구간까지 덮는가 ──")
+    # 야후가 스로틀을 걸면 시세만으로 한도를 다 먹을 수 있다(실측 KR: 호출당
+    # 9초). 그때 남은 종목에 지난주 상대강도가 남으면 선취매 판정이 지난주
+    # 가격으로 내려진다 — 값을 비워서 화면이 '—' 로 처리하게 해야 한다.
+    D4 = {"subs": [{"members": [
+        {"tk": "AAA", "rs6": 11.1, "pe": 9.9, "from_high": -3.0, "spread": 4.0,
+         "f_as_of": "2026-08-08"},
+        {"tk": "BBB", "rs6": 22.2, "pe": 8.8, "from_high": -4.0, "spread": 1.0,
+         "f_as_of": "2026-08-08"}]}],
+        "updated": "2026-08-30", "fund_updated": "2026-08-08"}
+    fd, tmp3 = tempfile.mkstemp(suffix=".json"); os.close(fd)
+    json.dump(D4, open(tmp3, "w", encoding="utf-8"))
+    # deadline 1분 < 마무리 몫 25분 → 첫 종목부터 예산 소진 상태
+    main(fetch=lambda s: SERIES.get(s), path=tmp3, statements=_st, deadline=1)
+    D5 = json.load(open(tmp3, encoding="utf-8"))
+    M5 = {m["tk"]: m for r in D5["subs"] for m in r["members"]}
+    t(all(M5["AAA"][k] is None for k in ("rs3", "rs6", "gap", "gaplvl", "from_high", "pe")),
+      "예산이 끊기면 남은 종목의 가격 지표를 비운다(낡은 값을 남기지 않는다)")
+    t(all(M5["BBB"][k] is None for k in ("rs6", "from_high", "pe")),
+      "끊긴 뒤 종목도 마찬가지")
+    t(M5["AAA"]["spread"] == 4.0 and M5["BBB"]["spread"] == 1.0,
+      "그래도 펀더멘털은 지운다고 없애지 않는다")
+    t(D5["updated"] == str(date.today()), "예산이 끊겨도 파일은 저장된다 — 회차를 잃지 않는다")
+    os.unlink(tmp3)
 
     print("\n✅ 전부 통과" if ok[0] else "\n❌ 실패")
     return 0 if ok[0] else 1
