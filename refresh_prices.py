@@ -38,6 +38,24 @@ MAX_REV_YOY, MAX_OP_YOY = 300.0, 500.0
 FUND_KEYS = ("rev", "op", "spread", "q_rev", "q_op", "q_spread", "accel",
              "q_note", "q_approx", "q_end", "q_src", "lq_rev", "lq_op")
 
+# 시세를 이만큼 연속으로 못 받으면 목록에서 뺀다. 상장폐지·인수합병된 종목이
+# 낡은 숫자를 달고 화면에 남아 있으면, 그게 '지금 살 수 있는 종목'인 줄 안다.
+# 4주로 잡은 이유: 야후가 한 회차 삐끗하는 건 흔하고(오늘 실측 18/401),
+# 진짜 죽은 종목은 절대 돌아오지 않으므로 한 달이면 충분히 갈린다.
+DROP_AFTER = 4
+
+
+def bad_symbol(tk: str) -> bool:
+    """야후에 존재할 수 없는 심볼인가.
+
+    실측: 401종목 중 1566011·4904·81061 같은 숫자만으로 된 항목이 있다.
+    티커가 아니라 CIK 다 — SEC 전체 빌드에서 cik→ticker 역매핑이 실패했을 때
+    CIK 를 티커 자리에 넣은 흔적이다. 시장에 그런 종목은 없으므로 회복될 일이
+    없다. 4주를 기다릴 이유가 없어 바로 뺀다.
+    """
+    t = (tk or "").strip()
+    return not t or t.isdigit()
+
 
 def _pct(new, old):
     """YoY %. 분모가 0 이하이거나 너무 작으면 비율이 무의미하므로 None."""
@@ -212,11 +230,13 @@ def main(fetch=None, path=None, statements=None, deadline=0, stall=90, fund=True
         s = fetch(m["tk"])
         if not s:
             miss += 1
+            m["miss_streak"] = int(m.get("miss_streak") or 0) + 1
             # 못 받은 종목은 옛 가격 지표를 지운다. 낡은 RS 를 최신인 척 두면
             # 선취매 판정이 지난주 가격으로 내려진다.
             for k in ("rs3", "rs6", "gap", "gaplvl", "from_high", "pe"):
                 m[k] = None
             continue
+        m["miss_streak"] = 0
         cl = [r[3] for r in s]
         r3, r6 = ret(cl, 63), ret(cl, 126)
         m["rs3"] = round(r3 - spy3, 1) if (r3 is not None and spy3 is not None) else None
@@ -278,6 +298,38 @@ def main(fetch=None, path=None, statements=None, deadline=0, stall=90, fund=True
             m.setdefault("f_as_of", fund_day)
             if not m.get("f_as_of"):
                 m["f_as_of"] = fund_day
+
+    # ── 죽은 종목 정리 ───────────────────────────────────────────────
+    # 유니버스는 SEC 전체 빌드에서만 새로 짜이는데 그게 계속 막혀 있다.
+    # 그동안 상장폐지·인수합병된 종목이 빠지지 않고 쌓인다. 들어오는 쪽은
+    # 아직 못 고치지만, 나가는 쪽은 우리가 이미 가진 정보(시세 연속 실패)로
+    # 판정할 수 있다.
+    drop = [m for m in members
+            if bad_symbol(m.get("tk"))
+            or int(m.get("miss_streak") or 0) >= DROP_AFTER]
+    if drop:
+        keep_n = len(members) - len(drop)
+        if buildlib.too_thin(keep_n, len(members), 0.8):
+            # 한 회차에 20% 넘게 사라지는 건 종목이 죽은 게 아니라 야후가
+            # 통째로 막힌 것이다. 그때 목록을 지우면 되돌릴 방법이 없다.
+            print(f"   ⚠️ 제거 대상이 {len(drop)}종목({len(members)}중)이라 너무 많습니다 "
+                  f"— 야후 장애로 보고 이번 회차는 제거하지 않습니다")
+            drop = []
+    if drop:
+        gone = {id(m) for m in drop}
+        for r in D.get("subs", []):
+            r["members"] = [m for m in r.get("members", []) if id(m) not in gone]
+            r["n"] = len(r["members"])
+        D["subs"] = [r for r in D["subs"] if r["members"]]
+        bad = [m["tk"] for m in drop if bad_symbol(m.get("tk"))]
+        old = [m["tk"] for m in drop if not bad_symbol(m.get("tk"))]
+        if bad:
+            print(f"   제거(잘못된 심볼 {len(bad)}): {', '.join(bad[:10])}"
+                  + (" …" if len(bad) > 10 else ""))
+        if old:
+            print(f"   제거({DROP_AFTER}주 연속 시세 없음 {len(old)}): {', '.join(old[:10])}"
+                  + (" …" if len(old) > 10 else ""))
+        members = [m for m in members if id(m) not in gone]
 
     print("[3/3] 저장")
     if vix:
@@ -523,6 +575,50 @@ def selftest():
       "그래도 펀더멘털은 지운다고 없애지 않는다")
     t(D5["updated"] == str(date.today()), "예산이 끊겨도 파일은 저장된다 — 회차를 잃지 않는다")
     os.unlink(tmp3)
+
+    print("\n── 죽은 종목 정리 ──")
+    # 유니버스가 SEC 에 매여 있어 상장폐지 종목이 빠지지 않고 쌓인다.
+    # 들어오는 쪽은 아직 못 고치지만 나가는 쪽은 시세 연속 실패로 판정된다.
+    t(bad_symbol("1566011") and bad_symbol("4904"),
+      "숫자만인 심볼은 티커가 아니라 CIK — 잘못된 항목")
+    t(not bad_symbol("AAPL") and not bad_symbol("BRK.B"),
+      "정상 티커는 건드리지 않는다")
+    t(bad_symbol("") and bad_symbol(None), "빈 값도 잘못된 항목")
+
+    def mk(tk, streak=0):
+        return {"tk": tk, "spread": 1.0, "f_as_of": "2026-08-08", "miss_streak": streak}
+    # 제거 비율이 20% 를 넘으면 안전장치가 먼저 걸리므로(아래에서 따로 확인)
+    # 현실적인 비율로 만든다: 12종목 중 2종목 제거 = 17%.
+    live = [mk(t) for t in ("AAA", "BBB", "AAA", "BBB", "AAA",
+                            "BBB", "AAA", "BBB", "AAA", "BBB")]
+    D6 = {"subs": [{"n": 12, "members": [mk("1566011"), mk("DDD", 3)] + live}],
+          "updated": "2026-08-30", "fund_updated": "2026-08-08"}
+    fd, tmp4 = tempfile.mkstemp(suffix=".json"); os.close(fd)
+    json.dump(D6, open(tmp4, "w", encoding="utf-8"))
+    # DDD 는 이번에도 시세 실패 → streak 4 → 제거. AAA/BBB 는 정상.
+    main(fetch=lambda s: SERIES.get(s), path=tmp4, statements=_st, fund=False)
+    D7 = json.load(open(tmp4, encoding="utf-8"))
+    left = {m["tk"] for r in D7["subs"] for m in r["members"]}
+    t("1566011" not in left, "CIK 항목이 바로 빠진다")
+    t("DDD" not in left, f"{DROP_AFTER}주 연속 시세 없는 종목이 빠진다")
+    t("AAA" in left and "BBB" in left, "시세를 받은 종목은 남는다")
+    t(all(m.get("miss_streak") == 0 for r in D7["subs"] for m in r["members"]),
+      "받아온 종목의 연속실패 기록은 0 으로 초기화")
+    t(D7["subs"][0]["n"] == len(D7["subs"][0]["members"]),
+      "제거 뒤 세부산업의 종목 수(n)도 맞춰진다")
+    os.unlink(tmp4)
+
+    # 야후가 통째로 막힌 회차에 목록을 지워버리면 되돌릴 수 없다
+    D8 = {"subs": [{"members": [mk(f"Z{i}", 3) for i in range(10)]}],
+          "updated": "2026-08-30", "fund_updated": "2026-08-08"}
+    fd, tmp5 = tempfile.mkstemp(suffix=".json"); os.close(fd)
+    json.dump(D8, open(tmp5, "w", encoding="utf-8"))
+    main(fetch=lambda s: SERIES.get(s) if s in ("SPY", "^VIX") else None,
+         path=tmp5, statements=_st, fund=False)
+    D9 = json.load(open(tmp5, encoding="utf-8"))
+    t(sum(len(r["members"]) for r in D9["subs"]) == 10,
+      "한 회차에 20% 넘게 사라질 상황이면 제거하지 않는다(야후 장애로 본다)")
+    os.unlink(tmp5)
 
     print("\n✅ 전부 통과" if ok[0] else "\n❌ 실패")
     return 0 if ok[0] else 1
