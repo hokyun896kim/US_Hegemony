@@ -25,8 +25,84 @@ Exceeded" 이고, 첫 요청부터 막힌다. Actions 러너는 공유 NAT 출�
 import json, os, sys, time, urllib.request, urllib.error
 from datetime import date
 
+import buildlib
+
 UA_YH = {"User-Agent": "Mozilla/5.0"}
 PATH = "data/tree.json"
+
+# 달러 기준 최소 분모. 이보다 작은 매출/영익을 분모로 쓴 YoY 는 비율이 아니라
+# 잡음이다(build_data.py 의 SEC 경로도 같은 1e6 을 쓴다).
+MIN_BASE_USD = 1e6
+MAX_REV_YOY, MAX_OP_YOY = 300.0, 500.0
+# 실적층에서 새로 받을 값. 시세층은 위에서 매 회차 전부 새로 받으므로 제외한다.
+FUND_KEYS = ("rev", "op", "spread", "q_rev", "q_op", "q_spread", "accel",
+             "q_note", "q_approx", "q_end", "q_src", "lq_rev", "lq_op")
+
+
+def _pct(new, old):
+    """YoY %. 분모가 0 이하이거나 너무 작으면 비율이 무의미하므로 None."""
+    try:
+        new, old = float(new), float(old)
+    except (TypeError, ValueError):
+        return None
+    if old <= 0 or abs(old) < MIN_BASE_USD:
+        return None
+    return (new - old) / abs(old) * 100.0
+
+
+def yf_fund(tk, statements=None):
+    """yfinance 손익계산서 → 연간 YoY + 분기 TTM + 최신 분기 YoY.
+
+    왜 필요한가 — 미국 펀더멘털은 SEC 한 곳에만 매여 있었다. 그런데 Actions
+    공유 출구 IP 는 SEC 에 18회 중 17회 막힌다. 그 결과 2026-08-08 이후
+    한 번도 갱신되지 않았고, 그 사이 2분기 실적이 통째로 지나갔다.
+    이 파일 맨 위 설명이 '분기에 한 번 바뀌니 지난주 값과 같다'고 했는데,
+    바로 그 분기가 바뀌었는데도 못 받은 것이다.
+
+    야후는 같은 회차에 시세를 401종목 다 받아온다. 1차 자료(SEC XBRL)는
+    아니지만, 아무것도 없는 것보다 훨씬 낫다. 출처를 q_src 에 남겨 화면이
+    SEC 인지 야후인지 구분해 보여준다.
+
+    statements 를 넣으면 야후 대신 그걸 쓴다 — 오프라인 자가진단용.
+    """
+    if statements is None:
+        import yfinance as yf
+        t = yf.Ticker(tk)
+        inc, qinc = t.income_stmt, t.quarterly_income_stmt
+    else:
+        inc, qinc = statements(tk)
+
+    arev = buildlib.series_values(buildlib.pick_row(inc, buildlib.REV_ROWS))
+    aop = buildlib.series_values(buildlib.pick_row(inc, buildlib.OP_ROWS))
+    if len(arev) < 2 or len(aop) < 2:
+        return None
+    rev = _pct(arev[0][1], arev[1][1])
+    op = _pct(aop[0][1], aop[1][1])
+    if rev is None or op is None:
+        return None
+    if abs(rev) > MAX_REV_YOY or abs(op) > MAX_OP_YOY:
+        return None                       # 기저효과 폭발은 헤게모니가 아니다
+
+    out = {"rev": round(rev, 1), "op": round(op, 1),
+           "spread": round(op - rev, 1), "q_src": "yfinance",
+           "q_rev": None, "q_op": None, "q_spread": None, "q_end": None,
+           "lq_rev": None, "lq_op": None, "q_approx": False,
+           "q_note": "야후 분기 없음", "accel": None}
+
+    qrev = buildlib.series_values(buildlib.pick_row(qinc, buildlib.REV_ROWS))
+    qop = buildlib.series_values(buildlib.pick_row(qinc, buildlib.OP_ROWS))
+    qr, qo, qend, approx = buildlib.ttm_pair(qrev, qop)
+    if qr is not None and qo is not None:
+        if abs(qr) > MAX_REV_YOY or abs(qo) > MAX_OP_YOY:
+            return out                    # 분기만 버리고 연간은 살린다
+        out.update(q_rev=round(qr, 1), q_op=round(qo, 1),
+                   q_spread=round(qo - qr, 1), q_end=qend, q_approx=approx,
+                   q_note="근사(야후)" if approx else "정상",
+                   accel=round((qo - qr) - (op - rev), 1))
+        R, O = buildlib.align_quarters(qrev, qop)
+        out["lq_rev"] = buildlib.latest_q_yoy_days(R)
+        out["lq_op"] = buildlib.latest_q_yoy_days(O)
+    return out
 
 
 def get(url, tries=3):
@@ -90,8 +166,11 @@ def eps_of(m, s, fund_day):
     return prior[-1][3] / pe
 
 
-def main(fetch=None, path=None):
-    """fetch 를 넣으면 야후 대신 그걸 쓴다 — 오프라인 자가진단이 쓴다."""
+def main(fetch=None, path=None, statements=None, deadline=0, stall=90, fund=True):
+    """fetch/statements 를 넣으면 야후 대신 그걸 쓴다 — 오프라인 자가진단이 쓴다.
+
+    deadline 은 실적층 수집에 쓸 벽시계 예산(분). 0이면 무제한.
+    """
     fetch = fetch or yseries
     path = path or PATH
     if not os.path.exists(path):
@@ -111,7 +190,7 @@ def main(fetch=None, path=None):
     spy3, spy6 = ret(spy_cl, 63), ret(spy_cl, 126)
 
     members = [m for r in D.get("subs", []) for m in r.get("members", [])]
-    print(f"[1/2] 가격층 갱신 — {len(members)}종목 (펀더멘털 기준일 {fund_day})")
+    print(f"[1/3] 가격층 갱신 — {len(members)}종목 (펀더멘털 기준일 {fund_day})")
 
     ok = miss = 0
     for i, m in enumerate(members):
@@ -142,7 +221,51 @@ def main(fetch=None, path=None):
             print(f"   {i+1}/{len(members)}")
         time.sleep(0.04)
 
-    print("[2/2] 저장")
+    # ── 실적층 ────────────────────────────────────────────────────
+    # 예전에는 여기서 끝냈다(가격층만). 그런데 SEC 가 23일 넘게 막히면서
+    # 펀더멘털이 2026-08-08 에 얼어붙었고, 그 사이 2분기 실적이 지나갔다.
+    # '분기에 한 번 바뀌니 지난주 값과 같다'는 전제가 바로 그 분기가 바뀌면서
+    # 깨진 것이다. 그래서 야후로라도 실적층을 갱신한다.
+    today = str(date.today())
+    budget = buildlib.Budget(deadline)
+    fresh = carried = 0
+    if fund:
+        # 실적이 오래된 종목부터. 예산이 끊겨도 회차를 거치며 전체가 돌아간다.
+        order = sorted(members, key=lambda m: ((m.get("f_as_of") or ""),
+                                               (m.get("q_end") or "")))
+        print(f"[2/3] 실적층 갱신 — 오래된 종목부터 {len(order)}종목")
+        for i, m in enumerate(order):
+            if budget.over(reserve=True):
+                print(f"   ⏳ 시간 예산 소진({budget.spent()/60:.0f}분) — "
+                      f"남은 {len(order)-i}종목은 지난 회차 값을 유지합니다")
+                break
+            try:
+                with buildlib._stall_guard(stall):
+                    f = yf_fund(m["tk"], statements)
+            except buildlib.Stall as exc:
+                print(f"   {m['tk']} 매달림({exc}) — 건너뜁니다")
+                f = None
+            except Exception:      # noqa: BLE001 — 한 종목 때문에 회차를 잃지 않는다
+                f = None
+            if not f:
+                continue
+            m.update(f)
+            m["f_as_of"] = today
+            fresh += 1
+            if (i + 1) % 50 == 0:
+                print(f"   {i+1}/{len(order)} (갱신 {fresh}) · "
+                      f"{budget.spent()/60:.0f}분 경과")
+            time.sleep(0.04)
+        carried = len(members) - fresh
+        print(f"   실적층: 이번 회차 {fresh}종목 · 지난 회차 유지 {carried}종목")
+        # 갱신 못 한 종목은 '언제 것인지'를 각자 달고 있어야 한다. 예전 파일에는
+        # 그 값이 없으므로 그 파일의 펀더멘털 기준일로 채운다.
+        for m in members:
+            m.setdefault("f_as_of", fund_day)
+            if not m.get("f_as_of"):
+                m["f_as_of"] = fund_day
+
+    print("[3/3] 저장")
     if vix:
         v = round(vix[-1][1], 1)
         D["market"] = {"vix": v,
@@ -150,12 +273,24 @@ def main(fetch=None, path=None):
                                     ("중립" if v < 22 else ("경계" if v < 30 else "공포")),
                        "spy3": round(spy3, 1) if spy3 is not None else None,
                        "spy6": round(spy6, 1) if spy6 is not None else None}
-    D["updated"] = str(date.today())
-    D["fund_updated"] = fund_day          # 화면이 두 날짜를 다 보여준다
-    D["partial"] = "prices"               # 이번 회차는 가격층만 갱신됐다는 표시
+    D["updated"] = today
+    # fund_updated 는 '가장 최근에 들여다본 실적층 날짜'다. 종목마다 실제
+    # 기준일은 f_as_of 에 따로 있고, 화면은 그쪽을 우선해서 본다.
+    D["fund_updated"] = today if fresh else fund_day
+    if fresh and carried:
+        # 무엇이 이번 것이고 무엇이 지난 것인지 밝힌다 — 조용한 혼합은 금지다
+        D["coverage"] = {"fresh": fresh, "carried": carried,
+                         "total": len(members), "asked": len(members),
+                         "skipped": carried,
+                         "why": "SEC 차단 — 야후로 받은 만큼만 갱신"}
+    else:
+        D.pop("coverage", None)
+    # partial='prices' 는 '실적층은 손도 못 댔다'는 뜻이다. 이번에 하나라도
+    # 새로 받았으면 더는 사실이 아니다.
+    D["partial"] = None if fresh else "prices"
     json.dump(D, open(path, "w", encoding="utf-8"), ensure_ascii=False)
-    print(f"완료: {path} · 가격 갱신 {ok}종목, 실패 {miss}종목 "
-          f"· 펀더멘털은 {fund_day} 기준 그대로")
+    print(f"완료: {path} · 가격 {ok}종목(실패 {miss}) · 실적 {fresh}종목 갱신"
+          + (f", {carried}종목은 {fund_day} 기준 유지" if carried else ""))
     return 0
 
 
@@ -274,6 +409,81 @@ def selftest():
     t(M["DDD"]["spread"] == 4.0, "그래도 펀더멘털은 유지")
 
     os.unlink(tmp)
+
+    # ── 실적층 (야후 대체 경로) ──────────────────────────────────────
+    # 이 경로가 이번 변경의 요점이다. SEC 가 막힌 회차에도 실적이 갱신되는지,
+    # 그리고 '무엇이 이번 것이고 무엇이 지난 것인지'가 남는지를 본다.
+    print("\n── 야후로 받은 실적층 ──")
+
+    # pandas 를 쓰지 않는다. 이 스크립트는 SEC 가 막힌 회차에 도는 물건이라
+    # 자체검증까지 무거운 의존성을 타면 곤란하고, tests.yml 은 pip install 없이
+    # 파이썬 검증을 돌린다(실측: pandas 를 쓴 첫 판이 CI 에서 죽었다).
+    # 대신 pick_row/series_values 가 실제로 기대하는 인터페이스만 흉내낸다 —
+    # 그게 무엇인지 여기에 못박아 두는 효과도 있다.
+    class _Frame:
+        def __init__(self, rows):          # rows: {계정명: {기간: 값}}
+            self._r = {k: dict(v) for k, v in rows.items()}
+            self.index = list(self._r)
+            self.empty = not self._r
+
+        @property
+        def loc(self):
+            return self._r
+
+    def _df(labels, cols, vals):
+        return _Frame({lab: dict(zip(cols, row)) for lab, row in zip(labels, vals)})
+
+    LAB = ["Total Revenue", "Operating Income"]
+    # 연 2회분 + 분기 8개. 매출은 +25%, 영익은 +100% → 스프레드 +75p
+    A = _df(LAB, ["2026-12-31", "2025-12-31"],
+            [[1250e6, 1000e6], [200e6, 100e6]])
+    qcols = [f"2026-{m:02d}-30" for m in (12, 9, 6, 3)] + \
+            [f"2025-{m:02d}-30" for m in (12, 9, 6, 3)]
+    Q = _df(LAB, qcols,
+            [[320e6, 320e6, 320e6, 290e6, 250e6, 250e6, 250e6, 250e6],
+             [60e6, 55e6, 50e6, 35e6, 25e6, 25e6, 25e6, 25e6]])
+    f = yf_fund("XXX", lambda tk: (A, Q))
+    t(f is not None, "야후 손익계산서에서 펀더멘털을 만든다")
+    if f:
+        t(f["rev"] == 25.0 and f["op"] == 100.0,
+          f"연간 YoY (매출 {f['rev']}, 영익 {f['op']})")
+        t(f["spread"] == 75.0, f"연간 스프레드 {f['spread']}p")
+        t(f["q_end"] == "2026-12-30", f"분기말 기록 ({f['q_end']}) — STALE 판정이 쓴다")
+        t(f["q_spread"] is not None, f"분기 TTM 스프레드 {f['q_spread']}p")
+        t(f["lq_op"] is not None, f"최신 분기 영익 YoY {f['lq_op']} — TTM 충돌 판정이 쓴다")
+        t(f["q_src"] == "yfinance", "출처를 남긴다 — SEC 1차 자료가 아님을 밝힌다")
+    t(yf_fund("XXX", lambda tk: (_df(LAB, ["2026-12-31"], [[1.0], [1.0]]), Q)) is None,
+      "연간이 1년치뿐이면 YoY 를 지어내지 않는다")
+    # 분모가 너무 작으면 비율이 잡음이다
+    tiny = _df(LAB, ["2026-12-31", "2025-12-31"], [[100.0, 10.0], [50.0, 5.0]])
+    t(yf_fund("XXX", lambda tk: (tiny, Q)) is None, "분모가 100만 달러 미만이면 버린다")
+
+    print("\n── 실적층 갱신이 파일에 반영되는가 ──")
+    D2 = {"subs": [{"members": [
+        {"tk": "AAA", "spread": 4.0, "f_as_of": "2026-08-08", "q_end": None},
+        {"tk": "BBB", "spread": 1.0, "f_as_of": "2026-08-08", "q_end": None}]}],
+        "updated": "2026-08-30", "fund_updated": "2026-08-08", "partial": "prices"}
+    fd, tmp2 = tempfile.mkstemp(suffix=".json"); os.close(fd)
+    json.dump(D2, open(tmp2, "w", encoding="utf-8"))
+    # AAA 만 야후가 답하고 BBB 는 실패 → 하나는 갱신, 하나는 이월
+    def _st(tk):
+        if tk == "AAA":
+            return A, Q
+        raise RuntimeError("야후 없음")
+    main(fetch=lambda s: SERIES.get(s), path=tmp2, statements=_st)
+    D3 = json.load(open(tmp2, encoding="utf-8"))
+    M3 = {m["tk"]: m for r in D3["subs"] for m in r["members"]}
+    t(M3["AAA"]["spread"] == 75.0, "받아온 종목은 새 실적으로 바뀐다")
+    t(M3["AAA"]["f_as_of"] == str(date.today()), "그 종목의 실적 기준일이 오늘로")
+    t(M3["BBB"]["spread"] == 1.0, "못 받은 종목은 지난 회차 값을 유지한다")
+    t(M3["BBB"]["f_as_of"] == "2026-08-08", "유지된 종목의 기준일은 그대로 — 최신인 척하지 않는다")
+    t(D3.get("coverage", {}).get("fresh") == 1 and D3["coverage"]["carried"] == 1,
+      f"무엇이 이번 것인지 밝힌다 ({D3.get('coverage')})")
+    t(D3["partial"] is None,
+      "하나라도 새로 받았으면 '가격층만'이 아니다")
+    t(D3["fund_updated"] == str(date.today()), "실적층을 들여다본 날짜가 올라간다")
+    os.unlink(tmp2)
+
     print("\n✅ 전부 통과" if ok[0] else "\n❌ 실패")
     return 0 if ok[0] else 1
 

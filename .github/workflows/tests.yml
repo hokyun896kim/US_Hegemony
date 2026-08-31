@@ -55,6 +55,7 @@ jobs:
       # 정작 필요한 순간에 처음 실행되는 코드는 믿을 수 없으므로 매번 돌린다.
       - name: 빌더 자가진단 (네트워크 불필요)
         run: |
+          python buildlib.py --selftest
           python refresh_prices.py --selftest
           python build_tree_kr.py --selftest
           python est_trend.py --selftest

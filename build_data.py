@@ -355,6 +355,11 @@ for i,t in enumerate(allt):
                 m["est30"]=est.get("est30"); m["est90"]=est.get("est90")
                 m["q_approx"]=False   # 미국은 8분기 정식 TTM 이라 근사가 아니다
                 m["ir"]=ir_map.get(t)
+                # 출처와 기준일을 종목에 남긴다. SEC 가 막힌 회차에
+                # refresh_prices.py 가 '무엇을 새로 받아야 하는지' 정하고,
+                # 화면의 실적미반영 판정이 종목별 기준일로 재는 데 쓴다.
+                m["q_src"]="SEC"
+                m["f_as_of"]=str(date.today())
     if (i+1)%50==0: print(f"   {i+1}/{len(allt)}")
     time.sleep(0.04)
 
