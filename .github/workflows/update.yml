@@ -24,6 +24,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
+      # 잡 시작 시각. 아래 야후 갱신이 '한도까지 몇 분 남았는지'를 계산해
+      # 예산을 잡는다. 고정값으로 두면 SEC 빌드가 오래 버티다 죽은 회차에
+      # 합계가 한도를 넘겨 결과를 통째로 잃는다.
+      - run: echo "JOB_T0=$(date -u +%s)" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
@@ -61,7 +66,16 @@ jobs:
         if: steps.build.outcome == 'failure'
         run: |
           echo "::warning::전체 빌드 실패 — 시세 전부 + 실적층은 야후로 받습니다(출처 표시됨)"
-          python refresh_prices.py --deadline 100
+          # 잡 한도(120분)에서 이미 쓴 시간과 커밋 몫 15분을 뺀 만큼만 예산으로
+          # 준다. 빌더가 먼저 끊으면 받은 데까지 저장·커밋하지만, 러너 한도에
+          # 먼저 걸리면 결과가 통째로 사라진다.
+          LEFT=$(( 120 - ( ($(date -u +%s) - JOB_T0) / 60 ) - 15 ))
+          if [ "$LEFT" -lt 10 ]; then
+            echo "::error::SEC 빌드가 한도를 거의 다 썼습니다(남은 ${LEFT}분) — 이번 회차는 건너뜁니다"
+            exit 1
+          fi
+          echo "::notice::야후 갱신 예산 ${LEFT}분"
+          python refresh_prices.py --deadline "$LEFT"
 
       - name: Summarize
         run: |
