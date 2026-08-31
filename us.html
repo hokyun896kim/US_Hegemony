@@ -1351,8 +1351,20 @@ const STALE = {
 // 봤다(7월 말). 달력에서 유도하면 91+35=126일이라 이 경우가 잡힌다.
 STALE.OLD = STALE.QUARTER + STALE.ANNOUNCE;   // 126
 STALE.DUE = STALE.QUARTER;                    // 91 — 분기는 끝났고 발표 전
+// 이 종목 숫자의 출처가 1차 자료가 아니면 그렇다고 밝힌다.
+// 한국은 확정(DART) 전 잠정실적을 얹고, 미국은 SEC 가 막힌 회차에 야후
+// 가공 수치로 받는다. 둘 다 '확정 숫자'처럼 보여주면 위험이 감춰진다.
+function srcCaveat(m){
+ const s = m.q_src || '';
+ if(/잠정/.test(s)) return ' (최신 분기는 잠정실적 — 확정에서 바뀔 수 있음)';
+ if(/yfinance/i.test(s)) return ' (야후 가공 수치 — 1차 자료 대조 권장)';
+ return '';
+}
 function staleness(m){
- const asof = D.fund_updated || D.updated;
+ // 종목마다 실적층 기준일이 다를 수 있다. 이월된 종목을 파일 전체의
+ // fund_updated 로 재면 8/8 실적을 들고 있는 종목이 "최신"으로 통과해
+ // 후보에 오른다 — 이 게이트가 막으려던 바로 그 상황이다.
+ const asof = m.f_as_of || D.fund_updated || D.updated;
  if(!m.q_end || !asof){
    // q_end 를 기록하기 전에 만들어진 데이터. 분기 시점을 모르니 정밀 판정은
    // 불가하지만, '최근에 실적을 발표했다'는 사실만으로도 위험은 분명하다 —
@@ -1378,7 +1390,7 @@ function staleness(m){
  const age = (now - qe)/day;
  if(age > STALE.OLD) return {s:'stale', t:`분기 데이터가 ${m.q_end}까지 — 그 뒤 분기 실적이 빠져 있음`};
  if(age > STALE.DUE) return {s:'due',   t:`${m.q_end} 분기 이후 실적 발표가 임박·진행 중`};
- return {s:'fresh', t:`${m.q_end} 분기까지 반영됨`};
+ return {s:'fresh', t:`${m.q_end} 분기까지 반영됨${srcCaveat(m)}`};
 }
 // '진짜 가속' = 가속 중 + 지금 실제로 레버리지가 있음 + 흑자전환 착시 아님.
 // (가속만 양수이고 분기 스프레드는 여전히 음수인 종목은 '덜 나빠진 것'이지 가속이 아니다)

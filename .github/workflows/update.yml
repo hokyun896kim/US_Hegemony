@@ -46,17 +46,22 @@ jobs:
           SEC_UA: ${{ secrets.SEC_UA }}
         run: python build_data.py
 
-      # 18회 중 17회가 SEC 403(공유 출구 IP 가 이미 탄 상태)으로 죽었다.
-      # 우리 속도의 문제가 아니라 대기로도 안 풀린다. 그런데 주간으로 실제
-      # 바뀌는 값은 대부분 가격 쪽(RS·고점比·PER)이고 펀더멘털은 분기에 한 번
-      # 바뀐다. 그래서 전체 빌드가 죽으면 커밋된 펀더멘털을 그대로 두고
-      # 가격층만 새로 받는다. 선취매 판정이 쓰는 값은 최신이 되고, 펀더멘털이
-      # 언제 것인지는 fund_updated 로 화면에 표시된다.
-      - name: SEC 가 막혔으면 가격층만 갱신
+      # 18회 중 17회가 SEC 403(공유 출구 IP 가 이미 탄 상태)으로 죽었다. 우리
+      # 속도 문제가 아니라 대기로도 안 풀린다.
+      #
+      # 예전에는 이때 '가격층만' 받고 펀더멘털은 그대로 뒀다. 근거는 '펀더멘털은
+      # 분기에 한 번 바뀌니 지난주 값과 같다' 였는데, 바로 그 분기가 바뀌면서
+      # 전제가 깨졌다 — 실측: 2026-08-08 이후 23일간 한 번도 갱신되지 않았고
+      # 그 사이 2분기 실적이 통째로 지나갔다. q_end 가 401종목 전부 비어 있어
+      # 화면의 실적미반영·TTM충돌 게이트도 내내 무력했다.
+      #
+      # 이제는 SEC 가 막혀도 야후로 실적층을 받는다. 1차 자료는 아니므로
+      # q_src 에 출처를 남기고 화면이 '야후 가공 수치'라고 밝힌다.
+      - name: SEC 가 막혔으면 야후로 갱신
         if: steps.build.outcome == 'failure'
         run: |
-          echo "::warning::전체 빌드 실패 — 가격층만 부분 갱신합니다(펀더멘털은 직전 값 유지)"
-          python refresh_prices.py
+          echo "::warning::전체 빌드 실패 — 시세 전부 + 실적층은 야후로 받습니다(출처 표시됨)"
+          python refresh_prices.py --deadline 100
 
       - name: Summarize
         run: |
@@ -67,12 +72,26 @@ jobs:
           def cnt(k): return sum(1 for m in mem if m.get(k) is not None)
           print(f"## US 헤게모니 데이터 · {d['updated']}\n")
           if d.get('partial') == 'prices':
-              print(f"> ⚠️ **부분 갱신**: SEC 가 막혀 가격층만 새로 받았습니다. "
-                    f"펀더멘털(매출·영업이익·스프레드·분기TTM)은 **{d.get('fund_updated')}** 기준 그대로입니다.\n")
+              print(f"> ⚠️ **가격층만 갱신**: SEC 가 막혔고 야후 실적층도 한 종목도 못 받았습니다. "
+                    f"펀더멘털은 **{d.get('fund_updated')}** 기준 그대로입니다.\n")
+          cov = d.get('coverage')
+          if cov:
+              print(f"> ⚠️ **실적층 일부 갱신**: 이번 회차에 새로 받은 종목 "
+                    f"{cov['fresh']}/{cov['total']} · 지난 회차 유지 {cov['carried']}종목 "
+                    f"({cov['why']}). 시세는 {cov['total']}종목 전부 최신입니다.\n")
+          import collections
+          qe = collections.Counter(m.get('q_end') for m in mem)
+          print("- 분기말 분포: " + " · ".join(
+              f"**{k or '미기록'}** {v}" for k, v in
+              sorted(qe.items(), key=lambda x: (x[0] or ''), reverse=True)[:5]))
+          src = collections.Counter(m.get('q_src') or 'SEC' for m in mem)
+          print(f"- 실적 출처: " + " · ".join(f"**{k}** {v}" for k, v in src.most_common()))
           print(f"- 종목 **{len(mem)}** · 세부산업 **{len(d['subs'])}** · 대섹터 **{len(d['sectors'])}**")
           print(f"- 분기 TTM **{cnt('q_spread')}/{len(mem)}** · 상대강도 **{cnt('rs6')}/{len(mem)}** "
                 f"· PER **{cnt('pe')}/{len(mem)}** · 52주고점比 **{cnt('from_high')}/{len(mem)}**")
-          print(f"- 시장: {d['market']}\n")
+          mk = d.get('market') or {}
+          print(f"- 시장: VIX **{mk.get('vix')}**({mk.get('vix_state')}) · "
+                f"SPY 3M **{mk.get('spy3')}%** · 6M **{mk.get('spy6')}%**\n")
           print("### 헤게모니 상위 세부산업")
           print("| 세부산업 | 중앙 스프레드 | 종목수 |")
           print("|---|---:|---:|")
@@ -97,12 +116,21 @@ jobs:
           # 가격 갱신을 다 해놓고 커밋을 못 했다 — 데이터가 통째로 버려진다.
           [ -f data/sec_tickers.json ] && git add data/sec_tickers.json || true
           git diff --staged --quiet && echo "변경 없음" && exit 0
-          MODE=$(python -c "import json;print('prices' if json.load(open('data/tree.json')).get('partial')=='prices' else 'full')")
-          if [ "$MODE" = "prices" ]; then
-            git commit -m "auto: 가격층만 갱신 $(date +%Y-%m-%d) (SEC 차단 — 펀더멘털 유지)"
-          else
-            git commit -m "auto: update $(date +%Y-%m-%d)"
-          fi
+          # 커밋 메시지가 회차의 실제 내용과 어긋나면 이력이 거짓말을 한다.
+          # 세 갈래다: 전체 빌드 성공 / 야후로 실적층 일부 / 가격층만.
+          MSG=$(python - <<'PY'
+          import json
+          d = json.load(open('data/tree.json', encoding='utf-8'))
+          cov = d.get('coverage')
+          if d.get('partial') == 'prices':
+              print("가격층만 갱신 (SEC 차단 · 야후 실적층도 실패)")
+          elif cov:
+              print(f"야후로 실적층 {cov['fresh']}/{cov['total']}종목 갱신 (SEC 차단)")
+          else:
+              print("update")
+          PY
+          )
+          git commit -m "auto: $MSG $(date +%Y-%m-%d)"
           # 두 빌더가 같은 브랜치에 민다. 동시에 돌면 뒤늦은 쪽이 거부당하는데,
           # 그때 빌드 결과를 통째로 버리면 안 된다(실측: KR #22 가 데이터를
           # 다 만들고도 push 거부로 실패했다). 남의 커밋 위로 rebase 하고
