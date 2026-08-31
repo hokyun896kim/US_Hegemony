@@ -414,20 +414,34 @@ def selftest():
     # 이 경로가 이번 변경의 요점이다. SEC 가 막힌 회차에도 실적이 갱신되는지,
     # 그리고 '무엇이 이번 것이고 무엇이 지난 것인지'가 남는지를 본다.
     print("\n── 야후로 받은 실적층 ──")
-    import pandas as _pd
 
-    def _df(rows, cols):
-        return _pd.DataFrame(rows, columns=cols)
+    # pandas 를 쓰지 않는다. 이 스크립트는 SEC 가 막힌 회차에 도는 물건이라
+    # 자체검증까지 무거운 의존성을 타면 곤란하고, tests.yml 은 pip install 없이
+    # 파이썬 검증을 돌린다(실측: pandas 를 쓴 첫 판이 CI 에서 죽었다).
+    # 대신 pick_row/series_values 가 실제로 기대하는 인터페이스만 흉내낸다 —
+    # 그게 무엇인지 여기에 못박아 두는 효과도 있다.
+    class _Frame:
+        def __init__(self, rows):          # rows: {계정명: {기간: 값}}
+            self._r = {k: dict(v) for k, v in rows.items()}
+            self.index = list(self._r)
+            self.empty = not self._r
 
+        @property
+        def loc(self):
+            return self._r
+
+    def _df(labels, cols, vals):
+        return _Frame({lab: dict(zip(cols, row)) for lab, row in zip(labels, vals)})
+
+    LAB = ["Total Revenue", "Operating Income"]
     # 연 2회분 + 분기 8개. 매출은 +25%, 영익은 +100% → 스프레드 +75p
-    A = _df([[1250e6, 1000e6], [200e6, 100e6]],
-            ["2026-12-31", "2025-12-31"])
-    A.index = ["Total Revenue", "Operating Income"]
+    A = _df(LAB, ["2026-12-31", "2025-12-31"],
+            [[1250e6, 1000e6], [200e6, 100e6]])
     qcols = [f"2026-{m:02d}-30" for m in (12, 9, 6, 3)] + \
             [f"2025-{m:02d}-30" for m in (12, 9, 6, 3)]
-    Q = _df([[320e6, 320e6, 320e6, 290e6, 250e6, 250e6, 250e6, 250e6],
-             [60e6, 55e6, 50e6, 35e6, 25e6, 25e6, 25e6, 25e6]], qcols)
-    Q.index = ["Total Revenue", "Operating Income"]
+    Q = _df(LAB, qcols,
+            [[320e6, 320e6, 320e6, 290e6, 250e6, 250e6, 250e6, 250e6],
+             [60e6, 55e6, 50e6, 35e6, 25e6, 25e6, 25e6, 25e6]])
     f = yf_fund("XXX", lambda tk: (A, Q))
     t(f is not None, "야후 손익계산서에서 펀더멘털을 만든다")
     if f:
@@ -438,20 +452,18 @@ def selftest():
         t(f["q_spread"] is not None, f"분기 TTM 스프레드 {f['q_spread']}p")
         t(f["lq_op"] is not None, f"최신 분기 영익 YoY {f['lq_op']} — TTM 충돌 판정이 쓴다")
         t(f["q_src"] == "yfinance", "출처를 남긴다 — SEC 1차 자료가 아님을 밝힌다")
-    t(yf_fund("XXX", lambda tk: (_df([[1.0]], ["2026-12-31"]), Q)) is None,
+    t(yf_fund("XXX", lambda tk: (_df(LAB, ["2026-12-31"], [[1.0], [1.0]]), Q)) is None,
       "연간이 1년치뿐이면 YoY 를 지어내지 않는다")
     # 분모가 너무 작으면 비율이 잡음이다
-    tiny = _df([[100.0, 10.0], [50.0, 5.0]], ["2026-12-31", "2025-12-31"])
-    tiny.index = ["Total Revenue", "Operating Income"]
+    tiny = _df(LAB, ["2026-12-31", "2025-12-31"], [[100.0, 10.0], [50.0, 5.0]])
     t(yf_fund("XXX", lambda tk: (tiny, Q)) is None, "분모가 100만 달러 미만이면 버린다")
 
     print("\n── 실적층 갱신이 파일에 반영되는가 ──")
-    import tempfile as _tf
     D2 = {"subs": [{"members": [
         {"tk": "AAA", "spread": 4.0, "f_as_of": "2026-08-08", "q_end": None},
         {"tk": "BBB", "spread": 1.0, "f_as_of": "2026-08-08", "q_end": None}]}],
         "updated": "2026-08-30", "fund_updated": "2026-08-08", "partial": "prices"}
-    fd, tmp2 = _tf.mkstemp(suffix=".json"); os.close(fd)
+    fd, tmp2 = tempfile.mkstemp(suffix=".json"); os.close(fd)
     json.dump(D2, open(tmp2, "w", encoding="utf-8"))
     # AAA 만 야후가 답하고 BBB 는 실패 → 하나는 갱신, 하나는 이월
     def _st(tk):
