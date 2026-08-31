@@ -12,6 +12,7 @@ on:
       - 'tests/**'
       - 'docs/gpt-instructions.md'
       - '*.webmanifest'
+      - 'buildlib.py'          # 두 빌더가 공유한다 — 여기가 깨지면 양쪽이 깨진다
       - 'refresh_prices.py'
       - 'build_tree_kr.py'
       - 'build_data.py'
