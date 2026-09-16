@@ -20,6 +20,11 @@ on:
       - 'dart.py'
       - 'naver.py'
       - '.github/workflows/*.yml'
+      # 주간 자동 갱신이 커밋하는 데이터도 검사 대상이다. 코드가 멀쩡해도
+      # 데이터가 잘못 채워지면 화면이 조용히 빈다 — 실제로 미국판 선취매
+      # 후보가 0종목이 된 적이 있고(2026-09-13), 그때 이 필터에 data 가
+      # 없어서 주간 빌드는 테스트를 한 번도 거치지 않았다.
+      - 'data/**'
   pull_request:
     paths: *paths
   workflow_dispatch:
