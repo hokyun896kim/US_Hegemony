@@ -81,11 +81,20 @@ for (const [file,dataFile,mk,otherHref] of [
     const md=fs.readFileSync(path.join(ROOT,'docs/gpt-instructions.md'),'utf8');
     const doc=md.split('<!-- GUIDE:START -->')[1].split('<!-- GUIDE:END -->')[0].trim();
     t(doc===g.trim(), 'docs/gpt-instructions.md 와 페이지 지침 동일(드리프트 방지)');
+    // 지침은 맞춤 GPT 에 한 번 붙여넣고 끝이라, 사이트에서 고쳐도 사용자 GPT 는
+    // 옛 지침으로 답한다. 버전 날짜가 유일한 단서다 — 지침·화면·상수 셋이
+    // 같은 날짜를 보여야 대조가 성립한다. 손으로 적으면 언젠가 어긋난다.
+    const ver=(g.match(/\[지침 버전\]\s*(\S+)/)||[])[1];
+    t(/^\d{4}-\d{2}-\d{2}$/.test(ver||''), `지침에 버전 날짜가 있다 (${ver})`);
+    t(g.includes('— 지침 '+ver), '지침이 AI 에게 답변 끝에 그 날짜를 적으라고 시킨다');
+    t(w.eval('GUIDE_VER')===ver, `GUIDE_VER 가 지침 본문에서 뽑힌다 (${w.eval('GUIDE_VER')})`);
     const tk=d.querySelector('.rc') ? null : null;
     const D2=w.eval('D'); const first=D2.subs[0].members[0].tk;
     w.openTrade(first);
     const body=d.getElementById('tcBody').innerHTML;
     t(body.includes('GPT 지침 복사'), '트레이드 카드에 지침 복사 버튼 노출');
+    t(body.includes('현재 지침 버전 '+ver),
+      '카드가 지침 버전을 보여준다 — 사용자가 자기 GPT 의 날짜와 대조할 수 있게');
     t(body.includes("copyPrompt('"+first+"',this)"), 'copyPrompt 가 this 전달(전역 event 미의존)');
     d.getElementById('tradeModal').classList.remove('show');
   }
