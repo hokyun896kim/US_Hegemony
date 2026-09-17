@@ -60,8 +60,14 @@ EARLY_OUT = 3
 
 
 def load_universe(path: str = "data/tree_kr.json"):
-    """지금 화면이 보고 있는 종목 목록. (생존 편향은 위 주석 참고)"""
+    """종목 목록. 화면의 트리(subs/members)도, 확대 유니버스 파일도 받는다.
+
+    유니버스를 넓힐 때 파일 모양이 달라지는데, 호출부마다 분기하면 한쪽만
+    고치고 지나가기 쉽다. 여기서 한 번에 알아본다.
+    """
     d = json.loads(Path(path).read_text(encoding="utf-8"))
+    if isinstance(d.get("tickers"), list):          # backtest_universe.py 산출물
+        return list(d["tickers"])
     return [m["tk"] for s in d["subs"] for m in s["members"]]
 
 
@@ -201,6 +207,8 @@ def merge(sources, out_path: str):
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=0, help="앞에서 N종목만 (0=전체)")
+    ap.add_argument("--universe", default="data/tree_kr.json",
+                    help="종목 목록 파일. 화면 트리 또는 확대 유니버스")
     # 왜 offset 이 필요한가 — 한 번에 다 못 받기 때문이다. 이어받기만 있으면
     # 조각들이 순서대로 줄을 서서 기다려야 한다(233종목 약 11시간). 구간을
     # 나눠 동시에 돌리면 벽시계 시간이 조각 수만큼 줄어든다. DART 호출 총량은
@@ -219,7 +227,7 @@ def main(argv=None):
         return 1
 
     budget = buildlib.Budget(args.deadline, reserve_min=2)
-    universe = load_universe()
+    universe = load_universe(args.universe)
     if args.offset:
         universe = universe[args.offset:]
     if args.limit:
@@ -315,6 +323,13 @@ def selftest() -> int:
         u = load_universe(p)
         t(u == ["005930.KS", "000660.KS", "035720.KQ"],
           f"세부산업을 가로질러 종목을 모은다 ({u})")
+
+        q = os.path.join(td, "u.json")
+        Path(q).write_text(json.dumps(
+            {"kind": "kr", "n": 2, "tickers": ["A.KS", "B.KQ"]}), encoding="utf-8")
+        t(load_universe(q) == ["A.KS", "B.KQ"],
+          "확대 유니버스 파일도 같은 함수가 받는다 — 호출부마다 분기하면 "
+          "한쪽만 고치고 지나간다")
 
     print("\n━━ 조기 중단 문턱 ━━")
     # 실측 사고를 상수로 고정한다. 이 값이 커지면 다시 몇 시간을 태우게 된다.
