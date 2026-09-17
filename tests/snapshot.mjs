@@ -24,12 +24,29 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, '..');
 
 // 어느 판을 박제할지. 기본은 한국판.
-const KIND = (process.argv[2] || 'kr').toLowerCase();
+//
+//   node snapshot.mjs kr                          이번 회차를 박제
+//   node snapshot.mjs kr --data X --out Y         임의 데이터를 채점
+//
+// 뒤쪽 형태는 백테스트 2단계가 쓴다. 과거 시점 T 로 되살린 tree_kr.json 을
+// 먹여 '그날의 화면이 뽑았을 후보'를 받아간다. 채점기를 따로 만들지 않는
+// 이유는 박제와 같다 — 포팅하면 두 구현이 갈라지는 순간 백테스트가 화면과
+// 무관한 무언가를 검증하게 된다.
+const argv = process.argv.slice(2);
+const flag = (name) => {
+  const i = argv.indexOf(`--${name}`);
+  return i >= 0 && argv[i + 1] ? argv[i + 1] : null;
+};
+const KIND = (argv[0] && !argv[0].startsWith('--') ? argv[0] : 'kr').toLowerCase();
 const PAGE = KIND === 'us' ? 'us.html' : 'index.html';
-const DATA = KIND === 'us' ? 'data/tree.json' : 'data/tree_kr.json';
+const DATA = flag('data') || (KIND === 'us' ? 'data/tree.json' : 'data/tree_kr.json');
+const OUTDIR = flag('out') || path.join('data', 'snapshots');
+// 파일명을 통째로 지정할 수도 있다. 같은 날짜의 T 를 여러 번 돌릴 때 필요하다.
+const OUTNAME = flag('name');
 
 const html = fs.readFileSync(path.join(root, PAGE), 'utf8');
-const raw = fs.readFileSync(path.join(root, DATA), 'utf8');
+// --data 는 저장소 밖(임시 디렉터리)을 가리킬 수 있으므로 절대경로를 존중한다
+const raw = fs.readFileSync(path.isAbsolute(DATA) ? DATA : path.join(root, DATA), 'utf8');
 
 const dom = new JSDOM(html, {
   runScripts: 'dangerously',
@@ -71,12 +88,13 @@ const rec = {
   top5, radar,
 };
 
-const dir = path.join(root, 'data', 'snapshots');
+const dir = path.isAbsolute(OUTDIR) ? OUTDIR : path.join(root, OUTDIR);
 fs.mkdirSync(dir, { recursive: true });
-const out = path.join(dir, `${KIND}-${D.updated}.json`);
+const out = path.join(dir, OUTNAME || `${KIND}-${D.updated}.json`);
 fs.writeFileSync(out, JSON.stringify(rec, null, 1) + '\n', 'utf8');
 
 console.log(`박제 ${path.relative(root, out)}`);
+if (flag('data')) console.log(`  입력 ${DATA}`);
 console.log(`  기준일 ${D.updated} · ${rec.n_members}종목 · TOP5 ${top5.length} · 선취매 ${radar.length}`);
 if (rec.coverage) console.log(`  그 주 실적층: 새로 ${rec.coverage.fresh}/${rec.coverage.total} (이월 ${rec.coverage.carried})`);
 dom.window.close();
