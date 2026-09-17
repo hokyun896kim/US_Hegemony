@@ -53,6 +53,10 @@ import buildlib
 import dart
 
 OUT = "data/backtest/kr-quarters.json"
+# 이만큼 연달아 실패하면서 정상 응답이 0건이면 더 기다리지 않는다.
+# 3 은 우연한 연속 실패(특이한 회사 셋)와 구분되기에 충분하고, 그 셋으로
+# 이미 100건 넘게 호출해봤다는 뜻이라 '닿지 않는다' 는 판정에 근거가 된다.
+EARLY_OUT = 3
 
 
 def load_universe(path: str = "data/tree_kr.json"):
@@ -250,6 +254,15 @@ def main(argv=None):
         except Exception as exc:  # noqa: BLE001 — 한 종목 때문에 배치를 잃지 않는다
             print(f"  {tk} 실패({exc})")
             fail += 1
+            # 한 건도 성공 못 한 채 연달아 실패하면 DART 에 아예 못 닿는 것이다.
+            # 실측(2026-09-17 조각 p1): 러너 하나가 DART 에 닿지 못해 9종목에
+            # 203분을 태우고 '정상 응답 0건'으로 끝났다. 종목당 호출이 약 44건
+            # 이라 타임아웃만 396번 기다린 셈이다. 끝까지 가도 결과는 같으므로
+            # 일찍 끊고 재실행에 맡긴다 — 이어받기가 이미 있다.
+            if got == 0 and fail >= EARLY_OUT and not dart.healthy():
+                print(f"  ⛔ {fail}종목 연속 실패에 정상 응답 0건 — "
+                      f"DART 에 닿지 않는다. 예산을 태우지 않고 끊는다.")
+                break
         if (got + fail) % 20 == 0:
             print(f"  {i}/{len(universe)} · 새로 {got} 실패 {fail} "
                   f"· {budget.spent()/60:.0f}분 경과 · {dart.status_report()}")
@@ -302,6 +315,12 @@ def selftest() -> int:
         u = load_universe(p)
         t(u == ["005930.KS", "000660.KS", "035720.KQ"],
           f"세부산업을 가로질러 종목을 모은다 ({u})")
+
+    print("\n━━ 조기 중단 문턱 ━━")
+    # 실측 사고를 상수로 고정한다. 이 값이 커지면 다시 몇 시간을 태우게 된다.
+    t(EARLY_OUT >= 2, "우연한 연속 실패 하나로는 안 끊는다")
+    t(EARLY_OUT <= 5,
+      f"문턱이 높으면 닿지 않는 러너가 예산을 다 태운다 (지금 {EARLY_OUT})")
 
     print("\n━━ 조각 합치기 ━━")
     # 병렬로 나눠 받으면 경계에서 같은 종목이 두 조각에 들어갈 수 있다.
