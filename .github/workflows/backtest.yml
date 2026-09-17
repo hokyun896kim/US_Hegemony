@@ -1,0 +1,67 @@
+# 백테스트 과거 데이터 수집 — 일회성 배치. 스케줄 없이 손으로만 돌린다.
+#
+# 왜 별도 워크플로인가 — 주간 갱신(update_kr.yml)에 얹으면 매주 몇 시간짜리
+# 수집이 따라붙는다. 과거 재무는 한 번 받으면 안 변하므로 따로 둔다.
+#
+# 중간에 끊겨도 된다. --deadline 으로 스스로 끊고 받은 데까지 커밋하며,
+# 다시 돌리면 이미 받은 종목을 건너뛰고 이어받는다. 233종목을 한 번에
+# 못 받으면 두세 번 돌리면 된다.
+name: Backtest Fetch (KR)
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: '앞에서 N종목만 (0 = 전체)'
+        default: '0'
+      deadline:
+        description: '수집 예산(분). 잡 한도보다 낮게.'
+        default: '300'
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    # 잡 한도는 하드 캡(360분) 바로 아래. 빌더가 --deadline 으로 먼저 끊어
+    # 받은 데까지 저장하므로, 여기 걸려 결과를 통째로 잃는 일은 없다.
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Logic self-test (네트워크 불필요)
+        run: |
+          python backtest_fetch.py --selftest
+          python dart.py --selftest
+
+      - name: 과거 분기 재무 + 공시 달력 수집
+        env:
+          DART_KEY: ${{ secrets.DART_KEY }}
+        run: |
+          python backtest_fetch.py \
+            --limit ${{ inputs.limit }} \
+            --deadline ${{ inputs.deadline }}
+
+      - name: Commit
+        run: |
+          git config user.name  "hegemony-bot"
+          git config user.email "bot@users.noreply.github.com"
+          # 수집이 실패하면 파일이 없다. 없는 경로를 add 하면 pathspec 오류로
+          # 스텝이 죽는다 — 미국판 run #22 와 같은 함정.
+          [ -f data/backtest/kr-quarters.json ] && git add data/backtest/kr-quarters.json || true
+          git diff --staged --quiet && echo "변경 없음" && exit 0
+          git commit -m "auto(backtest): 과거 분기 재무 수집 $(date +%Y-%m-%d)"
+          for i in 1 2 3 4 5; do
+            git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            echo "::notice::push 거부 — 원격을 받아 rebase 후 재시도 ($i/5)"
+            git fetch origin "${GITHUB_REF_NAME}"
+            git rebase "origin/${GITHUB_REF_NAME}" || {
+              echo "::error::rebase 실패 — 수동 확인 필요"; exit 1; }
+            sleep $((i * 3))
+          done
+          echo "::error::5회 재시도 후에도 push 실패"; exit 1
