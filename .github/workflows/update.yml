@@ -103,6 +103,9 @@ jobs:
           print(f"- 종목 **{len(mem)}** · 세부산업 **{len(d['subs'])}** · 대섹터 **{len(d['sectors'])}**")
           print(f"- 분기 TTM **{cnt('q_spread')}/{len(mem)}** · 상대강도 **{cnt('rs6')}/{len(mem)}** "
                 f"· PER **{cnt('pe')}/{len(mem)}** · 52주고점比 **{cnt('from_high')}/{len(mem)}**")
+          # 추정치는 2026-08-08 이후 0 이었다(SEC 전체빌드에만 연결돼 있었다).
+          # 회차마다 몇 개가 들어왔는지 보이게 해 다시 0 이 되면 바로 눈에 띄게 한다.
+          print(f"- 컨센서스 추정치 **{cnt('est30')}/{len(mem)}**")
           mk = d.get('market') or {}
           print(f"- 시장: VIX **{mk.get('vix')}**({mk.get('vix_state')}) · "
                 f"SPY 3M **{mk.get('spy3')}%** · 6M **{mk.get('spy6')}%**\n")

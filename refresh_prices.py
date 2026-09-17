@@ -26,6 +26,7 @@ import json, os, sys, time, urllib.request, urllib.error
 from datetime import date
 
 import buildlib
+import est_trend
 
 UA_YH = {"User-Agent": "Mozilla/5.0"}
 PATH = "data/tree.json"
@@ -88,6 +89,7 @@ def yf_fund(tk, statements=None):
         t = yf.Ticker(tk)
         inc, qinc = t.income_stmt, t.quarterly_income_stmt
     else:
+        t = None                      # 오프라인 자가진단 — 추정치는 안 받는다
         inc, qinc = statements(tk)
 
     arev = buildlib.series_values(buildlib.pick_row(inc, buildlib.REV_ROWS))
@@ -101,8 +103,20 @@ def yf_fund(tk, statements=None):
     if abs(rev) > MAX_REV_YOY or abs(op) > MAX_OP_YOY:
         return None                       # 기저효과 폭발은 헤게모니가 아니다
 
+    # 컨센서스 추정치 방향. 여기까지 온 종목만 받는다 — 위 조기 반환으로
+    # 버려질 종목에 호출을 쓰지 않으려고 일부러 늦게 부른다.
+    #
+    # 왜 여기 있어야 하는가 — est_trend 는 2026-08-08 에 들어왔지만
+    # build_data.py(SEC 전체빌드)에만 연결돼 있었다. 그 경로는 18회 중 17회
+    # 막히므로 data/tree.json 에 est30 이 단 한 번도 들어온 적이 없다.
+    # 화면(us.html)은 m.est30 을 읽어 '추정치 방향' 축(품질 50점 중 8점)을
+    # 매기는데, 값이 없으니 전 종목이 중립 4점으로 고정돼 있었다.
+    # 한국판은 같은 값이 85% 들어온다. 주간 경로에도 달아 그 차이를 없앤다.
+    est = est_trend.fetch(t) if t is not None else {"est30": None, "est90": None}
+
     out = {"rev": round(rev, 1), "op": round(op, 1),
            "spread": round(op - rev, 1), "q_src": "yfinance",
+           "est30": est.get("est30"), "est90": est.get("est90"),
            "q_rev": None, "q_op": None, "q_spread": None, "q_end": None,
            "lq_rev": None, "lq_op": None, "q_approx": False,
            "q_note": "야후 분기 없음", "accel": None}
@@ -519,6 +533,19 @@ def selftest():
         t(f["q_spread"] is not None, f"분기 TTM 스프레드 {f['q_spread']}p")
         t(f["lq_op"] is not None, f"최신 분기 영익 YoY {f['lq_op']} — TTM 충돌 판정이 쓴다")
         t(f["q_src"] == "yfinance", "출처를 남긴다 — SEC 1차 자료가 아님을 밝힌다")
+        # 추정치 방향(est30/est90). 화면이 이 키를 읽으므로 항상 있어야 한다 —
+        # 없으면 undefined 가 되고, 그게 2026-08-08 이후 계속된 상태였다.
+        t("est30" in f and "est90" in f,
+          "추정치 키를 항상 낸다 — 화면(us.html)이 m.est30 을 읽는다")
+        t(f["est30"] is None and f["est90"] is None,
+          "오프라인 자가진단에서는 네트워크를 타지 않고 None")
+
+    # 실제 경로에서 est_trend 가 Ticker 를 받아 방향을 뽑는지는 est_trend 쪽
+    # 계약으로 고정한다(네트워크 없이 가짜 Ticker 로 확인).
+    class _FakeTicker:
+        def __init__(self, frame): self.eps_trend = frame
+    t(est_trend.fetch(_FakeTicker(None)) == {"est30": None, "est90": None},
+      "est_trend 는 실패하면 조용히 None 두 개 — 회차를 깨지 않는다")
     t(yf_fund("XXX", lambda tk: (_df(LAB, ["2026-12-31"], [[1.0], [1.0]]), Q)) is None,
       "연간이 1년치뿐이면 YoY 를 지어내지 않는다")
     # 분모가 너무 작으면 비율이 잡음이다
