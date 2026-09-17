@@ -51,7 +51,7 @@ import time
 import urllib.parse
 import urllib.request
 import zipfile
-from datetime import date
+from datetime import date, timedelta
 
 BASE = "https://opendart.fss.or.kr/api"
 UA = {"User-Agent": "KR-Hegemony-Tree (contact via github.com/hokyun896kim)"}
@@ -528,6 +528,53 @@ def selftest() -> int:
     return 0 if ok[0] else 1
 
 
+def probe_ir(corp: str) -> None:
+    """공시검색(list.json) 응답 구조를 그대로 찍는다.
+
+    왜 필요한가 — ir(공시일·원문 링크)이 233종목 전부 비어 있다. 지금은
+    yfinance 의 last_earn 에서 만드는데 그 값이 0/233 이라, 화면의 공시 버튼
+    (index.html:782)과 staleness 의 공시일 기반 정밀 판정(index.html:1417)이
+    통째로 죽어 있다. 코드는 있는데 데이터가 없어 한 번도 안 돌았다.
+
+    DART 는 같은 키로 공시검색을 준다. 다만 파라미터·응답 형태를 눈으로
+    확인하기 전에는 수집 코드를 쓰지 않는다 — 추측으로 쓰면 또 조용히 비는
+    필드가 하나 더 생길 뿐이다(실측 전례: .json 확장자를 빼먹어 모든 요청이
+    101 로 거절당하는데도 빌드는 멀쩡히 끝났다).
+
+    그래서 파라미터 조합을 몇 가지 시도하고 status·message·행 키를 전부 찍는다.
+    """
+    today = date.today()
+    bgn = (today - timedelta(days=200)).strftime("%Y%m%d")
+    end = today.strftime("%Y%m%d")
+    base = {"corp_code": corp, "bgn_de": bgn, "end_de": end, "page_count": "10"}
+    variants = [
+        ("기본", dict(base)),
+        ("정기공시만(pblntf_ty=A)", dict(base, pblntf_ty="A")),
+        ("최근순(sort=date/desc)", dict(base, sort="date", sort_mth="desc")),
+    ]
+    print(f"\n  ── 공시검색(list.json) · {bgn}~{end} ──")
+    for label, params in variants:
+        try:
+            d = _get("list.json", params, _key())
+        except Exception as e:                      # noqa: BLE001
+            print(f"    [{label}] 요청 실패 {e}")
+            continue
+        if not isinstance(d, dict):
+            print(f"    [{label}] dict 가 아닌 응답: {type(d).__name__}")
+            continue
+        print(f"    [{label}] status={d.get('status')} message={d.get('message')}")
+        print(f"      최상위 키: {sorted(d.keys())}")
+        rows = d.get("list") or []
+        print(f"      행 {len(rows)}개")
+        if rows:
+            print(f"      행 키: {sorted(rows[0].keys())}")
+            for r in rows[:5]:
+                print("       ", {k: r.get(k) for k in sorted(rows[0].keys())
+                                  if k in ("rcept_dt", "report_nm", "rcept_no",
+                                           "corp_name", "flr_nm")})
+            break          # 한 조합이 되면 나머지는 호출을 아낀다
+
+
 def probe(code: str) -> int:
     """실제 응답 구조를 그대로 찍는다. 이 환경에서 DART 에 못 닿아
     형태를 눈으로 못 봤기 때문에, 믿기 전에 한 번 돌려 확인하는 용도다."""
@@ -569,6 +616,11 @@ def probe(code: str) -> int:
                   + ("" if add[0] > amt[0] else "   ⚠️ 컬럼 의미 가정이 틀렸을 수 있음"))
         if amt[0] is None and add[0] is None:
             print("  → ⚠️ 매출 계정을 못 찾았다. account_nm 목록을 보고 REV_NAMES 를 늘려야 한다.")
+
+    try:
+        probe_ir(corp)
+    except Exception as e:                          # noqa: BLE001
+        print(f"\n  공시검색 프로브 실패: {e}")
 
     print("\n  최종 분기 목록 (기말, 매출, 영업이익):")
     for e, r, o in quarters(code, corp)[-8:]:
