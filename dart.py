@@ -524,8 +524,105 @@ def selftest() -> int:
     else:
         os.environ.pop("DART_KEY", None)
 
+    # ── 공시검색 → ir ──────────────────────────────────────────────
+    # 실측 응답(2026-09-17 · 005930)을 그대로 넣고 파싱을 고정한다.
+    # 여기서 틀리면 조용히 비는 필드가 된다 — 지금까지 0/233 이었던 것처럼.
+    print("\n━━ 공시검색 → ir ━━")
+    mod = sys.modules[__name__]
+    real_get, real_key, real_enabled = mod._get, mod._key, mod.enabled
+    mod._key, mod.enabled = (lambda: "K"), (lambda: True)
+    try:
+        # report_nm 뒤 공백과 지분공시 노이즈를 실측 그대로 재현한다
+        mod._get = lambda path, params, key, **kw: {"status": "000", "list": [
+            {"rcept_dt": "20260917", "rcept_no": "20260917000097",
+             "report_nm": "임원ㆍ주요주주특정증권등소유상황보고서"},
+            {"rcept_dt": "20260814", "rcept_no": "20260814003699",
+             "report_nm": "반기보고서 (2026.06)              "},
+            {"rcept_dt": "20260515", "rcept_no": "20260515002181",
+             "report_nm": "분기보고서 (2026.03)"},
+        ]}
+        r = latest_report("00126380")
+        t(r is not None, "정기공시에서 ir 을 만든다")
+        if r:
+            t(r["date"] == "2026-08-14", f"rcept_dt 를 YYYY-MM-DD 로 ({r['date']})")
+            t(r["docs"][0]["label"] == "반기보고서 (2026.06)",
+              f"report_nm 뒤 공백을 턴다 ({r['docs'][0]['label']!r})")
+            t(r["docs"][0]["url"].endswith("20260814003699"),
+              "원문 링크에 rcept_no 가 붙는다")
+            t("임원" not in r["docs"][0]["label"], "지분공시를 실적 공시로 오인하지 않는다")
+
+        mod._get = lambda path, params, key, **kw: {"status": "000", "list": [
+            {"rcept_dt": "20260908", "rcept_no": "20260908800624",
+             "report_nm": "최대주주등소유주식변동신고서   "}]}
+        t(latest_report("00126380") is None, "실적 공시가 없으면 None — 아무거나 넣지 않는다")
+
+        mod._get = lambda path, params, key, **kw: {"status": "013", "list": []}
+        t(latest_report("00126380") is None, "조회 결과가 비면 None")
+
+        mod._get = lambda path, params, key, **kw: {"status": "000", "list": [
+            {"rcept_dt": "2026", "rcept_no": "", "report_nm": "분기보고서"}]}
+        t(latest_report("00126380") is None, "날짜·접수번호가 깨졌으면 버린다")
+
+        mod.enabled = lambda: False
+        t(latest_report("00126380") is None, "키가 없으면 부르지도 않는다")
+    finally:
+        mod._get, mod._key, mod.enabled = real_get, real_key, real_enabled
+
     print("\n✅ 전부 통과" if ok[0] else "\n❌ 실패")
     return 0 if ok[0] else 1
+
+
+# 실적 공시로 인정할 보고서 이름. 정기공시(pblntf_ty=A) 안에도 증권신고서
+# 같은 게 섞일 수 있어 이름으로 한 번 더 거른다.
+REPORT_NAMES = ("분기보고서", "반기보고서", "사업보고서")
+DOC_URL = "https://dart.fss.or.kr/dsaf001/main.do?rcpNo="
+
+
+def latest_report(corp: str, days: int = 400):
+    """이 회사의 가장 최근 정기공시 한 건 → 화면의 ir 필드 모양으로.
+
+    실측 (2026-09-17 · Actions 프로브 · 005930):
+
+        pblntf_ty=A   3건, 전부 실적 공시
+                      20260814 '반기보고서 (2026.06)'  rcept_no=20260814003699
+                      20260515 '분기보고서 (2026.03)'
+                      20260310 '사업보고서 (2025.12)'
+        pblntf_ty=B   5건, 실적 공시 0건 (자기주식 취득·처분)
+        필터 없음     20건, 실적 공시 0건 — 임원·대량보유 공시가 목록을 덮는다
+
+    그래서 pblntf_ty=A 가 필수다. 그리고:
+      · 기본 정렬이 이미 최신순이라 정렬 파라미터는 필요 없다
+      · report_nm 뒤에 공백이 붙어 온다 → strip 없이 비교하면 전부 빗나간다
+      · rcept_dt 는 YYYYMMDD, 화면의 ir.date 는 YYYY-MM-DD 라 변환한다
+
+    days 를 400 으로 둔 이유 — 사업보고서는 1년에 한 번이다. 분기보고서가
+    늦는 회사라도 한 바퀴 안에는 뭔가 하나 있어야 한다.
+
+    실패·미발견은 None. 화면은 ir 이 없으면 폴백 문구를 띄우므로 안전하다.
+    """
+    if not enabled() or not corp:
+        return None
+    today = date.today()
+    d = _get("list.json", {
+        "corp_code": corp,
+        "bgn_de": (today - timedelta(days=days)).strftime("%Y%m%d"),
+        "end_de": today.strftime("%Y%m%d"),
+        "pblntf_ty": "A",
+        "page_count": "20",
+    }, _key())
+    if not isinstance(d, dict):
+        return None
+    for r in (d.get("list") or []):
+        nm = str(r.get("report_nm") or "").strip()
+        if not any(k in nm for k in REPORT_NAMES):
+            continue
+        dt = str(r.get("rcept_dt") or "").strip()
+        no = str(r.get("rcept_no") or "").strip()
+        if len(dt) != 8 or not dt.isdigit() or not no:
+            continue
+        return {"date": f"{dt[:4]}-{dt[4:6]}-{dt[6:]}",
+                "docs": [{"label": nm, "url": DOC_URL + no}]}
+    return None
 
 
 def probe_ir(corp: str) -> None:

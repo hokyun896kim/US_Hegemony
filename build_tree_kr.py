@@ -517,7 +517,7 @@ def fetch_stock(tk, log=print):
     # 216종목이 아직 1분기까지였다). DART 는 접수 즉시 정형으로 준다.
     # 키가 없거나 못 받으면 조용히 yfinance 로 떨어진다 — 화면은 그대로 돈다.
     code = tk.split(".")[0]
-    qseries, prelim = None, 0
+    qseries, prelim, ir = None, 0, None
     if DART_CORP:
         corp = DART_CORP.get(code)
         if corp:
@@ -527,6 +527,13 @@ def fetch_stock(tk, log=print):
                     qseries = qs
             except Exception as exc:  # noqa: BLE001 — 실패는 폴백으로 흡수
                 log(f"  {tk} DART 실패({exc}) — yfinance 로 대체")
+            # 공시일·원문 링크. corp 이 이미 손에 있는 이 자리가 제일 싸다.
+            # 분기 데이터와 독립이라 실패해도 조용히 넘긴다 — 화면은 ir 이
+            # 없으면 폴백 문구를 띄운다.
+            try:
+                ir = dart.latest_report(corp)
+            except Exception as exc:  # noqa: BLE001
+                log(f"  {tk} 공시검색 실패({exc}) — ir 을 비웁니다")
 
     # DART 가 확정만 주는 사이, 시장은 이미 잠정으로 다음 분기를 보고 있다.
     # 그 한 분기를 네이버에서 받아 얹는다 — 선취매 도구에서 정작 중요한 구간이다.
@@ -586,6 +593,9 @@ def fetch_stock(tk, log=print):
         "lq_rev": None if lq_rev is None else round(lq_rev, 1),
         "lq_op": None if lq_op is None else round(lq_op, 1),
         "q_src": q_src,
+        # DART 정기공시에서 받은 공시일·원문 링크. 화면의 공시 버튼과
+        # staleness 의 공시일 기반 정밀 판정이 이 값을 쓴다.
+        "ir": ir,
         "_info": {
             "sector": info.get("sector"),
             "industry": info.get("industry"),
@@ -971,9 +981,11 @@ def build(limit, min_cap, sleep, log=print, budget=None, stall=0, prev=None):
             "supply": None,
             # 화면의 '실적 D-7 이내' 경고가 쓰는 값. 실적일을 못 받으면 None.
             "d_until": days_until(m.get("next_earn")),
-            # 미국의 8-K 자리. 한국은 개별 공시 링크를 수집하지 않으므로
-            # 날짜만 담는다 — 실적 반영 지연 판정은 이 날짜만 있으면 된다.
-            "ir": {"date": m["last_earn"], "docs": []} if m.get("last_earn") else None,
+            # ir 은 여기서 만들지 않는다. 예전에는 yfinance 의 last_earn 으로
+            # 날짜만 채웠는데, 야후가 한국 종목 실적일을 거의 주지 않아
+            # 233종목 전부 비어 있었다(실측 0/233). 지금은 fetch_stock 이
+            # DART 정기공시에서 날짜와 원문 링크를 함께 받아 오고, 새로 못 받은
+            # 종목은 CARRY 가 지난 회차 값을 물려준다.
         })
 
     log("[4/4] 조립")
@@ -1355,10 +1367,15 @@ def selftest():
     print("\n── 이월이 시세층까지 물려받지는 않는가 ──")
     # 시세·상대강도는 매 회차 전부 새로 받는다(2초면 된다). 이월 목록에
     # 들어가면 지난주 상대강도가 최신인 척 남는다 — 제일 위험한 실수다.
-    for k in ("rs3", "rs6", "gap", "gaplvl", "from_high", "d_until", "ir"):
+    for k in ("rs3", "rs6", "gap", "gaplvl", "from_high", "d_until"):
         check(k not in CARRY, f"{k} 는 이월하지 않는다(매 회차 새로 받음)")
     for k in ("rev", "op", "spread", "q_spread", "q_end", "lq_op"):
         check(k in CARRY, f"{k} 는 이월한다(분기당 한 번 바뀜)")
+    # ir 은 원래 이 위 목록(이월 금지)에 있었다. 시세층과 같이 묶여 있었지만
+    # 성격이 다르다 — 공시는 이미 일어난 사실이라 일주일이 지나도 낡지 않는다.
+    # 게다가 그때 ir 을 만들던 last_earn 은 이미 CARRY 에 있었으므로, 분류와
+    # 실제 동작이 어긋나 있었다. DART 에서 직접 받게 되면서 정리한다.
+    check("ir" in CARRY, "ir 은 이월한다(공시일은 과거 사실이라 안 낡는다)")
 
     print("\n── 반쪽짜리가 멀쩡한 직전 파일을 덮어쓰지 않는가 ──")
     check(too_thin(40, 223, 0.7), "40종목이 223종목을 밀어내지 못한다")
