@@ -70,17 +70,34 @@ def load_prev(path: str):
         return {}
 
 
-def fetch_one(tk: str, corp: str, log=print):
+# 몇 년을 받을 것인가 — 백테스트 창을 정하는 숫자다.
+#
+# 화면은 3년이면 된다. '지금 스프레드가 얼마인가' 만 보면 되고 8분기면 족하다.
+# 백테스트는 과거 시점 T 마다 그때의 8분기가 있어야 한다. 3년만 받으면
+# (실측 2026-09-17 프로브: 가장 오래된 분기가 2024-03-31) 8분기가 처음 차는
+# 날이 2026-05-15 다 — 평가할 수 있는 T 가 사실상 없다. 있는 만큼으로
+# 근사하는 길(ttm_pair 의 4~7분기 모드)도 있지만, 그러면 백테스트가 검증하는
+# 대상이 화면이 실제로 쓰는 계산이 아니게 된다.
+#
+# 6년이면 8분기가 2020년대 중반부터 차서 3~4년치 T 를 평가할 수 있다.
+# 대신 종목당 DART 호출이 두 배가 된다(실측 66.6초 → 약 130초).
+YEARS = 6
+
+
+def fetch_one(tk: str, corp: str, years: int = YEARS, log=print):
     """한 종목의 분기 재무 + 공시 달력."""
     code = tk.split(".")[0]
-    qs = dart.quarters(code, corp, log=lambda *a: None)
+    qs = dart.quarters(code, corp, log=lambda *a: None, years=years)
     quarters = [{"q_end": e, "rev": r, "op": o} for e, r, o in qs
                 if r is not None or o is not None]
-    cal = dart.report_calendar(corp)
+    # 달력 창을 분기 창에 맞춘다. 좁으면 오래된 분기가 '공시일을 몰라' 2단계에서
+    # 버려지고, 넓으면 재무 없는 분기만 늘어난다(실측: 3년 받을 때 2023년 공시
+    # 3건이 짝 없이 남았다). +120일은 사업보고서가 분기말 70일 뒤에 나오는 몫.
+    cal = dart.report_calendar(corp, days=years * 365 + 120)
     return {"corp": corp, "quarters": quarters, "calendar": cal}
 
 
-def probe(code: str) -> int:
+def probe(code: str, years: int = YEARS) -> int:
     """한 종목만 실제로 받아 '2단계가 쓸 수 있는 모양인가' 를 눈으로 본다.
 
     자가진단은 네트워크가 없어 파싱 규칙만 고정한다. 정작 무너지기 쉬운 것은
@@ -99,11 +116,11 @@ def probe(code: str) -> int:
         return 1
 
     t0 = time.time()
-    d = fetch_one(code, corp)
+    d = fetch_one(code, corp, years=years)
     took = time.time() - t0
     qs, cal = d["quarters"], {c["q_end"]: c for c in d["calendar"]}
 
-    print(f"고유번호 {corp} · {took:.1f}초 · {dart.status_report()}")
+    print(f"고유번호 {corp} · {years}년 · {took:.1f}초 · {dart.status_report()}")
     print(f"분기 {len(qs)}개 · 공시 {len(cal)}건\n")
 
     print(f"{'분기말':<12}{'매출':>16}{'영업이익':>16}  {'공시일':<12}{'지연':>5}  보고서")
@@ -153,6 +170,8 @@ def main(argv=None):
     ap.add_argument("--deadline", type=float, default=0,
                     help="벽시계 예산(분). 넘기면 받은 데까지 저장한다. 0=무제한")
     ap.add_argument("--sleep", type=float, default=0.05)
+    ap.add_argument("--years", type=int, default=YEARS,
+                    help=f"몇 년치 분기를 받을지 (기본 {YEARS}). 위 YEARS 주석 참고")
     args = ap.parse_args(argv)
 
     if not dart.enabled():
@@ -187,7 +206,7 @@ def main(argv=None):
             fail += 1
             continue
         try:
-            stocks[tk] = fetch_one(tk, corp)
+            stocks[tk] = fetch_one(tk, corp, years=args.years)
             got += 1
         except Exception as exc:  # noqa: BLE001 — 한 종목 때문에 배치를 잃지 않는다
             print(f"  {tk} 실패({exc})")
@@ -199,7 +218,7 @@ def main(argv=None):
 
     nq = sum(len(v["quarters"]) for v in stocks.values())
     nc = sum(len(v["calendar"]) for v in stocks.values())
-    out = {"kind": "kr", "built": str(date.today()),
+    out = {"kind": "kr", "built": str(date.today()), "years": args.years,
            "universe_n": len(universe), "stocks": stocks,
            "note": "생존 편향 있음 — 오늘 살아 있는 종목만. backtest_fetch.py 주석 참고"}
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)

@@ -4,8 +4,12 @@
 # 수집이 따라붙는다. 과거 재무는 한 번 받으면 안 변하므로 따로 둔다.
 #
 # 중간에 끊겨도 된다. --deadline 으로 스스로 끊고 받은 데까지 커밋하며,
-# 다시 돌리면 이미 받은 종목을 건너뛰고 이어받는다. 233종목을 한 번에
-# 못 받으면 두세 번 돌리면 된다.
+# 다시 돌리면 이미 받은 종목을 건너뛰고 이어받는다.
+#
+# 한 번에 다 못 받는 게 정상이다. 실측(2026-09-17 프로브 · 005930)으로 3년치가
+# 종목당 66.6초였으니 6년치는 약 130초, 233종목이면 약 500분 — 잡 한도 350분을
+# 넘는다. 두 번 돌리면 된다. 예산을 늘려 한 번에 끝내려 하면 한도에 먼저
+# 걸려 결과를 통째로 잃는다(미국판 8/15 실측: 210분 쓰고 0바이트).
 name: Backtest Fetch (KR)
 
 on:
@@ -17,6 +21,9 @@ on:
       deadline:
         description: '수집 예산(분). 잡 한도보다 낮게.'
         default: '300'
+      years:
+        description: '몇 년치 분기를 받을지. 6 이면 과거 T 에서도 8분기가 찬다.'
+        default: '6'
 
 permissions:
   contents: write
@@ -45,6 +52,7 @@ jobs:
         run: |
           python backtest_fetch.py \
             --limit ${{ inputs.limit }} \
+            --years ${{ inputs.years }} \
             --deadline ${{ inputs.deadline }}
 
       - name: Commit

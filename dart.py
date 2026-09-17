@@ -255,7 +255,8 @@ def _sub(a, b):
     return None if (a is None or b is None) else a - b
 
 
-def quarters(stock_code: str, corp: str, today: date | None = None, log=print):
+def quarters(stock_code: str, corp: str, today: date | None = None, log=print,
+             years: int = 3):
     """최근 분기들의 (기말일, 매출, 영업이익) 목록. 최신이 뒤.
 
     DART 의 분기·반기 보고서 손익계산서는 '당기 3개월' 컬럼을 이미 갖고 있다.
@@ -275,7 +276,11 @@ def quarters(stock_code: str, corp: str, today: date | None = None, log=print):
     # 오래된 연도부터 잠그면, 최근에야 연결을 내기 시작한 회사가 별도로 묶인다.
     # 결과는 아래에서 어차피 날짜순 정렬하므로 도는 순서는 상관없다.
     lock = None
-    for yr in (today.year, today.year - 1, today.year - 2):
+    # 기본 3년은 화면용이다. 화면은 '지금 스프레드가 얼마인가' 만 보면 되고,
+    # 8분기를 채우는 데 3년이면 넉넉하다. 백테스트는 다르다 — 과거 시점
+    # T 마다 그때의 8분기가 있어야 하므로, 창을 넓히지 않으면 T 를 뒤로
+    # 옮길수록 분기가 모자라 근사 모드로 떨어지거나 종목이 통째로 빠진다.
+    for yr in range(today.year, today.year - years, -1):
         amt, add = {}, {}
         for rpt in ("Q1", "H1", "Q3", "FY"):
             # 아직 끝나지도 않은 기간의 보고서는 존재할 수 없다. 그런데도 부르면
@@ -616,6 +621,42 @@ def selftest() -> int:
     finally:
         mod._get, mod._key, mod.enabled = real_get, real_key, real_enabled
 
+    # ── quarters 의 연도 창 ────────────────────────────────────────
+    # 백테스트가 몇 년을 볼 수 있는지가 여기서 정해진다. 조용히 좁아지면
+    # 과거 시점 T 에서 8분기가 안 차 근사 모드로 떨어지는데, 결과는 그대로
+    # 나오므로 아무도 모른다. 요청한 연도를 그대로 고정한다.
+    print("\n━━ quarters 연도 창 ━━")
+    seen = []
+    real_stmt = mod.statement
+    mod._key, mod.enabled = (lambda: "K"), (lambda: True)
+    try:
+        def fake(corp, yr, rpt, log=print, fs_div=None):
+            seen.append(yr)
+            return (None, None), (None, None), None
+        mod.statement = fake
+
+        seen.clear()
+        quarters("005930", "C", today=date(2026, 9, 17), log=lambda *a: None)
+        t(sorted(set(seen)) == [2024, 2025, 2026],
+          f"기본값은 3년 — 화면 동작이 그대로다 ({sorted(set(seen))})")
+
+        seen.clear()
+        quarters("005930", "C", today=date(2026, 9, 17), log=lambda *a: None, years=6)
+        t(sorted(set(seen)) == [2021, 2022, 2023, 2024, 2025, 2026],
+          f"years=6 이면 6개 연도 ({sorted(set(seen))})")
+
+        seen.clear()
+        quarters("005930", "C", today=date(2026, 9, 17), log=lambda *a: None, years=1)
+        t(sorted(set(seen)) == [2026], f"years=1 이면 올해만 ({sorted(set(seen))})")
+
+        # 아직 안 끝난 분기는 부르지 않는다 — 종목당 낭비 호출을 막는 가드다
+        seen.clear()
+        quarters("005930", "C", today=date(2026, 4, 1), log=lambda *a: None, years=1)
+        t(len(seen) == 1, f"끝난 분기만 부른다 (2026-04-01 기준 {len(seen)}건)")
+    finally:
+        mod.statement = real_stmt
+        mod._get, mod._key, mod.enabled = real_get, real_key, real_enabled
+
     print("\n✅ 전부 통과" if ok[0] else "\n❌ 실패")
     return 0 if ok[0] else 1
 
@@ -828,7 +869,13 @@ def probe(code: str) -> int:
                   f"(누적 {add[0]:,.0f} / 3개월 {amt[0]:,.0f})"
                   + ("" if add[0] > amt[0] else "   ⚠️ 컬럼 의미 가정이 틀렸을 수 있음"))
         if amt[0] is None and add[0] is None:
-            print("  → ⚠️ 매출 계정을 못 찾았다. account_nm 목록을 보고 REV_NAMES 를 늘려야 한다.")
+            # 아직 안 나온 보고서(013)까지 '계정을 못 찾았다' 로 찍으면 멀쩡한
+            # 회차가 고장으로 보인다. 실측 2026-09-17 프로브가 Q3 에서 그랬다.
+            if not rows:
+                print("  → 보고서가 아직 없다(정상). 이 분기는 건너뛴다.")
+            else:
+                print("  → ⚠️ 매출 계정을 못 찾았다. account_nm 목록을 보고 "
+                      "REV_NAMES 를 늘려야 한다.")
 
     try:
         probe_ir(corp)
