@@ -80,6 +80,72 @@ def fetch_one(tk: str, corp: str, log=print):
     return {"corp": corp, "quarters": quarters, "calendar": cal}
 
 
+def probe(code: str) -> int:
+    """한 종목만 실제로 받아 '2단계가 쓸 수 있는 모양인가' 를 눈으로 본다.
+
+    자가진단은 네트워크가 없어 파싱 규칙만 고정한다. 정작 무너지기 쉬운 것은
+    **분기 재무와 공시 달력이 서로 맞물리는가** 다 — 2단계는 분기말을 열쇠로
+    둘을 이어 붙여 `rcept_dt <= T` 로 거른다. 열쇠가 어긋나면 그 분기는 조용히
+    사라지고, 백테스트는 '데이터가 원래 그만큼인가 보다' 하고 넘어간다.
+
+    그래서 여기서 재는 것은 건수가 아니라 **이어붙은 비율**이다.
+    """
+    if not dart.enabled():
+        print("DART_KEY 가 없습니다 — 건너뜁니다.")
+        return 0
+    corp = dart.corp_map().get(code.split(".")[0])
+    if not corp:
+        print(f"{code} 의 DART 고유번호를 못 찾았습니다.")
+        return 1
+
+    t0 = time.time()
+    d = fetch_one(code, corp)
+    took = time.time() - t0
+    qs, cal = d["quarters"], {c["q_end"]: c for c in d["calendar"]}
+
+    print(f"고유번호 {corp} · {took:.1f}초 · {dart.status_report()}")
+    print(f"분기 {len(qs)}개 · 공시 {len(cal)}건\n")
+
+    print(f"{'분기말':<12}{'매출':>16}{'영업이익':>16}  {'공시일':<12}{'지연':>5}  보고서")
+    hit = 0
+    for q in qs:
+        c = cal.get(q["q_end"])
+        if c:
+            hit += 1
+            lag = (date.fromisoformat(c["rcept_dt"]) - date.fromisoformat(q["q_end"])).days
+            tail = f"  {c['rcept_dt']:<12}{lag:>4}일  {c['report_nm']}"
+        else:
+            # 2단계에서 이 분기는 '언제 알려졌는지' 를 몰라 통째로 버려진다
+            tail = "  ❌ 달력에 없음 — 2단계에서 버려집니다"
+        print(f"{q['q_end']:<12}{_won(q['rev']):>16}{_won(q['op']):>16}{tail}")
+
+    extra = [k for k in cal if not any(q["q_end"] == k for q in qs)]
+    if extra:
+        # 공시는 있는데 재무가 없는 분기. 옛 계정과목·연결↔별도 전환이 여기서 보인다.
+        print(f"\n공시만 있고 재무가 없는 분기 {len(extra)}개: {', '.join(sorted(extra))}")
+
+    pct = 100.0 * hit / len(qs) if qs else 0.0
+    print(f"\n이어붙음 {hit}/{len(qs)} ({pct:.0f}%)")
+    if not qs:
+        print("⚠️ 분기가 0개입니다 — 이 종목은 백테스트에 못 씁니다.")
+        return 1
+    if pct < 80:
+        print("⚠️ 이어붙은 비율이 낮습니다 — 달력 조회 기간이나 보고서명 필터를 보세요.")
+    return 0
+
+
+def _won(v):
+    """원 단위 숫자를 조/억으로. 자릿수를 눈으로 검증하려고 둔다."""
+    if v is None:
+        return "-"
+    a = abs(v)
+    if a >= 1e12:
+        return f"{v/1e12:,.2f}조"
+    if a >= 1e8:
+        return f"{v/1e8:,.0f}억"
+    return f"{v:,.0f}"
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=0, help="앞에서 N종목만 (0=전체)")
@@ -179,6 +245,16 @@ def selftest() -> int:
         t(u == ["005930.KS", "000660.KS", "035720.KQ"],
           f"세부산업을 가로질러 종목을 모은다 ({u})")
 
+    print("\n━━ 프로브 표시 ━━")
+    # 프로브의 값어치는 '자릿수가 눈에 들어오는가' 에 있다. 조 단위를 억으로
+    # 찍으면 13자리가 늘어서 표가 무너지고, 그러면 아무도 안 본다.
+    t(_won(None) == "-", "값이 없으면 '-'")
+    t(_won(74_000_000_000_000) == "74.00조", f"조 단위 ({_won(74_000_000_000_000)})")
+    t(_won(-1_234_500_000_000) == "-1.23조", f"음수도 조 단위 ({_won(-1_234_500_000_000)})")
+    t(_won(350_000_000_000) == "3,500억", f"조 미만은 억 ({_won(350_000_000_000)})")
+    t(_won(-50_000_000_000) == "-500억", f"적자도 억 ({_won(-50_000_000_000)})")
+    t(_won(1234) == "1,234", "억 미만은 그대로")
+
     print("\n✅ 전부 통과" if ok[0] else "\n❌ 실패")
     return 0 if ok[0] else 1
 
@@ -186,4 +262,6 @@ def selftest() -> int:
 if __name__ == "__main__":
     if "--selftest" in sys.argv:
         sys.exit(selftest())
+    if "--probe" in sys.argv:
+        sys.exit(probe(sys.argv[sys.argv.index("--probe") + 1]))
     sys.exit(main())
