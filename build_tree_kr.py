@@ -778,7 +778,7 @@ def fetch_prices(tickers, log=print, budget=None):
 
 
 # ── 조립 ─────────────────────────────────────────────────────────────
-def assemble(members, market, log=print):
+def assemble(members, market, log=print, as_of=None):
     """종목 리스트 → index.html(한국판) 이 기대하는 sectors/subs 구조."""
     by_industry = {}
     for m in members:
@@ -818,7 +818,12 @@ def assemble(members, market, log=print):
         "sectors": sectors,
         "subs": subs,
         "market": market,
-        "updated": datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d"),
+        # 호출자가 준 날짜를 그대로 쓴다. 여기서 now() 를 다시 부르면 빌드가
+        # UTC 자정을 넘긴 회차에서 f_as_of(수집 시작 시각)와 하루가 어긋난다 —
+        # 그러면 화면이 새로 받은 종목까지 전부 "이번 회차에 새로 받지 못했다"로
+        # 표시한다(실측 8/30·9/06·9/13 세 회차, 일치 0/231·0/232·0/233).
+        # 예산을 285분으로 늘리면 자정을 상시로 넘기므로 반드시 받아써야 한다.
+        "updated": as_of or datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d"),
         "source": "yfinance (KOSPI/KOSDAQ)",
     }
 
@@ -973,7 +978,9 @@ def build(limit, min_cap, sleep, log=print, budget=None, stall=0, prev=None):
 
     log("[4/4] 조립")
     total = len(members)
-    data = assemble(members, market, log)
+    # today 는 수집 시작 시각에 잡혔고 f_as_of 도 그 값이다. 같은 값을 넘겨
+    # 한 회차가 하나의 날짜를 갖게 한다(몇 시간이 걸리든).
+    data = assemble(members, market, log, as_of=today)
     if carried or skipped:
         # 무엇이 이번 것이고 무엇이 지난 것인지 데이터에 적어 둔다. 화면이
         # 이 값으로 배너를 띄운다 — 두 날짜를 한 날짜인 척 보여주면 안 된다.
@@ -1226,6 +1233,30 @@ def selftest():
 
     json.dumps(data, ensure_ascii=False)
     check(True, "JSON 직렬화")
+
+    # ── 한 회차는 하나의 날짜를 갖는가 ──────────────────────────────
+    # 실측(8/30·9/06·9/13): 빌드가 UTC 자정을 넘기면서 updated(조립 시각)가
+    # f_as_of(수집 시작 시각)보다 하루 늦게 찍혔다. 화면은 둘이 다르면
+    # "이번 회차에 새로 받지 못했다"를 띄우므로 갓 받은 종목까지 전부 이월로
+    # 표시됐다 — 일치 0/231 · 0/232 · 0/233. 데이터는 멀쩡한데 화면만 거짓말을
+    # 하는 종류라 아무도 안 죽고 세 회차가 그냥 지나갔다. 수집 예산을 285분으로
+    # 늘리면 자정을 상시로 넘기므로 여기서 고정한다.
+    print("\n── 한 회차는 하나의 날짜를 갖는가 ──")
+    mkt0 = {"vix": None, "vix_state": "", "spy3": None, "spy6": None}
+    d1 = assemble([dict(m) for m in members], mkt0,
+                  log=lambda *_: None, as_of="2026-09-12")
+    check(d1["updated"] == "2026-09-12", "assemble 은 받은 날짜를 그대로 쓴다")
+
+    d2 = assemble([dict(m) for m in members], mkt0, log=lambda *_: None)
+    check(bool(d2["updated"]), "as_of 를 안 주면 오늘로 채운다(옛 호출부 호환)")
+
+    # 수집 루프가 찍는 f_as_of 와 조립이 찍는 updated 는 같아야 한다.
+    stamped = [dict(m, f_as_of="2026-09-12") for m in members]
+    d3 = assemble(stamped, mkt0, log=lambda *_: None, as_of="2026-09-12")
+    got = [m for sub in d3["subs"] for m in sub["members"]
+           if m.get("f_as_of") == d3["updated"]]
+    check(len(got) == len(members),
+          f"갓 받은 종목은 updated 와 f_as_of 가 일치한다 ({len(got)}/{len(members)})")
 
     # ── 시간 예산 ────────────────────────────────────────────────────
     # 실측 사고(2026-08-15): 야후 스로틀로 빌드가 210분 한도에 걸려 취소됐고
