@@ -1,0 +1,63 @@
+# 백테스트 가격층 수집 — 일회성. 스케줄 없이 손으로만 돌린다.
+#
+# 1단계가 가격을 일부러 안 담은 이유는 '한 시점만 필요하면 그때그때 받으면
+# 된다' 였다. 백테스트는 시점 T 마다 그 이전 126거래일이 필요하므로 T 를
+# 30개 잡으면 30번을 받아야 한다. 한 번 길게 받아 캐시하는 쪽이 싸다.
+#
+# DART 배치와 달리 몇 분이면 끝난다 — 야후는 종목을 묶어 한 번에 준다.
+name: Backtest Prices (KR)
+
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: '언제부터. 2021 분기를 평가하려면 그 이전 126거래일이 필요하다.'
+        default: '2020-06-01'
+      limit:
+        description: '앞에서 N종목만 (0 = 전체). 맛보기용.'
+        default: '0'
+
+permissions:
+  contents: write
+
+jobs:
+  prices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install deps
+        run: pip install --quiet yfinance
+
+      - name: Logic self-test (네트워크 불필요)
+        run: python backtest_prices.py --selftest
+
+      - name: 일별 종가 수집
+        run: |
+          python backtest_prices.py \
+            --start '${{ inputs.start }}' \
+            --limit ${{ inputs.limit }}
+
+      - name: Commit
+        run: |
+          git config user.name  "hegemony-bot"
+          git config user.email "bot@users.noreply.github.com"
+          # 수집이 실패하면 파일이 없다. 없는 경로를 add 하면 pathspec 오류로
+          # 스텝이 죽는다 — 미국판 run #22 와 같은 함정.
+          [ -f data/backtest/kr-prices.json ] && git add data/backtest/kr-prices.json || true
+          git diff --staged --quiet && echo "변경 없음" && exit 0
+          git commit -m "auto(backtest): 일별 종가 수집 $(date +%Y-%m-%d)"
+          for i in 1 2 3 4 5; do
+            git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            echo "::notice::push 거부 — 원격을 받아 rebase 후 재시도 ($i/5)"
+            git fetch origin "${GITHUB_REF_NAME}"
+            git rebase "origin/${GITHUB_REF_NAME}" || {
+              echo "::error::rebase 실패 — 수동 확인 필요"; exit 1; }
+            sleep $((i * 3))
+          done
+          echo "::error::5회 재시도 후에도 push 실패"; exit 1
