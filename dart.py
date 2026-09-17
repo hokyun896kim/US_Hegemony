@@ -546,11 +546,15 @@ def probe_ir(corp: str) -> None:
     today = date.today()
     bgn = (today - timedelta(days=200)).strftime("%Y%m%d")
     end = today.strftime("%Y%m%d")
-    base = {"corp_code": corp, "bgn_de": bgn, "end_de": end, "page_count": "10"}
+    base = {"corp_code": corp, "bgn_de": bgn, "end_de": end, "page_count": "20"}
+    # 1회차 실측(005930): 필터 없이 부르면 임원·주요주주 소유상황보고서가
+    # 목록을 덮는다. 우리가 원하는 건 실적 공시(분기·반기·사업보고서)이므로
+    # 정기공시 필터를 먼저 본다. 전부 찍어야 뭘 쓸지 고를 수 있으니 break 하지
+    # 않는다 — 1회차에 break 를 걸었다가 정작 필요한 절을 못 봤다.
     variants = [
-        ("기본", dict(base)),
-        ("정기공시만(pblntf_ty=A)", dict(base, pblntf_ty="A")),
-        ("최근순(sort=date/desc)", dict(base, sort="date", sort_mth="desc")),
+        ("정기공시(pblntf_ty=A)", dict(base, pblntf_ty="A")),
+        ("주요사항보고(pblntf_ty=B)", dict(base, pblntf_ty="B")),
+        ("필터 없음", dict(base)),
     ]
     print(f"\n  ── 공시검색(list.json) · {bgn}~{end} ──")
     for label, params in variants:
@@ -568,11 +572,16 @@ def probe_ir(corp: str) -> None:
         print(f"      행 {len(rows)}개")
         if rows:
             print(f"      행 키: {sorted(rows[0].keys())}")
-            for r in rows[:5]:
-                print("       ", {k: r.get(k) for k in sorted(rows[0].keys())
-                                  if k in ("rcept_dt", "report_nm", "rcept_no",
-                                           "corp_name", "flr_nm")})
-            break          # 한 조합이 되면 나머지는 호출을 아낀다
+            for r in rows[:8]:
+                # report_nm 은 뒤에 공백이 붙어 온다(실측) — strip 해서 본다
+                print(f"        {r.get('rcept_dt')}  {str(r.get('report_nm','')).strip()!r}"
+                      f"  rcept_no={r.get('rcept_no')}")
+            hits = [r for r in rows
+                    if any(k in str(r.get("report_nm", ""))
+                           for k in ("분기보고서", "반기보고서", "사업보고서"))]
+            print(f"      → 실적 공시로 골라낸 것: {len(hits)}건"
+                  + (f" · 최신 {hits[0].get('rcept_dt')} "
+                     f"{str(hits[0].get('report_nm','')).strip()!r}" if hits else ""))
 
 
 def probe(code: str) -> int:
