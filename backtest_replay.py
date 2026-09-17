@@ -55,7 +55,9 @@ look-ahead 를 막는 자리
 """
 from __future__ import annotations
 
+import calendar
 import json
+import statistics
 import sys
 from pathlib import Path
 
@@ -258,6 +260,109 @@ def price_metrics(px, tk: str, t: str):
     return out
 
 
+# ── 시점 T 의 화면 데이터 만들기 ─────────────────────────────────
+# 세부산업 분류는 지금 tree_kr.json 을 뼈대로 쓴다. 과거 분류를 복원할 방법이
+# 없고, 분류는 스코어러에 안 들어가며 묶어 보여주는 데만 쓰인다.
+#
+# 수급(foreign_net·inst_net)은 비운다. 화면의 수급 보너스는 기본이 꺼짐
+# (SUPPLY_ON=false)이고 박제도 그 상태로 돌므로 차이가 생기지 않는다.
+CARRY_FROM_SKELETON = ("tk", "nm")
+
+
+UNCLASSIFIED = {"sic": "0000", "desc": "Unclassified", "ko": "미분류",
+                "gics": "Unclassified"}
+
+
+def build_tree_at(cache, px, skeleton, t: str, names=None):
+    """T 시점의 tree_kr.json. 화면에 그대로 먹일 수 있는 모양.
+
+    유니버스를 넓히면 뼈대(지금 화면의 트리)에 없는 종목이 대부분이 된다.
+    그 종목들을 조용히 빼면 확대한 의미가 없어지므로 '미분류' 로 모은다.
+    분류는 스코어러에 안 들어가고 묶어 보여주는 데만 쓰이므로 판정은 안 변한다.
+    """
+    seen = set()
+    subs, kept, priced = [], 0, 0
+    for sk in skeleton.get("subs") or []:
+        mem = []
+        for m in sk.get("members") or []:
+            st = (cache.get("stocks") or {}).get(m["tk"])
+            if not st:
+                continue                      # 1단계가 못 받은 종목
+            seen.add(m["tk"])
+            row = {k: m.get(k) for k in CARRY_FROM_SKELETON}
+            row.update(fundamentals(st, t))
+            pm = price_metrics(px, m["tk"], t)
+            row.update(pm)
+            if pm["rs6"] is not None:
+                priced += 1
+            # 화면이 읽지만 복원할 수 없는 것들 — 없으면 중립으로 처리된다
+            row.update({"supply": None, "foreign_net": None, "inst_net": None,
+                        "foreign_pct": None, "last_earn": None, "next_earn": None})
+            mem.append(row)
+            kept += 1
+        if not mem:
+            continue
+        sub = {k: sk.get(k) for k in ("sic", "desc", "ko", "gics")}
+        sub["members"] = mem
+        sub["n"] = len(mem)
+        sps = [x["spread"] for x in mem if x["spread"] is not None]
+        sub["med"] = round(statistics.median(sps), 1) if sps else None
+        subs.append(sub)
+
+    # 뼈대에 없는 종목 — 확대 유니버스에서는 이쪽이 대부분이다
+    rest = [tk for tk in (cache.get("stocks") or {}) if tk not in seen]
+    if rest:
+        mem = []
+        for tk in sorted(rest):
+            row = {"tk": tk, "nm": (names or {}).get(tk, tk)}
+            row.update(fundamentals(cache["stocks"][tk], t))
+            pm = price_metrics(px, tk, t)
+            row.update(pm)
+            if pm["rs6"] is not None:
+                priced += 1
+            row.update({"supply": None, "foreign_net": None, "inst_net": None,
+                        "foreign_pct": None, "last_earn": None, "next_earn": None})
+            mem.append(row)
+            kept += 1
+        sub = dict(UNCLASSIFIED)
+        sub["members"] = mem
+        sub["n"] = len(mem)
+        sps = [x["spread"] for x in mem if x["spread"] is not None]
+        sub["med"] = round(statistics.median(sps), 1) if sps else None
+        subs.append(sub)
+
+    return {
+        "sectors": skeleton.get("sectors"),
+        "subs": subs,
+        "market": None,                       # 표시용 — 과거 값을 복원하지 않는다
+        "updated": t,
+        "fund_updated": t,
+        "source": "backtest-replay",
+        # 그 시점 데이터가 얼마나 온전했는지. 이걸 안 남기면 나중에 적중률을
+        # 어디까지 믿을지 판단할 수 없다 — 주간 박제가 coverage 를 남기는 이유와 같다.
+        "coverage": {"fresh": priced, "carried": kept - priced, "total": kept,
+                     "asked": kept, "skipped": 0,
+                     "why": f"백테스트 재현 · 가격층 확보 {priced}/{kept}"},
+    }
+
+
+def month_ends(start: str, end: str):
+    """평가 시점 목록 — 매달 말일. 겹치는 창은 3단계가 유효 표본으로 보정한다."""
+    out = []
+    y, m = int(start[:4]), int(start[5:7])
+    while True:
+        last = calendar.monthrange(y, m)[1]
+        d = f"{y:04d}-{m:02d}-{last:02d}"
+        if d > end:
+            break
+        if d >= start:
+            out.append(d)
+        m += 1
+        if m > 12:
+            y, m = y + 1, 1
+    return out
+
+
 # ── 자가진단 ─────────────────────────────────────────────────────
 def _stock(quarters, calendar):
     return {"quarters": quarters, "calendar": calendar}
@@ -362,6 +467,28 @@ def selftest() -> int:
     early = fundamentals(full, "2024-01-01")
     t(early["q_end"] is None and early["spread"] is None,
       "분기가 모자라면 조용히 None — 없는 숫자를 지어내지 않는다")
+
+    print("\n━━ 확대 유니버스 ━━")
+    # 유니버스를 넓히면 뼈대에 없는 종목이 대부분이 된다. 조용히 빼면 넓힌
+    # 의미가 없어지는데, 결과는 멀쩡히 나오므로 눈치채기 어렵다.
+    qs = [_q("2024-03-31", 1e12, 1e11), _q("2024-06-30", 1.1e12, 1.2e11),
+          _q("2024-09-30", 1.2e12, 1.3e11), _q("2024-12-31", 1.3e12, 1.4e11)]
+    cs = [_cal("2024-03-31", "2024-05-15"), _cal("2024-06-30", "2024-08-14"),
+          _cal("2024-09-30", "2024-11-14"), _cal("2024-12-31", "2025-03-11", "사업보고서")]
+    cache = {"stocks": {"IN.KS": _stock(qs, cs), "OUT.KQ": _stock(qs, cs)}}
+    skel = {"sectors": [], "subs": [{"sic": "1", "desc": "d", "ko": "반도체",
+                                     "gics": "g", "members": [{"tk": "IN.KS", "nm": "안"}]}]}
+    PXE = {"dates": [], "bench": [], "stocks": {}}
+    tree = build_tree_at(cache, PXE, skel, "2025-06-01", names={"OUT.KQ": "밖"})
+    tks = {m["tk"] for s in tree["subs"] for m in s["members"]}
+    t(tks == {"IN.KS", "OUT.KQ"},
+      f"뼈대에 없는 종목도 들어간다 — 빠지면 넓힌 의미가 없다 ({sorted(tks)})")
+    unc = [s for s in tree["subs"] if s["ko"] == "미분류"]
+    t(len(unc) == 1 and unc[0]["n"] == 1, "뼈대 밖 종목은 미분류로 모인다")
+    t(unc[0]["members"][0]["nm"] == "밖", "이름을 유니버스 파일에서 가져온다")
+    t(tree["coverage"]["total"] == 2, "coverage 가 전체를 센다")
+    t(len(build_tree_at({"stocks": {}}, PXE, skel, "2025-06-01")["subs"]) == 0,
+      "종목이 하나도 없으면 빈 트리 — 미분류를 억지로 만들지 않는다")
 
     print("\n━━ 가격층: T 에서 자르기 ━━")
     # 300거래일짜리 가짜 시세. 종목은 매일 +0.2%, 벤치마크는 +0.1% 로 둔다.

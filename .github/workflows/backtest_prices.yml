@@ -16,6 +16,12 @@ on:
       limit:
         description: '앞에서 N종목만 (0 = 전체). 맛보기용.'
         default: '0'
+      universe:
+        description: '먼저 유니버스를 새로 받을 종목 수. 0 이면 건너뛴다.'
+        default: '0'
+      src:
+        description: '가격을 받을 종목 목록. 유니버스를 새로 받으면 그 파일을 준다.'
+        default: 'data/backtest/kr-quarters.json'
 
 permissions:
   contents: write
@@ -37,9 +43,16 @@ jobs:
       - name: Logic self-test (네트워크 불필요)
         run: python backtest_prices.py --selftest
 
+      # 유니버스 확대와 가격 수집은 둘 다 야후를 쓰고 몇 분이면 끝난다.
+      # 워크플로를 또 만들면 기본 브랜치에 올릴 때까지 dispatch 가 404 다.
+      - name: 유니버스 확대
+        if: inputs.universe != '0' && inputs.universe != ''
+        run: python backtest_universe.py --limit ${{ inputs.universe }}
+
       - name: 일별 종가 수집
         run: |
           python backtest_prices.py \
+            --src '${{ inputs.src }}' \
             --start '${{ inputs.start }}' \
             --limit ${{ inputs.limit }}
 
@@ -49,7 +62,9 @@ jobs:
           git config user.email "bot@users.noreply.github.com"
           # 수집이 실패하면 파일이 없다. 없는 경로를 add 하면 pathspec 오류로
           # 스텝이 죽는다 — 미국판 run #22 와 같은 함정.
-          [ -f data/backtest/kr-prices.json ] && git add data/backtest/kr-prices.json || true
+          for f in data/backtest/kr-prices.json data/backtest/kr-universe.json; do
+            [ -f "$f" ] && git add "$f" || true
+          done
           git diff --staged --quiet && echo "변경 없음" && exit 0
           git commit -m "auto(backtest): 일별 종가 수집 $(date +%Y-%m-%d)"
           for i in 1 2 3 4 5; do

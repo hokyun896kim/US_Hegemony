@@ -53,7 +53,14 @@ SRC = "data/backtest/kr-quarters.json"
 
 
 def universe_from(path: str):
+    """1단계 산출물(stocks)도, 확대 유니버스 파일(tickers)도 받는다.
+
+    유니버스를 넓히면 가격을 '아직 재무를 안 받은 종목'까지 받아야 한다.
+    quarters 캐시만 볼 줄 알면 확대 배치 전에는 가격을 못 받는다.
+    """
     d = json.loads(Path(path).read_text(encoding="utf-8"))
+    if isinstance(d.get("tickers"), list):
+        return sorted(d["tickers"])
     return sorted(d["stocks"])
 
 
@@ -187,6 +194,10 @@ def selftest() -> int:
             {"stocks": {"B.KS": {}, "A.KS": {}}}), encoding="utf-8")
         t(universe_from(p) == ["A.KS", "B.KS"],
           "1단계 산출물에서 티커를 정렬해 가져온다")
+        q = os.path.join(td, "u.json")
+        Path(q).write_text(json.dumps({"tickers": ["Z.KQ", "A.KS"]}), encoding="utf-8")
+        t(universe_from(q) == ["A.KS", "Z.KQ"],
+          "확대 유니버스 파일도 받는다 — 재무를 받기 전에 가격부터 받을 수 있어야 한다")
 
     print("\n✅ 전부 통과" if ok[0] else "\n❌ 실패")
     return 0 if ok[0] else 1

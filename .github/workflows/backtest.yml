@@ -52,6 +52,9 @@ on:
       out:
         description: '저장 경로. 병렬로 나눠 받을 때 조각마다 다르게 준다.'
         default: 'data/backtest/kr-quarters.json'
+      universe:
+        description: '종목 목록 파일. 확대 유니버스를 쓰려면 그 경로를 준다.'
+        default: 'data/tree_kr.json'
 
 permissions:
   contents: write
@@ -81,6 +84,7 @@ jobs:
           python backtest_fetch.py \
             --limit ${{ inputs.limit }} \
             --offset ${{ inputs.offset }} \
+            --universe '${{ inputs.universe }}' \
             --years ${{ inputs.years }} \
             --out '${{ inputs.out }}' \
             --deadline ${{ inputs.deadline }}
