@@ -53,6 +53,10 @@ import buildlib
 import dart
 
 OUT = "data/backtest/kr-quarters.json"
+# 이만큼 연달아 실패하면서 정상 응답이 0건이면 더 기다리지 않는다.
+# 3 은 우연한 연속 실패(특이한 회사 셋)와 구분되기에 충분하고, 그 셋으로
+# 이미 100건 넘게 호출해봤다는 뜻이라 '닿지 않는다' 는 판정에 근거가 된다.
+EARLY_OUT = 3
 
 
 def load_universe(path: str = "data/tree_kr.json"):
@@ -163,9 +167,45 @@ def _won(v):
     return f"{v:,.0f}"
 
 
+def merge(sources, out_path: str):
+    """조각 파일들을 하나로. 같은 종목이 겹치면 분기가 많은 쪽을 남긴다.
+
+    병렬로 나눠 받으면 조각마다 유니버스의 다른 구간이 들어 있다. 경계에서
+    겹칠 수 있는데(1차가 예상보다 멀리 갔을 때), 그때 덜 받은 쪽으로 덮으면
+    멀쩡한 종목이 반쪽이 된다.
+    """
+    stocks, years, n = {}, None, 0
+    for src in sources:
+        try:
+            d = json.loads(Path(src).read_text(encoding="utf-8"))
+        except Exception as exc:  # noqa: BLE001
+            print(f"  건너뜀 {src} ({exc})")
+            continue
+        got = d.get("stocks") or {}
+        years = years or d.get("years")
+        n = max(n, int(d.get("universe_n") or 0))
+        for tk, v in got.items():
+            cur = stocks.get(tk)
+            if cur is None or len(v.get("quarters") or []) > len(cur.get("quarters") or []):
+                stocks[tk] = v
+        print(f"  {src}: {len(got)}종목")
+    out = {"kind": "kr", "built": str(date.today()), "years": years,
+           "universe_n": n, "stocks": stocks,
+           "note": "생존 편향 있음 — 오늘 살아 있는 종목만. backtest_fetch.py 주석 참고"}
+    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+    Path(out_path).write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")
+    print(f"\n  합침 {out_path} — {len(stocks)}종목 / 유니버스 {n}")
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=0, help="앞에서 N종목만 (0=전체)")
+    # 왜 offset 이 필요한가 — 한 번에 다 못 받기 때문이다. 이어받기만 있으면
+    # 조각들이 순서대로 줄을 서서 기다려야 한다(233종목 약 11시간). 구간을
+    # 나눠 동시에 돌리면 벽시계 시간이 조각 수만큼 줄어든다. DART 호출 총량은
+    # 같다 — 같은 종목을 두 번 받지 않으므로.
+    ap.add_argument("--offset", type=int, default=0, help="앞 N종목을 건너뛴다")
     ap.add_argument("--out", default=OUT)
     ap.add_argument("--deadline", type=float, default=0,
                     help="벽시계 예산(분). 넘기면 받은 데까지 저장한다. 0=무제한")
@@ -180,13 +220,16 @@ def main(argv=None):
 
     budget = buildlib.Budget(args.deadline, reserve_min=2)
     universe = load_universe()
+    if args.offset:
+        universe = universe[args.offset:]
     if args.limit:
         universe = universe[: args.limit]
 
     prev = load_prev(args.out)
     stocks = dict(prev.get("stocks") or {})
     done0 = len(stocks)
-    print(f"[1/2] 유니버스 {len(universe)}종목 · 이미 받은 것 {done0}종목")
+    where = f" (offset {args.offset})" if args.offset else ""
+    print(f"[1/2] 유니버스 {len(universe)}종목{where} · 이미 받은 것 {done0}종목")
 
     corp_map = dart.corp_map()
     print(f"  DART 고유번호 {len(corp_map)}건")
@@ -211,6 +254,15 @@ def main(argv=None):
         except Exception as exc:  # noqa: BLE001 — 한 종목 때문에 배치를 잃지 않는다
             print(f"  {tk} 실패({exc})")
             fail += 1
+            # 한 건도 성공 못 한 채 연달아 실패하면 DART 에 아예 못 닿는 것이다.
+            # 실측(2026-09-17 조각 p1): 러너 하나가 DART 에 닿지 못해 9종목에
+            # 203분을 태우고 '정상 응답 0건'으로 끝났다. 종목당 호출이 약 44건
+            # 이라 타임아웃만 396번 기다린 셈이다. 끝까지 가도 결과는 같으므로
+            # 일찍 끊고 재실행에 맡긴다 — 이어받기가 이미 있다.
+            if got == 0 and fail >= EARLY_OUT and not dart.healthy():
+                print(f"  ⛔ {fail}종목 연속 실패에 정상 응답 0건 — "
+                      f"DART 에 닿지 않는다. 예산을 태우지 않고 끊는다.")
+                break
         if (got + fail) % 20 == 0:
             print(f"  {i}/{len(universe)} · 새로 {got} 실패 {fail} "
                   f"· {budget.spent()/60:.0f}분 경과 · {dart.status_report()}")
@@ -264,6 +316,45 @@ def selftest() -> int:
         t(u == ["005930.KS", "000660.KS", "035720.KQ"],
           f"세부산업을 가로질러 종목을 모은다 ({u})")
 
+    print("\n━━ 조기 중단 문턱 ━━")
+    # 실측 사고를 상수로 고정한다. 이 값이 커지면 다시 몇 시간을 태우게 된다.
+    t(EARLY_OUT >= 2, "우연한 연속 실패 하나로는 안 끊는다")
+    t(EARLY_OUT <= 5,
+      f"문턱이 높으면 닿지 않는 러너가 예산을 다 태운다 (지금 {EARLY_OUT})")
+
+    print("\n━━ 조각 합치기 ━━")
+    # 병렬로 나눠 받으면 경계에서 같은 종목이 두 조각에 들어갈 수 있다.
+    # 덜 받은 쪽으로 덮으면 멀쩡한 종목이 반쪽이 된다 — 조용히 생기는 손실이라
+    # 고정해둔다.
+    with tempfile.TemporaryDirectory() as td:
+        def put(name, stocks, n=233, years=6):
+            q = os.path.join(td, name)
+            Path(q).write_text(json.dumps(
+                {"kind": "kr", "years": years, "universe_n": n,
+                 "stocks": stocks}), encoding="utf-8")
+            return q
+
+        four = {"quarters": [1, 2, 3, 4], "calendar": []}
+        two = {"quarters": [1, 2], "calendar": []}
+        a = put("a.json", {"A": four, "B": four})
+        b = put("b.json", {"B": two, "C": four})
+        o = os.path.join(td, "all.json")
+        merge([a, b], o)
+        got = json.loads(Path(o).read_text(encoding="utf-8"))
+        t(sorted(got["stocks"]) == ["A", "B", "C"], "조각들이 하나로 합쳐진다")
+        t(len(got["stocks"]["B"]["quarters"]) == 4,
+          "겹치면 분기가 많은 쪽을 남긴다 — 덜 받은 조각이 덮으면 안 된다")
+        t(got["universe_n"] == 233, "유니버스 크기는 조각 중 최대값")
+        t(got["years"] == 6, "수집 창을 잃지 않는다")
+
+        broken = os.path.join(td, "broken.json")
+        Path(broken).write_text("{nope", encoding="utf-8")
+        o2 = os.path.join(td, "all2.json")
+        merge([a, broken], o2)
+        g2 = json.loads(Path(o2).read_text(encoding="utf-8"))
+        t(sorted(g2["stocks"]) == ["A", "B"],
+          "깨진 조각은 건너뛰고 나머지를 살린다 — 하나 때문에 전부 잃지 않는다")
+
     print("\n━━ 프로브 표시 ━━")
     # 프로브의 값어치는 '자릿수가 눈에 들어오는가' 에 있다. 조 단위를 억으로
     # 찍으면 13자리가 늘어서 표가 무너지고, 그러면 아무도 안 본다.
@@ -283,4 +374,14 @@ if __name__ == "__main__":
         sys.exit(selftest())
     if "--probe" in sys.argv:
         sys.exit(probe(sys.argv[sys.argv.index("--probe") + 1]))
+    if "--merge" in sys.argv:
+        i = sys.argv.index("--merge")
+        srcs = []
+        for a in sys.argv[i + 1:]:
+            if a.startswith("--"):
+                break
+            srcs.append(a)
+        o = (sys.argv[sys.argv.index("--out") + 1]
+             if "--out" in sys.argv else OUT)
+        sys.exit(merge(srcs, o))
     sys.exit(main())
