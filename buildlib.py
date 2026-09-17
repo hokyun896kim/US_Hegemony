@@ -108,6 +108,49 @@ CARRY = ("rev", "op", "spread", "q_rev", "q_op", "q_spread", "accel",
          "pe", "fpe", "peg", "est30", "est90", "last_earn", "next_earn")
 
 
+# ── 분기 비고(q_note) 는 '품질 경고'지 '출처 라벨'이 아니다 ───────────────
+# 화면의 detectBaseEffect 가 q_note 를 읽어서, '정상'이 아니면 그 종목을
+# 기저효과 의심으로 몰아 후보에서 통째로 뺀다. 그래서 여기에는 '이 숫자를
+# 못 믿는 이유'만 적어야 한다. 계산 방식이나 자료 출처를 적으면 안 된다.
+#
+# 한국판이 먼저 이 함정을 밟았다 — 근사 모드(분기 4~7개)를 q_note 에 적었더니
+# 232종목 중 230종목이 '비정상'이 되어 기저효과 패널티가 전부에게 걸렸다.
+# 그때 '근사 여부는 q_approx 로 따로 알린다'로 고쳤는데(build_tree_kr 의
+# quarterly_ttm 주석), 미국 실적층을 야후로 옮기면서 같은 실수를 다시 했다:
+# q_note="근사(야후)" 가 383종목 중 328종목에 붙어 선취매 레이더 후보가
+# 0종목이 됐다. 에러도 경고도 없이 화면만 비었다(실측 2026-09-13).
+#
+# 그 교훈을 한국판 주석이 아니라 두 빌더가 공유하는 이 자리에 못박는다.
+QNOTE_OK = "정상"
+_QNOTE_BANNED = ("근사", "approx", "TTM", "야후 가공", "yfinance", "SEC")
+
+
+def qnote(problem: str = "") -> str:
+    """분기 비고를 만든다. 문제가 없으면 '정상'.
+
+    근사 여부는 q_approx, 자료 출처는 q_src 가 따로 알린다. 그것들을 여기
+    적으면 화면이 멀쩡한 종목을 기저효과로 오해한다 — 위 주석 참고.
+    """
+    if not problem:
+        return QNOTE_OK
+    for w in _QNOTE_BANNED:
+        if w.lower() in problem.lower():
+            raise ValueError(
+                f"q_note 에 계산 방식·출처를 적었다: {problem!r}. "
+                "근사 여부는 q_approx, 출처는 q_src 로 알린다 "
+                "(q_note 는 '이 숫자를 못 믿는 이유'만)."
+            )
+    return problem
+
+
+def qnote_share(members) -> tuple:
+    """(비'정상' q_note 종목 수, 전체). 빌드 끝에 찍어 눈으로 확인하게 한다."""
+    total = len(members)
+    bad = sum(1 for m in members
+              if (m.get("q_note") or QNOTE_OK) not in (QNOTE_OK, ""))
+    return bad, total
+
+
 def coverage_line(cov: dict) -> str:
     """실적층 이월 한 줄 요약.
 
@@ -332,6 +375,18 @@ def selftest() -> int:
           "단일 분기 기저효과 폭발(+800%)은 버린다")
     check(latest_q_yoy_days([("2026-06-30", 110.0), ("2025-06-30", -5.0)]) is None,
           "전년이 적자면 비율이 무의미 — None")
+
+    print("\n── 분기 비고(q_note) ──")
+    check(qnote() == "정상", "문제가 없으면 '정상'")
+    check(qnote("영익불가") == "영익불가", "진짜 문제는 그대로 통과")
+    for bad in ("근사(야후)", "TTM 근사", "yfinance 가공", "approx"):
+        try:
+            qnote(bad)
+            check(False, f"계산 방식·출처를 q_note 에 적으면 막아야 한다: {bad!r}")
+        except ValueError:
+            check(True, f"계산 방식·출처는 q_note 에 못 적는다 ({bad})")
+    ms = [{"q_note": "정상"}, {"q_note": "영익불가"}, {"q_note": ""}, {}]
+    check(qnote_share(ms) == (1, 4), f"비'정상' 집계 ({qnote_share(ms)})")
 
     print("\n" + ("✅ 전부 통과" if ok else "❌ 실패"))
     return 0 if ok else 1

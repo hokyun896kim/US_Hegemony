@@ -38,7 +38,7 @@ BENCH = "^KS11"  # 코스피 종합
 # 두 시장이 다르게 도는 드리프트를 막으려고 buildlib 한 곳에 둔다.
 from buildlib import (          # noqa: F401  (자체검증이 직접 부른다)
     CARRY, OP_ROWS, REV_ROWS, Budget, Stall, _stall_guard, align_quarters,
-    coverage_line, pick_row, series_values, too_thin,
+    coverage_line, pick_row, qnote_share, series_values, too_thin,
 )
 from buildlib import load_prev as _load_prev
 
@@ -1435,6 +1435,14 @@ def main():
         print(f"  갱신일 {data['updated']} · 세부산업 {len(data['subs'])} · 종목 {new_n}")
         if data.get("coverage"):
             print(coverage_line(data["coverage"]))
+        # 분기 비고가 전 종목에 붙으면 화면의 기저효과 판정이 전부에게 걸려
+        # 후보가 0종목이 된다 — 미국판에서 실제로 났다(2026-09-13).
+        bad, total = qnote_share([m for r in data["subs"] for m in r["members"]])
+        if total and bad / total > 0.4:
+            print(f"  ⚠️ 분기 비고가 '정상'이 아닌 종목이 {bad}/{total} — "
+                  "화면 후보가 0종목이 될 수 있습니다")
+        else:
+            print(f"  분기 비고 이상 {bad}/{total}종목")
     except Exception as exc:  # noqa: BLE001
         print(f"⚠️ 요약 출력 실패({exc!r}) — 데이터 파일은 정상 저장됐습니다: {out}")
     return 0

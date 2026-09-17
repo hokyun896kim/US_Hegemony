@@ -119,7 +119,7 @@ def yf_fund(tk, statements=None):
            "est30": est.get("est30"), "est90": est.get("est90"),
            "q_rev": None, "q_op": None, "q_spread": None, "q_end": None,
            "lq_rev": None, "lq_op": None, "q_approx": False,
-           "q_note": "야후 분기 없음", "accel": None}
+           "q_note": buildlib.qnote("야후 분기 없음"), "accel": None}
 
     qrev = buildlib.series_values(buildlib.pick_row(qinc, buildlib.REV_ROWS))
     qop = buildlib.series_values(buildlib.pick_row(qinc, buildlib.OP_ROWS))
@@ -127,9 +127,11 @@ def yf_fund(tk, statements=None):
     if qr is not None and qo is not None:
         if abs(qr) > MAX_REV_YOY or abs(qo) > MAX_OP_YOY:
             return out                    # 분기만 버리고 연간은 살린다
+        # 근사 여부(분기 4~7개)는 q_approx 가, 출처는 q_src 가 이미 알린다.
+        # 그걸 q_note 에 또 적으면 화면이 기저효과로 오해한다 — buildlib.qnote 주석.
         out.update(q_rev=round(qr, 1), q_op=round(qo, 1),
                    q_spread=round(qo - qr, 1), q_end=qend, q_approx=approx,
-                   q_note="근사(야후)" if approx else "정상",
+                   q_note=buildlib.qnote(),
                    accel=round((qo - qr) - (op - rev), 1))
         R, O = buildlib.align_quarters(qrev, qop)
         out["lq_rev"] = buildlib.latest_q_yoy_days(R)
@@ -372,6 +374,17 @@ def main(fetch=None, path=None, statements=None, deadline=0, stall=90, fund=True
     print(f"완료: {path} · 가격 {ok}종목(실패 {miss}"
           + (f", 시간부족 {cut}" if cut else "") + f") · 실적 {fresh}종목 갱신"
           + (f", {carried}종목은 {fund_day} 기준 유지" if carried else ""))
+    # 저장 뒤 서식 오류로 회차를 통째로 잃은 적이 있다(실측 8/16). 여기서
+    # 죽이지 않는다 — 시끄럽게 알리되 종료 코드는 0 으로 둔다.
+    try:
+        bad, total = buildlib.qnote_share(members)
+        if total and bad / total > 0.4:
+            print(f"  ⚠️ 분기 비고가 '정상'이 아닌 종목이 {bad}/{total} — "
+                  "화면의 기저효과 판정이 전부에게 걸려 후보가 0종목이 될 수 있습니다")
+        else:
+            print(f"  분기 비고 이상 {bad}/{total}종목")
+    except Exception as e:                                   # noqa: BLE001
+        print(f"  (분기 비고 집계 실패: {e})")
     return 0
 
 
@@ -533,6 +546,8 @@ def selftest():
         t(f["q_spread"] is not None, f"분기 TTM 스프레드 {f['q_spread']}p")
         t(f["lq_op"] is not None, f"최신 분기 영익 YoY {f['lq_op']} — TTM 충돌 판정이 쓴다")
         t(f["q_src"] == "yfinance", "출처를 남긴다 — SEC 1차 자료가 아님을 밝힌다")
+        t(f["q_note"] == "정상",
+          f"정식 TTM 은 비고 없음 ({f['q_note']!r})")
         # 추정치 방향(est30/est90). 화면이 이 키를 읽으므로 항상 있어야 한다 —
         # 없으면 undefined 가 되고, 그게 2026-08-08 이후 계속된 상태였다.
         t("est30" in f and "est90" in f,
@@ -548,6 +563,20 @@ def selftest():
       "est_trend 는 실패하면 조용히 None 두 개 — 회차를 깨지 않는다")
     t(yf_fund("XXX", lambda tk: (_df(LAB, ["2026-12-31"], [[1.0], [1.0]]), Q)) is None,
       "연간이 1년치뿐이면 YoY 를 지어내지 않는다")
+
+    # 근사 모드(분기 4~7개)에서도 q_note 는 '정상'이어야 한다.
+    # 여기 '근사(야후)' 를 적었더니 383종목 중 328종목이 화면에서 기저효과로
+    # 몰려 선취매 레이더 후보가 0종목이 됐다(실측 2026-09-13). 한국판은 같은
+    # 함정을 이미 한 번 밟고 고쳤는데, 그 교훈이 이 파일에는 없었다.
+    Q5 = _df(LAB, qcols[:5],
+             [[320e6, 320e6, 320e6, 290e6, 250e6],
+              [60e6, 55e6, 50e6, 35e6, 25e6]])
+    f5 = yf_fund("XXX", lambda tk: (A, Q5))
+    t(f5 is not None and f5["q_approx"] is True, "분기 4~7개면 근사 모드로 표시")
+    if f5:
+        t(f5["q_note"] == "정상",
+          f"근사 모드를 q_note 이상으로 찍지 않음 — 기저효과 오작동 방지 ({f5['q_note']!r})")
+        t(f5["q_end"] is not None, "근사 모드에서도 분기말은 기록한다")
     # 분모가 너무 작으면 비율이 잡음이다
     tiny = _df(LAB, ["2026-12-31", "2025-12-31"], [[100.0, 10.0], [50.0, 5.0]])
     t(yf_fund("XXX", lambda tk: (tiny, Q)) is None, "분모가 100만 달러 미만이면 버린다")
