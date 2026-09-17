@@ -51,7 +51,7 @@ import time
 import urllib.parse
 import urllib.request
 import zipfile
-from datetime import date
+from datetime import date, timedelta
 
 BASE = "https://opendart.fss.or.kr/api"
 UA = {"User-Agent": "KR-Hegemony-Tree (contact via github.com/hokyun896kim)"}
@@ -524,8 +524,161 @@ def selftest() -> int:
     else:
         os.environ.pop("DART_KEY", None)
 
+    # ── 공시검색 → ir ──────────────────────────────────────────────
+    # 실측 응답(2026-09-17 · 005930)을 그대로 넣고 파싱을 고정한다.
+    # 여기서 틀리면 조용히 비는 필드가 된다 — 지금까지 0/233 이었던 것처럼.
+    print("\n━━ 공시검색 → ir ━━")
+    mod = sys.modules[__name__]
+    real_get, real_key, real_enabled = mod._get, mod._key, mod.enabled
+    mod._key, mod.enabled = (lambda: "K"), (lambda: True)
+    try:
+        # report_nm 뒤 공백과 지분공시 노이즈를 실측 그대로 재현한다
+        mod._get = lambda path, params, key, **kw: {"status": "000", "list": [
+            {"rcept_dt": "20260917", "rcept_no": "20260917000097",
+             "report_nm": "임원ㆍ주요주주특정증권등소유상황보고서"},
+            {"rcept_dt": "20260814", "rcept_no": "20260814003699",
+             "report_nm": "반기보고서 (2026.06)              "},
+            {"rcept_dt": "20260515", "rcept_no": "20260515002181",
+             "report_nm": "분기보고서 (2026.03)"},
+        ]}
+        r = latest_report("00126380")
+        t(r is not None, "정기공시에서 ir 을 만든다")
+        if r:
+            t(r["date"] == "2026-08-14", f"rcept_dt 를 YYYY-MM-DD 로 ({r['date']})")
+            t(r["docs"][0]["label"] == "반기보고서 (2026.06)",
+              f"report_nm 뒤 공백을 턴다 ({r['docs'][0]['label']!r})")
+            t(r["docs"][0]["url"].endswith("20260814003699"),
+              "원문 링크에 rcept_no 가 붙는다")
+            t("임원" not in r["docs"][0]["label"], "지분공시를 실적 공시로 오인하지 않는다")
+
+        mod._get = lambda path, params, key, **kw: {"status": "000", "list": [
+            {"rcept_dt": "20260908", "rcept_no": "20260908800624",
+             "report_nm": "최대주주등소유주식변동신고서   "}]}
+        t(latest_report("00126380") is None, "실적 공시가 없으면 None — 아무거나 넣지 않는다")
+
+        mod._get = lambda path, params, key, **kw: {"status": "013", "list": []}
+        t(latest_report("00126380") is None, "조회 결과가 비면 None")
+
+        mod._get = lambda path, params, key, **kw: {"status": "000", "list": [
+            {"rcept_dt": "2026", "rcept_no": "", "report_nm": "분기보고서"}]}
+        t(latest_report("00126380") is None, "날짜·접수번호가 깨졌으면 버린다")
+
+        mod.enabled = lambda: False
+        t(latest_report("00126380") is None, "키가 없으면 부르지도 않는다")
+    finally:
+        mod._get, mod._key, mod.enabled = real_get, real_key, real_enabled
+
     print("\n✅ 전부 통과" if ok[0] else "\n❌ 실패")
     return 0 if ok[0] else 1
+
+
+# 실적 공시로 인정할 보고서 이름. 정기공시(pblntf_ty=A) 안에도 증권신고서
+# 같은 게 섞일 수 있어 이름으로 한 번 더 거른다.
+REPORT_NAMES = ("분기보고서", "반기보고서", "사업보고서")
+DOC_URL = "https://dart.fss.or.kr/dsaf001/main.do?rcpNo="
+
+
+def latest_report(corp: str, days: int = 400):
+    """이 회사의 가장 최근 정기공시 한 건 → 화면의 ir 필드 모양으로.
+
+    실측 (2026-09-17 · Actions 프로브 · 005930):
+
+        pblntf_ty=A   3건, 전부 실적 공시
+                      20260814 '반기보고서 (2026.06)'  rcept_no=20260814003699
+                      20260515 '분기보고서 (2026.03)'
+                      20260310 '사업보고서 (2025.12)'
+        pblntf_ty=B   5건, 실적 공시 0건 (자기주식 취득·처분)
+        필터 없음     20건, 실적 공시 0건 — 임원·대량보유 공시가 목록을 덮는다
+
+    그래서 pblntf_ty=A 가 필수다. 그리고:
+      · 기본 정렬이 이미 최신순이라 정렬 파라미터는 필요 없다
+      · report_nm 뒤에 공백이 붙어 온다 → strip 없이 비교하면 전부 빗나간다
+      · rcept_dt 는 YYYYMMDD, 화면의 ir.date 는 YYYY-MM-DD 라 변환한다
+
+    days 를 400 으로 둔 이유 — 사업보고서는 1년에 한 번이다. 분기보고서가
+    늦는 회사라도 한 바퀴 안에는 뭔가 하나 있어야 한다.
+
+    실패·미발견은 None. 화면은 ir 이 없으면 폴백 문구를 띄우므로 안전하다.
+    """
+    if not enabled() or not corp:
+        return None
+    today = date.today()
+    d = _get("list.json", {
+        "corp_code": corp,
+        "bgn_de": (today - timedelta(days=days)).strftime("%Y%m%d"),
+        "end_de": today.strftime("%Y%m%d"),
+        "pblntf_ty": "A",
+        "page_count": "20",
+    }, _key())
+    if not isinstance(d, dict):
+        return None
+    for r in (d.get("list") or []):
+        nm = str(r.get("report_nm") or "").strip()
+        if not any(k in nm for k in REPORT_NAMES):
+            continue
+        dt = str(r.get("rcept_dt") or "").strip()
+        no = str(r.get("rcept_no") or "").strip()
+        if len(dt) != 8 or not dt.isdigit() or not no:
+            continue
+        return {"date": f"{dt[:4]}-{dt[4:6]}-{dt[6:]}",
+                "docs": [{"label": nm, "url": DOC_URL + no}]}
+    return None
+
+
+def probe_ir(corp: str) -> None:
+    """공시검색(list.json) 응답 구조를 그대로 찍는다.
+
+    왜 필요한가 — ir(공시일·원문 링크)이 233종목 전부 비어 있다. 지금은
+    yfinance 의 last_earn 에서 만드는데 그 값이 0/233 이라, 화면의 공시 버튼
+    (index.html:782)과 staleness 의 공시일 기반 정밀 판정(index.html:1417)이
+    통째로 죽어 있다. 코드는 있는데 데이터가 없어 한 번도 안 돌았다.
+
+    DART 는 같은 키로 공시검색을 준다. 다만 파라미터·응답 형태를 눈으로
+    확인하기 전에는 수집 코드를 쓰지 않는다 — 추측으로 쓰면 또 조용히 비는
+    필드가 하나 더 생길 뿐이다(실측 전례: .json 확장자를 빼먹어 모든 요청이
+    101 로 거절당하는데도 빌드는 멀쩡히 끝났다).
+
+    그래서 파라미터 조합을 몇 가지 시도하고 status·message·행 키를 전부 찍는다.
+    """
+    today = date.today()
+    bgn = (today - timedelta(days=200)).strftime("%Y%m%d")
+    end = today.strftime("%Y%m%d")
+    base = {"corp_code": corp, "bgn_de": bgn, "end_de": end, "page_count": "20"}
+    # 1회차 실측(005930): 필터 없이 부르면 임원·주요주주 소유상황보고서가
+    # 목록을 덮는다. 우리가 원하는 건 실적 공시(분기·반기·사업보고서)이므로
+    # 정기공시 필터를 먼저 본다. 전부 찍어야 뭘 쓸지 고를 수 있으니 break 하지
+    # 않는다 — 1회차에 break 를 걸었다가 정작 필요한 절을 못 봤다.
+    variants = [
+        ("정기공시(pblntf_ty=A)", dict(base, pblntf_ty="A")),
+        ("주요사항보고(pblntf_ty=B)", dict(base, pblntf_ty="B")),
+        ("필터 없음", dict(base)),
+    ]
+    print(f"\n  ── 공시검색(list.json) · {bgn}~{end} ──")
+    for label, params in variants:
+        try:
+            d = _get("list.json", params, _key())
+        except Exception as e:                      # noqa: BLE001
+            print(f"    [{label}] 요청 실패 {e}")
+            continue
+        if not isinstance(d, dict):
+            print(f"    [{label}] dict 가 아닌 응답: {type(d).__name__}")
+            continue
+        print(f"    [{label}] status={d.get('status')} message={d.get('message')}")
+        print(f"      최상위 키: {sorted(d.keys())}")
+        rows = d.get("list") or []
+        print(f"      행 {len(rows)}개")
+        if rows:
+            print(f"      행 키: {sorted(rows[0].keys())}")
+            for r in rows[:8]:
+                # report_nm 은 뒤에 공백이 붙어 온다(실측) — strip 해서 본다
+                print(f"        {r.get('rcept_dt')}  {str(r.get('report_nm','')).strip()!r}"
+                      f"  rcept_no={r.get('rcept_no')}")
+            hits = [r for r in rows
+                    if any(k in str(r.get("report_nm", ""))
+                           for k in ("분기보고서", "반기보고서", "사업보고서"))]
+            print(f"      → 실적 공시로 골라낸 것: {len(hits)}건"
+                  + (f" · 최신 {hits[0].get('rcept_dt')} "
+                     f"{str(hits[0].get('report_nm','')).strip()!r}" if hits else ""))
 
 
 def probe(code: str) -> int:
@@ -569,6 +722,11 @@ def probe(code: str) -> int:
                   + ("" if add[0] > amt[0] else "   ⚠️ 컬럼 의미 가정이 틀렸을 수 있음"))
         if amt[0] is None and add[0] is None:
             print("  → ⚠️ 매출 계정을 못 찾았다. account_nm 목록을 보고 REV_NAMES 를 늘려야 한다.")
+
+    try:
+        probe_ir(corp)
+    except Exception as e:                          # noqa: BLE001
+        print(f"\n  공시검색 프로브 실패: {e}")
 
     print("\n  최종 분기 목록 (기말, 매출, 영업이익):")
     for e, r, o in quarters(code, corp)[-8:]:

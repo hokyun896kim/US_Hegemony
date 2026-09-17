@@ -77,6 +77,34 @@ jobs:
       # 둘은 런타임 실패라 문법 검사로는 못 잡는다. 그건 셸 쪽을 방어적으로
       # 쓰는 걸로 막았고, 여기서는 최소한의 바닥만 깐다: YAML 이 깨졌거나
       # 셸 문법이 틀리면 워크플로가 아예 안 돌거나 첫 줄에서 죽는다.
+      # 박제는 매 회차 조용히 돌고 결과를 커밋한다. 스크립트가 깨지면
+      # continue-on-error 때문에 회차는 멀쩡히 끝나고 파일만 안 생긴다 —
+      # 정확히 이 저장소가 반복해 겪은 종류의 고장이다. 매번 실제로 돌려본다.
+      - name: 주간 박제 스크립트 동작 확인
+        working-directory: tests
+        run: |
+          node snapshot.mjs kr
+          node snapshot.mjs us
+          python3 - <<'PY'
+          import json, pathlib, sys
+          bad = 0
+          for kind in ("kr", "us"):
+              # 이 스텝은 tests/ 에서 도는데 박제는 저장소 루트에 쓴다
+              hits = sorted(pathlib.Path("../data/snapshots").glob(f"{kind}-*.json"))
+              if not hits:
+                  print(f"  FAIL {kind}: 박제 파일이 안 만들어졌다"); bad += 1; continue
+              d = json.loads(hits[-1].read_text(encoding="utf-8"))
+              need = {"date", "kind", "n_members", "top5", "radar", "coverage"}
+              miss = need - set(d)
+              if miss:
+                  print(f"  FAIL {kind}: 키 누락 {miss}"); bad += 1; continue
+              if not d["n_members"]:
+                  print(f"  FAIL {kind}: 종목이 0"); bad += 1; continue
+              print(f"  ok   {kind}: {d['date']} · {d['n_members']}종목 · "
+                    f"TOP5 {len(d['top5'])} · 선취매 {len(d['radar'])}")
+          sys.exit(bad)
+          PY
+
       - name: 워크플로 YAML·셸 문법
         run: |
           # 이 러너에는 파이썬만 깔려 있고 PyYAML 은 없다. 로컬에 마침 있어서
