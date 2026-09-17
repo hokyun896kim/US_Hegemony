@@ -55,7 +55,9 @@ look-ahead 를 막는 자리
 """
 from __future__ import annotations
 
+import calendar
 import json
+import statistics
 import sys
 from pathlib import Path
 
@@ -255,6 +257,76 @@ def price_metrics(px, tk: str, t: str):
         g = max(abs(o / pc - 1) * 100 for pc, o in pairs)
         out["gap"] = round(g, 1)
         out["gaplvl"] = "H" if g > 10 else ("L" if g < 4 else "M")
+    return out
+
+
+# ── 시점 T 의 화면 데이터 만들기 ─────────────────────────────────
+# 세부산업 분류는 지금 tree_kr.json 을 뼈대로 쓴다. 과거 분류를 복원할 방법이
+# 없고, 분류는 스코어러에 안 들어가며 묶어 보여주는 데만 쓰인다.
+#
+# 수급(foreign_net·inst_net)은 비운다. 화면의 수급 보너스는 기본이 꺼짐
+# (SUPPLY_ON=false)이고 박제도 그 상태로 돌므로 차이가 생기지 않는다.
+CARRY_FROM_SKELETON = ("tk", "nm")
+
+
+def build_tree_at(cache, px, skeleton, t: str):
+    """T 시점의 tree_kr.json. 화면에 그대로 먹일 수 있는 모양."""
+    subs, kept, priced = [], 0, 0
+    for sk in skeleton.get("subs") or []:
+        mem = []
+        for m in sk.get("members") or []:
+            st = (cache.get("stocks") or {}).get(m["tk"])
+            if not st:
+                continue                      # 1단계가 못 받은 종목
+            row = {k: m.get(k) for k in CARRY_FROM_SKELETON}
+            row.update(fundamentals(st, t))
+            pm = price_metrics(px, m["tk"], t)
+            row.update(pm)
+            if pm["rs6"] is not None:
+                priced += 1
+            # 화면이 읽지만 복원할 수 없는 것들 — 없으면 중립으로 처리된다
+            row.update({"supply": None, "foreign_net": None, "inst_net": None,
+                        "foreign_pct": None, "last_earn": None, "next_earn": None})
+            mem.append(row)
+            kept += 1
+        if not mem:
+            continue
+        sub = {k: sk.get(k) for k in ("sic", "desc", "ko", "gics")}
+        sub["members"] = mem
+        sub["n"] = len(mem)
+        sps = [x["spread"] for x in mem if x["spread"] is not None]
+        sub["med"] = round(statistics.median(sps), 1) if sps else None
+        subs.append(sub)
+
+    return {
+        "sectors": skeleton.get("sectors"),
+        "subs": subs,
+        "market": None,                       # 표시용 — 과거 값을 복원하지 않는다
+        "updated": t,
+        "fund_updated": t,
+        "source": "backtest-replay",
+        # 그 시점 데이터가 얼마나 온전했는지. 이걸 안 남기면 나중에 적중률을
+        # 어디까지 믿을지 판단할 수 없다 — 주간 박제가 coverage 를 남기는 이유와 같다.
+        "coverage": {"fresh": priced, "carried": kept - priced, "total": kept,
+                     "asked": kept, "skipped": 0,
+                     "why": f"백테스트 재현 · 가격층 확보 {priced}/{kept}"},
+    }
+
+
+def month_ends(start: str, end: str):
+    """평가 시점 목록 — 매달 말일. 겹치는 창은 3단계가 유효 표본으로 보정한다."""
+    out = []
+    y, m = int(start[:4]), int(start[5:7])
+    while True:
+        last = calendar.monthrange(y, m)[1]
+        d = f"{y:04d}-{m:02d}-{last:02d}"
+        if d > end:
+            break
+        if d >= start:
+            out.append(d)
+        m += 1
+        if m > 12:
+            y, m = y + 1, 1
     return out
 
 
