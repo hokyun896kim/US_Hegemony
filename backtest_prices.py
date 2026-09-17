@@ -12,15 +12,25 @@
 
 무엇을 저장하는가
 -----------------
-날짜 축을 한 번만 두고 종목마다 종가 배열을 둔다. 종목마다 {날짜: 값} 을
-두면 날짜 문자열이 233번 반복돼 파일이 서너 배가 된다.
+날짜 축을 한 번만 두고 종목마다 [종가, 시가] 배열을 둔다. 종목마다
+{날짜: 값} 을 두면 날짜 문자열이 233번 반복돼 파일이 서너 배가 된다.
 
     {"dates": ["2020-01-02", ...],
-     "bench": [2175.2, ...],           # ^KS11
-     "stocks": {"005930.KS": [55400, null, ...]}}
+     "bench": [2175.2, ...],                      # ^KS11 종가
+     "stocks": {"005930.KS": {"c": [55400, null, ...],
+                              "o": [55000, null, ...]}}}
 
 null 은 그날 거래가 없었다는 뜻이다(거래정지·상장 전). 0 으로 채우면
 수익률이 -100% 로 튀므로 절대 채우지 않는다.
+
+**시가를 왜 담는가** — 화면의 스코어러가 갭을 감점에 쓴다.
+
+    if (gap != null && gap > 10) pts -= 4;
+
+갭은 '시가 vs 전일 종가' 라 종가만으로는 못 낸다. 안 담으면 백테스트에서
+이 감점이 영영 안 걸리고, 그만큼 백테스트의 스코어러가 화면과 달라진다 —
+est30·PER 에 이은 세 번째 조용한 차이가 된다. 파일이 두 배가 되지만
+'화면과 같은 계산' 이 그보다 비싸다.
 
 이상치는 여기서 걸러내지 않는다
 -------------------------------
@@ -48,7 +58,7 @@ def universe_from(path: str):
 
 
 def fetch(tickers, start: str, log=print):
-    """일별 종가. {티커: {날짜: 종가}}. 받은 것만 돌려준다."""
+    """일별 종가·시가. {티커: {날짜: (종가, 시가)}}. 받은 것만 돌려준다."""
     import yfinance as yf
     out = {}
     CH = 40                       # 한 번에 너무 많이 묶으면 야후가 조용히 빈다
@@ -62,29 +72,45 @@ def fetch(tickers, start: str, log=print):
             continue
         for tk in part:
             try:
-                s = d[tk]["Close"] if len(part) > 1 else d["Close"]
-                s = s.dropna()
-                if len(s):
-                    out[tk] = {str(k)[:10]: float(v) for k, v in s.items()}
+                f = d[tk] if len(part) > 1 else d
+                f = f.dropna(subset=["Close"])
+                if not len(f):
+                    continue
+                rec = {}
+                for k, c, o in zip(f.index, f["Close"], f["Open"]):
+                    o = None if o != o else float(o)      # NaN 은 None 으로
+                    rec[str(k)[:10]] = (float(c), o)
+                out[tk] = rec
             except Exception:  # noqa: BLE001, S110
                 pass
         log(f"  {min(i + CH, len(tickers))}/{len(tickers)} · 누적 {len(out)}종목")
     return out
 
 
+def _px(v):
+    """(종가, 시가) 또는 숫자 하나를 받아 (종가, 시가) 로."""
+    return v if isinstance(v, tuple) else (v, None)
+
+
 def assemble(series, tickers, bench_tk=BENCH):
-    """{티커: {날짜: 값}} → 공통 날짜 축 + 배열."""
+    """{티커: {날짜: (종가, 시가)}} → 공통 날짜 축 + 배열."""
     dates = sorted({d for s in series.values() for d in s})
     idx = {d: i for i, d in enumerate(dates)}
-    def arr(s):
-        a = [None] * len(dates)
+
+    def cols(s):
+        c = [None] * len(dates)
+        o = [None] * len(dates)
         for d, v in s.items():
-            a[idx[d]] = round(v, 2)
-        return a
+            cl, op = _px(v)
+            c[idx[d]] = round(cl, 2)
+            o[idx[d]] = None if op is None else round(op, 2)
+        return {"c": c, "o": o}
+
     return {"dates": dates,
-            "bench": arr(series.get(bench_tk, {})),
+            # 벤치마크는 상대강도에만 쓰므로 종가만 있으면 된다
+            "bench": cols(series.get(bench_tk, {}))["c"],
             "bench_tk": bench_tk,
-            "stocks": {tk: arr(series[tk]) for tk in tickers if tk in series}}
+            "stocks": {tk: cols(series[tk]) for tk in tickers if tk in series}}
 
 
 def main(argv=None):
@@ -134,15 +160,20 @@ def selftest() -> int:
             ok[0] = False
 
     print("━━ 날짜 축 정리 ━━")
-    series = {"A": {"2025-01-02": 100.0, "2025-01-03": 101.0},
-              "B": {"2025-01-03": 50.0},          # 하루 늦게 상장
-              "^KS11": {"2025-01-02": 2500.0, "2025-01-03": 2510.0}}
-    g = assemble(series, ["A", "B"])
+    series = {"A": {"2025-01-02": (100.0, 99.0), "2025-01-03": (101.0, 100.5)},
+              "B": {"2025-01-03": (50.0, 49.0)},        # 하루 늦게 상장
+              "C": {"2025-01-02": (10.0, None)},        # 시가가 비어 온 날
+              "^KS11": {"2025-01-02": (2500.0, None), "2025-01-03": (2510.0, None)}}
+    g = assemble(series, ["A", "B", "C"])
     t(g["dates"] == ["2025-01-02", "2025-01-03"], "날짜 축은 합집합·오름차순")
-    t(g["stocks"]["A"] == [100.0, 101.0], "값이 날짜 축 순서대로 들어간다")
-    t(g["stocks"]["B"] == [None, 50.0],
+    t(g["stocks"]["A"]["c"] == [100.0, 101.0], "종가가 날짜 축 순서대로")
+    t(g["stocks"]["A"]["o"] == [99.0, 100.5], "시가도 같은 축으로 — 갭 감점에 쓴다")
+    t(g["stocks"]["B"]["c"] == [None, 50.0],
       "거래가 없는 날은 None — 0 으로 채우면 수익률이 -100% 로 튄다")
-    t(g["bench"] == [2500.0, 2510.0], "벤치마크는 따로 뽑는다")
+    t(g["stocks"]["C"]["o"] == [None, None],
+      "시가만 비어도 종가는 살린다 — 갭을 못 내는 것과 가격이 없는 것은 다르다")
+    t(g["stocks"]["C"]["c"] == [10.0, None], "그 종목의 종가는 그대로 있다")
+    t(g["bench"] == [2500.0, 2510.0], "벤치마크는 종가만 — 상대강도에만 쓴다")
     t("^KS11" not in g["stocks"], "벤치마크는 종목 목록에 안 섞인다")
 
     g2 = assemble(series, ["A", "ZZZ"])

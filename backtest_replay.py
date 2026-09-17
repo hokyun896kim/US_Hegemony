@@ -161,6 +161,103 @@ def fundamentals(stock, today: str):
     }
 
 
+# ── 가격층 ───────────────────────────────────────────────────────
+# build_tree_kr 의 계산식을 그대로 옮긴다. 화면이 쓰는 것과 한 글자라도
+# 다르면 백테스트가 '화면과 다른 잣대'로 후보를 고르게 된다.
+#
+#   rs3·rs6   63·126 거래일 수익률 − 벤치마크 같은 기간
+#   from_high 최근 1년 종가 최고점 대비 (화면이 period="1y" 로 받는다)
+#   gap       최근 61일 중 |시가 − 전일종가| 최대 %
+#
+# 다른 점은 딱 하나 — 시계열을 T 에서 자른다.
+YEAR_DAYS = 252          # 화면의 period="1y" 에 해당하는 거래일 수
+GAP_DAYS = 61            # build_tree_kr 의 tail(61)
+
+
+def despike(vals):
+    """5일 중앙값에서 35% 넘게 벗어난 점을 버린다(build_tree_kr.closes).
+
+    **자른 뒤에** 건다. 전체에 걸고 자르면, 가운데 정렬 롤링이라 T 이후의
+    값이 필터 판정에 끼어든다 — 작지만 분명한 look-ahead 다.
+    """
+    out = []
+    n = len(vals)
+    for i, v in enumerate(vals):
+        if v is None:
+            continue
+        win = [w for w in vals[max(0, i - 2):min(n, i + 3)] if w is not None]
+        if not win:
+            continue
+        win.sort()
+        m = len(win)
+        base = win[m // 2] if m % 2 else (win[m // 2 - 1] + win[m // 2]) / 2
+        if base and abs(v / base - 1) <= 0.35:
+            out.append(v)
+    return out
+
+
+def _ret(cl, days):
+    """days 거래일 수익률 %. build_tree_kr 과 같이 len < days+5 면 None."""
+    if len(cl) < days + 5:
+        return None
+    try:
+        return (cl[-1] / cl[-days] - 1.0) * 100.0
+    except ZeroDivisionError:
+        return None
+
+
+def upto(dates, t: str):
+    """T 이하인 마지막 인덱스+1. 없으면 0."""
+    lo, hi = 0, len(dates)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if dates[mid] <= t:
+            lo = mid + 1
+        else:
+            hi = mid
+    return lo
+
+
+def price_metrics(px, tk: str, t: str):
+    """T 시점의 rs3·rs6·from_high·gap. 화면이 읽는 이름 그대로."""
+    empty = {"rs3": None, "rs6": None, "from_high": None,
+             "gap": None, "gaplvl": None}
+    st = (px.get("stocks") or {}).get(tk)
+    if not st:
+        return empty
+    n = upto(px["dates"], t)
+    if not n:
+        return empty
+
+    cl = despike(st["c"][:n])
+    bench = despike(px["bench"][:n])
+    if not cl:
+        return empty
+
+    out = dict(empty)
+    b3, b6 = _ret(bench, 63), _ret(bench, 126)
+    r3, r6 = _ret(cl, 63), _ret(cl, 126)
+    out["rs3"] = round(r3 - b3, 1) if (r3 is not None and b3 is not None) else None
+    out["rs6"] = round(r6 - b6, 1) if (r6 is not None and b6 is not None) else None
+
+    # 52주 고점比 — 화면이 1년치만 받으므로 창을 맞춘다. 전체 시계열의
+    # 최고점을 쓰면 오래된 고점이 남아 from_high 가 실제보다 깊게 나온다.
+    win = cl[-YEAR_DAYS:]
+    hi = max(win) if win else 0
+    if hi > 0:
+        out["from_high"] = round((win[-1] / hi - 1.0) * 100, 1)
+
+    # 갭 — 시가 vs 전일 종가. 스코어러가 gap>10 에 4점을 깎는다.
+    c_raw, o_raw = st["c"][:n], st["o"][:n]
+    pairs = [(c_raw[i - 1], o_raw[i]) for i in range(1, len(c_raw))
+             if c_raw[i - 1] and o_raw[i]][-GAP_DAYS:]
+    if pairs:
+        g = max(abs(o / pc - 1) * 100 for pc, o in pairs)
+        out["gap"] = round(g, 1)
+        out["gaplvl"] = "H" if g > 10 else ("L" if g < 4 else "M")
+    return out
+
+
 # ── 자가진단 ─────────────────────────────────────────────────────
 def _stock(quarters, calendar):
     return {"quarters": quarters, "calendar": calendar}
@@ -265,6 +362,58 @@ def selftest() -> int:
     early = fundamentals(full, "2024-01-01")
     t(early["q_end"] is None and early["spread"] is None,
       "분기가 모자라면 조용히 None — 없는 숫자를 지어내지 않는다")
+
+    print("\n━━ 가격층: T 에서 자르기 ━━")
+    # 300거래일짜리 가짜 시세. 종목은 매일 +0.2%, 벤치마크는 +0.1% 로 둔다.
+    days = [f"2025-{1 + i // 28:02d}-{1 + i % 28:02d}" for i in range(300)]
+    days = sorted(set(days))
+    n = len(days)
+    stock = [100.0 * (1.002 ** i) for i in range(n)]
+    bench = [2000.0 * (1.001 ** i) for i in range(n)]
+    PX = {"dates": days, "bench": bench,
+          "stocks": {"A": {"c": stock, "o": [v * 0.999 for v in stock]}}}
+
+    mid, last = days[n // 2], days[-1]
+    m1 = price_metrics(PX, "A", mid)
+    m2 = price_metrics(PX, "A", last)
+    t(m1["rs6"] is not None and m1["rs6"] > 0,
+      f"종목이 시장보다 빠르면 RS6M 양수 ({m1['rs6']})")
+    t(abs(m1["rs6"] - m2["rs6"]) < 0.2,
+      "같은 추세면 T 가 달라도 RS 는 비슷 — 창이 T 에서 같이 움직인다")
+    t(price_metrics(PX, "A", "2024-01-01") == {
+        "rs3": None, "rs6": None, "from_high": None, "gap": None, "gaplvl": None},
+      "T 이전 거래일이 없으면 전부 None — 0 을 지어내지 않는다")
+    t(price_metrics(PX, "ZZZ", last)["rs6"] is None, "없는 종목은 전부 None")
+
+    # 오르기만 한 종목은 마지막이 최고점이다
+    t(m2["from_high"] == 0.0, f"계속 오르면 고점比 0 ({m2['from_high']})")
+    down = [100.0] * 260 + [60.0] * 40
+    PX2 = {"dates": days, "bench": bench,
+           "stocks": {"D": {"c": down, "o": down}}}
+    fh = price_metrics(PX2, "D", last)["from_high"]
+    t(fh is not None and fh < -30, f"떨어진 종목은 고점比 크게 마이너스 ({fh})")
+
+    print("\n━━ 가격층: 이상치·갭 ━━")
+    spike = [100.0] * 150 + [100000.0] + [100.0] * (n - 151)
+    PX3 = {"dates": days, "bench": bench,
+           "stocks": {"S": {"c": spike, "o": spike}}}
+    fh3 = price_metrics(PX3, "S", last)["from_high"]
+    t(fh3 == 0.0,
+      f"자릿수가 튄 오프린트는 걸러진다 — 안 걸러내면 고점比가 -99.9% ({fh3})")
+
+    # 갭: 전일 종가 100 → 시가 130 이면 30%
+    gc = [100.0] * n
+    go = [100.0] * n
+    go[-1] = 130.0
+    PX4 = {"dates": days, "bench": bench, "stocks": {"G": {"c": gc, "o": go}}}
+    g = price_metrics(PX4, "G", last)
+    t(g["gap"] == 30.0 and g["gaplvl"] == "H",
+      f"시가 갭 30% → gap 30.0 · 등급 H ({g['gap']} · {g['gaplvl']}) — "
+      "스코어러가 gap>10 에 4점을 깎는다")
+    PX5 = {"dates": days, "bench": bench,
+           "stocks": {"G": {"c": gc, "o": [None] * n}}}
+    t(price_metrics(PX5, "G", last)["gap"] is None,
+      "시가가 없으면 갭은 None — 0 으로 두면 '갭이 없었다'는 거짓이 된다")
 
     print("\n✅ 전부 통과" if ok[0] else "\n❌ 실패")
     return 0 if ok[0] else 1
