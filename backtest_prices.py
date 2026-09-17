@@ -64,6 +64,27 @@ def universe_from(path: str):
     return sorted(d["stocks"])
 
 
+def pick(d, tk):
+    """내려받은 표에서 한 종목의 프레임을 꺼낸다.
+
+    야후는 묶음 크기에 따라 컬럼 모양을 바꾼다. 여러 종목이면 (티커, 항목)
+    2단이고, 하나면 항목만 남기도 한다. 호출부에서 len(part) 로 갈라 짐작하면
+    경계에서 틀린다 — 실측(2026-09-18): 800종목 + 벤치마크를 40개씩 묶자
+    마지막 묶음이 벤치마크 하나가 되어 파싱이 빗나갔고, 상대강도를 못 내
+    배치가 통째로 멈췄다. 233종목일 때는 마지막 묶음이 34개라 안 걸렸다.
+
+    모양을 짐작하지 말고 있는 쪽을 쓴다.
+    """
+    if d is None or not len(d):
+        return None
+    try:
+        if tk in getattr(d.columns, "levels", [[]])[0]:
+            return d[tk]
+    except Exception:  # noqa: BLE001, S110
+        pass
+    return d if "Close" in d.columns else None
+
+
 def fetch(tickers, start: str, log=print):
     """일별 종가·시가. {티커: {날짜: (종가, 시가)}}. 받은 것만 돌려준다."""
     import yfinance as yf
@@ -79,7 +100,9 @@ def fetch(tickers, start: str, log=print):
             continue
         for tk in part:
             try:
-                f = d[tk] if len(part) > 1 else d
+                f = pick(d, tk)
+                if f is None:
+                    continue
                 f = f.dropna(subset=["Close"])
                 if not len(f):
                     continue
@@ -134,7 +157,10 @@ def main(argv=None):
         tickers = tickers[: args.limit]
     print(f"[1/2] 유니버스 {len(tickers)}종목 + 벤치마크 · {args.start}~")
 
-    series = fetch(tickers + [BENCH], args.start)
+    # 벤치마크를 종목 목록에 섞어 보내면 묶음 경계에 따라 혼자 남을 수 있다.
+    # 상대강도 전부가 이 값에 달려 있으므로 따로 받는다.
+    series = fetch([BENCH], args.start)
+    series.update(fetch(tickers, args.start))
     if BENCH not in series:
         # 벤치마크가 없으면 상대강도를 못 낸다. 절대수익으로 물러서지 않는다 —
         # 그러면 시장이 좋았던 구간을 스코어러의 실력으로 읽게 된다.
@@ -185,6 +211,29 @@ def selftest() -> int:
 
     g2 = assemble(series, ["A", "ZZZ"])
     t(list(g2["stocks"]) == ["A"], "못 받은 종목은 빈 배열이 아니라 아예 없다")
+
+    print("\n━━ 야후 컬럼 모양 ━━")
+    # 실측 사고(2026-09-18): 800종목 + 벤치마크를 40개씩 묶자 마지막 묶음이
+    # 벤치마크 하나가 되어 컬럼 모양이 바뀌었고, ^KS11 을 못 받아 배치가
+    # 통째로 멈췄다. 233종목일 때는 마지막 묶음이 34개라 안 걸렸다.
+    # CI 의 자가진단 스텝에는 pandas 가 없다(yfinance 를 안 깐다). 없으면
+    # 표 모양 검사만 건너뛰고, 표가 없어도 죽지 않는지는 그대로 본다 —
+    # import 하나로 자가진단 전체를 빨갛게 만들지 않는다.
+    t(pick(None, "A.KS") is None, "표가 없어도 죽지 않는다")
+    try:
+        import pandas as pd
+    except ImportError:
+        print("  skip pandas 없음 — 표 모양 검사는 건너뜁니다")
+    else:
+        idx = pd.to_datetime(["2025-01-02", "2025-01-03"])
+        flat = pd.DataFrame({"Open": [1.0, 2.0], "Close": [1.5, 2.5]}, index=idx)
+        multi = pd.concat({"A.KS": flat, "B.KS": flat}, axis=1)
+        t(pick(multi, "A.KS") is not None and "Close" in pick(multi, "A.KS").columns,
+          "2단 컬럼에서 종목을 꺼낸다 (묶음이 여럿일 때)")
+        t(pick(flat, "^KS11") is not None and "Close" in pick(flat, "^KS11").columns,
+          "1단 컬럼도 꺼낸다 — 묶음에 하나만 남았을 때 이걸 놓쳐 배치가 멈췄다")
+        t(pick(multi, "ZZZ.KS") is None, "묶음에 없는 종목은 None")
+        t(pick(pd.DataFrame(), "A.KS") is None, "빈 표는 None")
 
     print("\n━━ 유니버스 ━━")
     import tempfile, os  # noqa: E401
