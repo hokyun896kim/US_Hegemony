@@ -255,7 +255,8 @@ def _sub(a, b):
     return None if (a is None or b is None) else a - b
 
 
-def quarters(stock_code: str, corp: str, today: date | None = None, log=print):
+def quarters(stock_code: str, corp: str, today: date | None = None, log=print,
+             years: int = 3):
     """최근 분기들의 (기말일, 매출, 영업이익) 목록. 최신이 뒤.
 
     DART 의 분기·반기 보고서 손익계산서는 '당기 3개월' 컬럼을 이미 갖고 있다.
@@ -275,7 +276,11 @@ def quarters(stock_code: str, corp: str, today: date | None = None, log=print):
     # 오래된 연도부터 잠그면, 최근에야 연결을 내기 시작한 회사가 별도로 묶인다.
     # 결과는 아래에서 어차피 날짜순 정렬하므로 도는 순서는 상관없다.
     lock = None
-    for yr in (today.year, today.year - 1, today.year - 2):
+    # 기본 3년은 화면용이다. 화면은 '지금 스프레드가 얼마인가' 만 보면 되고,
+    # 8분기를 채우는 데 3년이면 넉넉하다. 백테스트는 다르다 — 과거 시점
+    # T 마다 그때의 8분기가 있어야 하므로, 창을 넓히지 않으면 T 를 뒤로
+    # 옮길수록 분기가 모자라 근사 모드로 떨어지거나 종목이 통째로 빠진다.
+    for yr in range(today.year, today.year - years, -1):
         amt, add = {}, {}
         for rpt in ("Q1", "H1", "Q3", "FY"):
             # 아직 끝나지도 않은 기간의 보고서는 존재할 수 없다. 그런데도 부르면
@@ -565,7 +570,91 @@ def selftest() -> int:
 
         mod.enabled = lambda: False
         t(latest_report("00126380") is None, "키가 없으면 부르지도 않는다")
+        mod.enabled = lambda: True
+
+        # ── 공시 달력 (백테스트 0단계) ──────────────────────────────
+        print("\n━━ 공시 달력 → 분기말 × 공시일 ━━")
+        t(report_qend("반기보고서 (2026.06)") == "2026-06-30", "반기 → 6/30")
+        t(report_qend("분기보고서 (2026.03)") == "2026-03-31", "1분기 → 3/31")
+        t(report_qend("분기보고서 (2025.09)") == "2025-09-30", "3분기 → 9/30")
+        t(report_qend("사업보고서 (2025.12)") == "2025-12-31", "사업 → 12/31")
+        t(report_qend("반기보고서 (2026.06)   ") == "2026-06-30", "뒤 공백이 있어도")
+        t(report_qend("임원ㆍ주요주주특정증권등소유상황보고서") is None,
+          "기간이 없는 공시는 None")
+        t(report_qend("분기보고서 (2026.07)") is None,
+          "분기말이 아닌 달은 버린다 — 잘못 읽느니 비운다")
+
+        mod._get = lambda path, params, key, **kw: {"status": "000", "list": [
+            {"rcept_dt": "20260814", "rcept_no": "20260814003699",
+             "report_nm": "반기보고서 (2026.06)              "},
+            {"rcept_dt": "20260515", "rcept_no": "20260515002181",
+             "report_nm": "분기보고서 (2026.03)"},
+            {"rcept_dt": "20260310", "rcept_no": "20260310002820",
+             "report_nm": "사업보고서 (2025.12)"},
+            {"rcept_dt": "20260917", "rcept_no": "20260917000097",
+             "report_nm": "임원ㆍ주요주주특정증권등소유상황보고서"},
+        ]}
+        cal = report_calendar("00126380")
+        t(len(cal) == 3, f"실적 공시만 3건 (지분공시 제외) — 실제 {len(cal)}")
+        t([c["q_end"] for c in cal] == ["2025-12-31", "2026-03-31", "2026-06-30"],
+          "분기말 오름차순으로 준다")
+        t(cal[-1]["rcept_dt"] == "2026-08-14", "6/30 분기는 8/14 에 공시됐다")
+        t(cal[-1]["q_end"] < cal[-1]["rcept_dt"],
+          "공시일은 언제나 분기말보다 뒤 — 이 관계가 깨지면 파싱이 틀린 것")
+
+        # 정정보고서로 같은 분기가 두 번 걸리면 '처음 본 날'을 쓴다.
+        # 시장이 그 숫자를 언제 알았는가가 우리가 원하는 값이라서다.
+        mod._get = lambda path, params, key, **kw: {"status": "000", "list": [
+            {"rcept_dt": "20260901", "rcept_no": "B",
+             "report_nm": "반기보고서 (2026.06)"},
+            {"rcept_dt": "20260814", "rcept_no": "A",
+             "report_nm": "반기보고서 (2026.06)"},
+        ]}
+        cal = report_calendar("00126380")
+        t(len(cal) == 1 and cal[0]["rcept_dt"] == "2026-08-14",
+          f"같은 분기 중복은 가장 이른 공시일 ({cal[0]['rcept_dt'] if cal else '없음'})")
+
+        mod._get = lambda path, params, key, **kw: {"status": "013", "list": []}
+        t(report_calendar("00126380") == [], "조회 결과가 비면 빈 목록")
+        mod.enabled = lambda: False
+        t(report_calendar("00126380") == [], "키가 없으면 빈 목록")
     finally:
+        mod._get, mod._key, mod.enabled = real_get, real_key, real_enabled
+
+    # ── quarters 의 연도 창 ────────────────────────────────────────
+    # 백테스트가 몇 년을 볼 수 있는지가 여기서 정해진다. 조용히 좁아지면
+    # 과거 시점 T 에서 8분기가 안 차 근사 모드로 떨어지는데, 결과는 그대로
+    # 나오므로 아무도 모른다. 요청한 연도를 그대로 고정한다.
+    print("\n━━ quarters 연도 창 ━━")
+    seen = []
+    real_stmt = mod.statement
+    mod._key, mod.enabled = (lambda: "K"), (lambda: True)
+    try:
+        def fake(corp, yr, rpt, log=print, fs_div=None):
+            seen.append(yr)
+            return (None, None), (None, None), None
+        mod.statement = fake
+
+        seen.clear()
+        quarters("005930", "C", today=date(2026, 9, 17), log=lambda *a: None)
+        t(sorted(set(seen)) == [2024, 2025, 2026],
+          f"기본값은 3년 — 화면 동작이 그대로다 ({sorted(set(seen))})")
+
+        seen.clear()
+        quarters("005930", "C", today=date(2026, 9, 17), log=lambda *a: None, years=6)
+        t(sorted(set(seen)) == [2021, 2022, 2023, 2024, 2025, 2026],
+          f"years=6 이면 6개 연도 ({sorted(set(seen))})")
+
+        seen.clear()
+        quarters("005930", "C", today=date(2026, 9, 17), log=lambda *a: None, years=1)
+        t(sorted(set(seen)) == [2026], f"years=1 이면 올해만 ({sorted(set(seen))})")
+
+        # 아직 안 끝난 분기는 부르지 않는다 — 종목당 낭비 호출을 막는 가드다
+        seen.clear()
+        quarters("005930", "C", today=date(2026, 4, 1), log=lambda *a: None, years=1)
+        t(len(seen) == 1, f"끝난 분기만 부른다 (2026-04-01 기준 {len(seen)}건)")
+    finally:
+        mod.statement = real_stmt
         mod._get, mod._key, mod.enabled = real_get, real_key, real_enabled
 
     print("\n✅ 전부 통과" if ok[0] else "\n❌ 실패")
@@ -576,6 +665,82 @@ def selftest() -> int:
 # 같은 게 섞일 수 있어 이름으로 한 번 더 거른다.
 REPORT_NAMES = ("분기보고서", "반기보고서", "사업보고서")
 DOC_URL = "https://dart.fss.or.kr/dsaf001/main.do?rcpNo="
+
+
+# report_nm 에서 대상 분기말을 뽑는다. 실측 형태(2026-09-17 · 005930):
+#   '사업보고서 (2025.12)'  '분기보고서 (2026.03)'  '반기보고서 (2026.06)'
+# 괄호 안이 '그 보고서가 다루는 기간의 끝'이다. 백테스트는 이 값과 rcept_dt
+# (공시일)를 짝지어야 한다 — "그 분기를 시장이 언제 처음 봤는가" 가 없으면
+# 과거를 재현할 때 아직 나오지도 않은 실적을 쥐여주게 된다(look-ahead bias).
+_PERIOD = re.compile(r"\((\d{4})\.(\d{1,2})\)")
+_QLAST = {3: 31, 6: 30, 9: 30, 12: 31}
+
+
+def report_qend(report_nm: str):
+    """'반기보고서 (2026.06)' → '2026-06-30'. 못 읽으면 None."""
+    m = _PERIOD.search(report_nm or "")
+    if not m:
+        return None
+    y, mo = int(m.group(1)), int(m.group(2))
+    if mo not in _QLAST:
+        return None
+    return f"{y:04d}-{mo:02d}-{_QLAST[mo]:02d}"
+
+
+def _list_reports(corp: str, days: int, today=None):
+    """정기공시(pblntf_ty=A) 중 실적 공시만, API 순서(최신순) 그대로.
+
+    latest_report 와 report_calendar 가 같은 응답을 다르게 쓴다. 호출을 한
+    군데로 모아 두 쓰임이 갈라지지 않게 한다 — 갈라지면 화면이 보는 공시와
+    백테스트가 쓰는 공시가 달라진다.
+    """
+    if not enabled() or not corp:
+        return []
+    today = today or date.today()
+    d = _get("list.json", {
+        "corp_code": corp,
+        "bgn_de": (today - timedelta(days=days)).strftime("%Y%m%d"),
+        "end_de": today.strftime("%Y%m%d"),
+        "pblntf_ty": "A",
+        "page_count": "100",
+    }, _key())
+    if not isinstance(d, dict):
+        return []
+    out = []
+    for r in (d.get("list") or []):
+        nm = str(r.get("report_nm") or "").strip()
+        if not any(k in nm for k in REPORT_NAMES):
+            continue
+        dt = str(r.get("rcept_dt") or "").strip()
+        no = str(r.get("rcept_no") or "").strip()
+        if len(dt) != 8 or not dt.isdigit() or not no:
+            continue
+        out.append({"report_nm": nm, "rcept_no": no,
+                    "rcept_dt": f"{dt[:4]}-{dt[4:6]}-{dt[6:]}"})
+    return out
+
+
+def report_calendar(corp: str, days: int = 1200, today=None):
+    """이 회사의 정기공시 달력 — 분기말마다 '언제 공시됐는지'.
+
+    백테스트 0단계의 산출물이다. 시점 T 의 과거를 재현할 때
+    `rcept_dt <= T` 인 분기만 써야 시장이 실제로 알던 상태가 된다.
+
+    같은 분기에 정정보고서 등으로 여러 건이 걸릴 수 있다. 그때는 **가장 이른
+    공시일**을 쓴다 — 시장이 그 숫자를 처음 본 시점이 우리가 원하는 값이다.
+
+    기본 1200일(약 3년 3개월)은 dart.quarters 가 훑는 3년과 맞췄다.
+    """
+    cal = {}
+    for r in _list_reports(corp, days, today):
+        qe = report_qend(r["report_nm"])
+        if not qe:
+            continue
+        cur = cal.get(qe)
+        if cur is None or r["rcept_dt"] < cur["rcept_dt"]:
+            cal[qe] = {"q_end": qe, "rcept_dt": r["rcept_dt"],
+                       "rcept_no": r["rcept_no"], "report_nm": r["report_nm"]}
+    return [cal[k] for k in sorted(cal)]
 
 
 def latest_report(corp: str, days: int = 400):
@@ -600,29 +765,12 @@ def latest_report(corp: str, days: int = 400):
 
     실패·미발견은 None. 화면은 ir 이 없으면 폴백 문구를 띄우므로 안전하다.
     """
-    if not enabled() or not corp:
+    rows = _list_reports(corp, days)
+    if not rows:
         return None
-    today = date.today()
-    d = _get("list.json", {
-        "corp_code": corp,
-        "bgn_de": (today - timedelta(days=days)).strftime("%Y%m%d"),
-        "end_de": today.strftime("%Y%m%d"),
-        "pblntf_ty": "A",
-        "page_count": "20",
-    }, _key())
-    if not isinstance(d, dict):
-        return None
-    for r in (d.get("list") or []):
-        nm = str(r.get("report_nm") or "").strip()
-        if not any(k in nm for k in REPORT_NAMES):
-            continue
-        dt = str(r.get("rcept_dt") or "").strip()
-        no = str(r.get("rcept_no") or "").strip()
-        if len(dt) != 8 or not dt.isdigit() or not no:
-            continue
-        return {"date": f"{dt[:4]}-{dt[4:6]}-{dt[6:]}",
-                "docs": [{"label": nm, "url": DOC_URL + no}]}
-    return None
+    r = rows[0]          # API 기본 정렬이 최신순(실측) — 첫 행이 최근 공시다
+    return {"date": r["rcept_dt"],
+            "docs": [{"label": r["report_nm"], "url": DOC_URL + r["rcept_no"]}]}
 
 
 def probe_ir(corp: str) -> None:
@@ -721,7 +869,13 @@ def probe(code: str) -> int:
                   f"(누적 {add[0]:,.0f} / 3개월 {amt[0]:,.0f})"
                   + ("" if add[0] > amt[0] else "   ⚠️ 컬럼 의미 가정이 틀렸을 수 있음"))
         if amt[0] is None and add[0] is None:
-            print("  → ⚠️ 매출 계정을 못 찾았다. account_nm 목록을 보고 REV_NAMES 를 늘려야 한다.")
+            # 아직 안 나온 보고서(013)까지 '계정을 못 찾았다' 로 찍으면 멀쩡한
+            # 회차가 고장으로 보인다. 실측 2026-09-17 프로브가 Q3 에서 그랬다.
+            if not rows:
+                print("  → 보고서가 아직 없다(정상). 이 분기는 건너뛴다.")
+            else:
+                print("  → ⚠️ 매출 계정을 못 찾았다. account_nm 목록을 보고 "
+                      "REV_NAMES 를 늘려야 한다.")
 
     try:
         probe_ir(corp)

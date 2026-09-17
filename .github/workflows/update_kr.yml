@@ -121,6 +121,14 @@ jobs:
             echo '```'
             python naver.py --probe "$CODE" 2>&1 || echo "(프로브 실패)"
             echo '```'
+            echo
+            # 백테스트 수집기도 여기서 본다. 전용 워크플로(backtest.yml)는
+            # 기본 브랜치에 올라가기 전에는 dispatch 가 404 라서, 머지 전에
+            # 실물을 볼 수 있는 유일한 창구가 이 프로브다.
+            echo '### 백테스트 수집기 (분기 재무 × 공시 달력)'
+            echo '```'
+            python backtest_fetch.py --probe "$CODE" 2>&1 || echo "(프로브 실패)"
+            echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Decide run mode
