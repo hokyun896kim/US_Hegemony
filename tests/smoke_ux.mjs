@@ -42,6 +42,11 @@ for (const [file,dataFile,mk,otherHref] of [
     t(v && v.textContent.includes('+0.12p'), '실측 숫자를 적는다 (말로만 얼버무리지 않음)');
     t(v && v.textContent.includes('증거가 아닙니다'), '점수는 필터일 뿐임을 명시');
     t(v && v.textContent.includes('52주 고점比'), '부호가 거꾸로인 축을 밝힌다');
+    // +0.12p 만 적으면 '안정적으로 같다' 로 읽힌다. 실제로는 앞 -3.81p ·
+    // 뒤 +9.29p 를 평균한 값이라, 구간이 바뀌면 부호가 뒤집힌다.
+    t(v && v.textContent.includes('부호가 뒤집'), '구간에 따라 뒤집힌다는 사실을 적는다');
+    t(v && /−3\.81p|-3\.81p/.test(v.textContent) && v.textContent.includes('+9.29p'),
+      '뒤집히는 양쪽 숫자를 다 적는다');
     // 설명 1번 뒤에 두면 순서대로 읽는 사람에게는 늦다 — GPT 지침의 V0 와 같은 실수다.
     const first = d.querySelector('#giBox .gi-body > *');
     t(first && first.classList.contains('gi-verify'), '설명 맨 앞에 온다 (뒤에 묻히지 않음)');
