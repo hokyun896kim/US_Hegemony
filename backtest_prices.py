@@ -48,6 +48,9 @@ import sys
 from pathlib import Path
 
 BENCH = "^KS11"          # 코스피 종합 — build_tree_kr 과 같은 것을 쓴다
+# 미국판은 S&P500 을 쓴다. 화면(build_data.py)이 쓰는 것과 같아야 재현이
+# 화면과 같은 기준선을 본다 — 다른 지수를 쓰면 초과수익이 통째로 달라진다.
+BENCH_US = "^GSPC"
 OUT = "data/backtest/kr-prices.json"
 SRC = "data/backtest/kr-quarters.json"
 
@@ -147,6 +150,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--src", default=SRC, help="유니버스를 읽어올 1단계 산출물")
     ap.add_argument("--out", default=OUT)
+    ap.add_argument("--bench", default=None,
+                    help=f"벤치마크 티커 (기본 {BENCH} · 미국은 {BENCH_US})")
     # 2021-03-31 분기를 평가하려면 그 이전 126거래일이 필요하다. 반년 여유.
     ap.add_argument("--start", default="2020-06-01")
     ap.add_argument("--limit", type=int, default=0)
@@ -159,17 +164,20 @@ def main(argv=None):
 
     # 벤치마크를 종목 목록에 섞어 보내면 묶음 경계에 따라 혼자 남을 수 있다.
     # 상대강도 전부가 이 값에 달려 있으므로 따로 받는다.
-    series = fetch([BENCH], args.start)
+    bench = args.bench or BENCH
+    series = fetch([bench], args.start)
     series.update(fetch(tickers, args.start))
-    if BENCH not in series:
+    if bench not in series:
         # 벤치마크가 없으면 상대강도를 못 낸다. 절대수익으로 물러서지 않는다 —
         # 그러면 시장이 좋았던 구간을 스코어러의 실력으로 읽게 된다.
-        print(f"[!] {BENCH} 를 못 받았다 — 상대강도를 낼 수 없어 중단한다.",
+        print(f"[!] {bench} 를 못 받았다 — 상대강도를 낼 수 없어 중단한다.",
               file=sys.stderr)
         return 1
 
     print("[2/2] 날짜 축으로 정리")
-    out = assemble(series, tickers)
+    # bench 를 안 넘기면 assemble 이 기본값(^KS11)을 찾는다. 미국 회차에서
+    # 그러면 bench 가 조용히 빈 배열이 되고, 초과수익이 전부 None 이 된다.
+    out = assemble(series, tickers, bench_tk=bench)
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text(json.dumps(out, ensure_ascii=False,
                                          separators=(",", ":")), encoding="utf-8")
@@ -208,6 +216,16 @@ def selftest() -> int:
     t(g["stocks"]["C"]["c"] == [10.0, None], "그 종목의 종가는 그대로 있다")
     t(g["bench"] == [2500.0, 2510.0], "벤치마크는 종가만 — 상대강도에만 쓴다")
     t("^KS11" not in g["stocks"], "벤치마크는 종목 목록에 안 섞인다")
+
+    # --bench 를 줬는데 assemble 이 기본값을 보면 벤치가 조용히 빈다
+    us = {"A": {"2025-01-02": (10.0, None)},
+          "^GSPC": {"2025-01-02": (5000.0, None)}}
+    gu = assemble(us, ["A"], bench_tk="^GSPC")
+    t(gu["bench"] == [5000.0], f"다른 벤치마크도 조립된다 {gu['bench']}")
+    t(gu["bench_tk"] == "^GSPC", "무엇을 썼는지 파일에 남는다")
+    t("^GSPC" not in gu["stocks"], "벤치마크는 종목에 안 섞인다")
+    # 기본값을 쓰면 여기서 빈다 — 그게 이 테스트가 잡는 것이다
+    t(assemble(us, ["A"])["bench"] == [None], "기본값을 쓰면 벤치가 빈다(함정 확인)")
 
     g2 = assemble(series, ["A", "ZZZ"])
     t(list(g2["stocks"]) == ["A"], "못 받은 종목은 빈 배열이 아니라 아예 없다")
