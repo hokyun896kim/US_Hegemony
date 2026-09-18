@@ -80,6 +80,16 @@ if (WEIGHTS) {
   window.eval(`Object.assign(W, ${JSON.stringify(w)}); renderTop5();`);
 }
 
+// 이 목록을 뽑은 배점을 그대로 박아둔다. '--weights 를 줬을 때만' 이 아니라
+// 항상이다 — 평소 회차가 null 로만 남으면 배점을 바꾼 전후 박제가 파일상
+// 구분되지 않는다. 배점을 고친 뒤 '새 배점이 진짜 나은가' 를 재려 할 때
+// 어디부터가 새 배점인지 알 수 없게 되는데, 그건 커밋 날짜로 추정할 일이
+// 아니다. 2026-09-18 에 fromHigh 를 15 → 0 으로 내리면서 실제로 이 구멍이
+// 생겼고, 그때 박제된 회차들은 이미 되살릴 수 없다.
+//
+// 화면의 W 를 읽는다 — 여기 숫자를 따로 적으면 언젠가 화면과 어긋난다.
+const weights = window.eval('JSON.parse(JSON.stringify(W))');
+
 const top5 = window.eval('LAST_TOP5') || [];
 // 레이더 '선취매 권역'. 화면에는 상위 6개만 보이지만 박제는 전부 남긴다 —
 // 나중에 적중률을 셀 때 잘린 목록으로는 못 센다.
@@ -101,7 +111,11 @@ const rec = {
   n_subs: D.subs.length,
   coverage: D.coverage ?? null,
   market: D.market ?? null,
-  weights: WEIGHTS ? JSON.parse(WEIGHTS) : null,
+  // 실제로 채점에 쓰인 배점(대안 배점을 줬으면 덮어쓴 뒤의 값)
+  weights,
+  // 화면 기본이 아닌 배점으로 돌렸는가 — 백테스트 산출물을 주간 박제와
+  // 섞어 세지 않기 위해서다
+  weights_overridden: !!WEIGHTS,
   top5, radar,
 };
 
