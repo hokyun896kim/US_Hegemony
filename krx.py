@@ -51,39 +51,46 @@ KEY = (os.environ.get("KRX_KEY") or "").strip()
 #   · 공식 OpenAPI 는 헤더 AUTH_KEY 를 쓴다고 알려져 있다
 #   · 공공데이터포털은 쿼리 serviceKey 를 쓴다
 # "알려져 있다" 는 확인이 아니다. 그래서 둘 다 두드린다.
-CANDIDATES = [
-    # (이름, URL 틀, 인증 방식)
-    #
-    # 1차 프로브(2026-09-18, Actions 실측)에서 배운 것:
-    #   · openapi.krx.co.kr/svc/apis/... → 404, 응답은 KRX 자체 에러페이지.
-    #     인증 실패(401/403)가 아니라 **서버에는 닿았고 경로가 틀린 것**이다.
-    #     openapi 는 포털(신청·문서)이고 데이터는 다른 호스트로 보인다.
-    #   · apis.data.go.kr → timed out. 키 문제가 아니라 닿지를 못한다.
-    #     공공데이터포털이 해외 IP 를 막는 사례가 있는데 Actions 러너는 미국이다.
-    #     이 경로는 키가 맞아도 안 될 수 있다.
-    #
-    # 그래서 데이터 호스트 후보를 넓힌다. 같은 경로를 여러 호스트에 두드려
-    # '호스트가 틀린 것'과 '경로가 틀린 것'을 가른다.
-    ("data-dbg · 투자자별",
-     "http://data-dbg.krx.co.kr/svc/apis/sto/stk_isu_invsr_trd?basDd={date}&isuCd={code}",
-     "header"),
-    ("data-dbg · 유가증권 일별매매",
-     "http://data-dbg.krx.co.kr/svc/apis/sto/stk_bydd_trd?basDd={date}",
-     "header"),
-    ("data-dbg · 코스닥 일별매매",
-     "http://data-dbg.krx.co.kr/svc/apis/sto/ksq_bydd_trd?basDd={date}",
-     "header"),
-    ("data (https) · 유가증권 일별매매",
-     "https://data.krx.co.kr/svc/apis/sto/stk_bydd_trd?basDd={date}",
-     "header"),
-    ("openapi · 유가증권 일별매매 (1차에서 404 — 대조군)",
-     "http://openapi.krx.co.kr/svc/apis/sto/stk_bydd_trd?basDd={date}",
-     "header"),
-    ("공공데이터 · 주식시세 (1차에서 timeout — 대조군)",
-     "https://apis.data.go.kr/1160100/service/GetStockSecuritiesInfoService/getStockPriceInfo"
-     "?serviceKey={key}&resultType=json&basDt={date}&likeSrtnCd={code}",
-     "query"),
+# ── 2차 프로브(2026-09-18, Actions 실측)로 확정된 것 ──────────────
+# 호스트와 인증이 확정됐다. 키도 정상이다.
+BASE = "http://data-dbg.krx.co.kr/svc/apis"
+
+#   200 JSON  sto/stk_bydd_trd   유가증권 전종목 일별매매 (한 번에 전종목)
+#   200 JSON  sto/ksq_bydd_trd   코스닥 전종목 일별매매
+#
+# 받은 필드 — ACC_TRDVAL(거래대금) · MKTCAP 이 들어 있다. 화면이 안 보던
+# 유동성이 여기서 나온다. 한 호출에 전종목이라 하루 2건이면 시장 전체다.
+CONFIRMED = {
+    "kospi_daily":  BASE + "/sto/stk_bydd_trd?basDd={date}",
+    "kosdaq_daily": BASE + "/sto/ksq_bydd_trd?basDd={date}",
+}
+CONFIRMED_FIELDS = ["ISU_CD", "ISU_NM", "TDD_CLSPRC", "TDD_OPNPRC", "TDD_HGPRC",
+                    "TDD_LWPRC", "ACC_TRDVOL", "ACC_TRDVAL", "MKTCAP", "LIST_SHRS"]
+
+# ── 아직 못 찾은 것 — 투자자별 매매동향 ──────────────────────────
+# 2차에서 stk_isu_invsr_trd 가 404 였는데 사유가 정확했다.
+#
+#   {"respMsg":"[svc/apis/sto/stk_isu_invsr_trd] API referenced by the path
+#    does not exist.","respCode":"404"}
+#
+# 호스트·인증은 맞고 **이름만 틀렸다.** 확인된 이름의 작명 규칙을 따라
+# 후보를 넓힌다 — stk(유가증권)/ksq(코스닥) · bydd(일별) · trd(거래).
+# 투자자는 invsr 로 보인다.
+_INVSR = ["stk_invsr_trd", "ksq_invsr_trd", "invsr_trd",
+          "stk_bydd_invsr_trd", "stk_isu_bydd_trd", "stk_invsr_bydd_trd",
+          "stk_isu_inv_trd", "stk_trdr_trd"]
+
+CANDIDATES = [(f"투자자별 후보 · {n}", f"{BASE}/sto/{n}?basDd={{date}}", "header")
+              for n in _INVSR]
+
+# 대조군 — 되는 것이 계속 되는지 확인한다. 빼면 회귀를 못 읽는다.
+CANDIDATES += [
+    ("✅ 확정 · 유가증권 일별매매", CONFIRMED["kospi_daily"], "header"),
+    ("✅ 확정 · 코스닥 일별매매", CONFIRMED["kosdaq_daily"], "header"),
 ]
+
+# 공공데이터포털은 접는다. 2차에서 SERVICE_KEY_IS_NOT_REGISTERED_ERROR —
+# KRX 키는 거기 키가 아니다. 별개 서비스라 이 키로는 영영 안 된다.
 
 UA = {"User-Agent": "hegemony-tree/1.0 (+https://github.com/hokyun896kim/US_Hegemony)"}
 
@@ -176,13 +183,26 @@ def selftest() -> int:
     print("\n━━ 후보 구성 ━━")
     t(len(CANDIDATES) >= 2, f"후보가 {len(CANDIDATES)}개 — 한 종류만 두드리면 헛수고한다")
     auths = {a for _, _, a in CANDIDATES}
-    t(auths == {"header", "query"},
-      f"인증 방식 두 가지를 모두 시도한다 {sorted(auths)}")
+    # 1차에는 어느 쪽인지 몰라 둘 다 두드렸다. 2차에서 헤더 인증으로 확정됐고
+    # 쿼리 인증(공공데이터포털)은 이 키로 영영 안 된다는 것도 확정됐다.
+    # 사실이 바뀌었으니 단언도 바꾼다 — 죽은 후보를 테스트 때문에 남기지 않는다.
+    t(auths == {"header"}, f"헤더 인증으로 확정 {sorted(auths)}")
     for name, tmpl, auth in CANDIDATES:
         if auth == "query":
             t("{key}" in tmpl, f"쿼리 인증 후보에 키 자리가 있다 — {name}")
         else:
             t("{key}" not in tmpl, f"헤더 인증 후보는 URL 에 키를 안 넣는다 — {name}")
+
+    print("\n━━ 확정된 사실 (2차 프로브 실측) ━━")
+    t(BASE.startswith("http://data-dbg.krx.co.kr"),
+      f"데이터 호스트는 data-dbg 다 — openapi 는 404 였다 ({BASE})")
+    t("ACC_TRDVAL" in CONFIRMED_FIELDS and "MKTCAP" in CONFIRMED_FIELDS,
+      "확정 필드에 거래대금·시총이 있다 — 화면이 안 보던 유동성이 여기서 나온다")
+    t(len(CONFIRMED) == 2, "유가증권·코스닥 두 시장을 각각 받는다")
+    t(not any("data.go.kr" in u for _, u, _ in CANDIDATES),
+      "공공데이터포털은 후보에서 뺐다 — KRX 키로는 영영 안 된다")
+    t(any(n.startswith("✅ 확정") for n, _, _ in CANDIDATES),
+      "되는 것을 대조군으로 남긴다 — 빼면 회귀를 못 읽는다")
 
     print("\n━━ 거절 사유 추출 ━━")
     # 1차 프로브는 본문 앞 300자를 그대로 찍었는데 <head> 보일러플레이트가
@@ -199,9 +219,14 @@ def selftest() -> int:
 
     print("\n━━ 키가 로그에 새지 않는가 ━━")
     # 프로브는 URL 을 찍는다. 쿼리 인증이면 거기에 키가 들어간다.
-    tmpl = [t_ for _, t_, a in CANDIDATES if a == "query"][0]
+    # 지금은 쿼리 인증 후보가 없다(공공데이터포털을 뺐다). 그래도 이 가드는
+    # 살려 둔다 — 나중에 쿼리 인증 후보가 다시 들어오면 그때 키가 로그에
+    # 새기 시작하는데, 그 순간 이 테스트가 없으면 아무도 모른다.
+    tmpl = "https://example.test/x?serviceKey={key}&d={date}&c={code}"
     shown = tmpl.format(code="005930", date="20260917", key="{key}").replace("{key}", "***")
-    t("***" in shown and "{key}" not in shown, "찍을 때 키를 가린다")
+    t("***" in shown and "{key}" not in shown, "쿼리 인증이 생기면 키를 가린다")
+    t(all("{key}" not in u for _, u, a in CANDIDATES if a == "header"),
+      "지금 후보는 전부 헤더 인증이라 URL 에 키가 없다")
 
     print("\n✅ 전부 통과" if ok[0] else "\n❌ 실패")
     return 0 if ok[0] else 1
