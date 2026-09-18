@@ -67,30 +67,34 @@ CONFIRMED = {
 CONFIRMED_FIELDS = ["ISU_CD", "ISU_NM", "TDD_CLSPRC", "TDD_OPNPRC", "TDD_HGPRC",
                     "TDD_LWPRC", "ACC_TRDVOL", "ACC_TRDVAL", "MKTCAP", "LIST_SHRS"]
 
-# ── 아직 못 찾은 것 — 투자자별 매매동향 ──────────────────────────
-# 2차에서 stk_isu_invsr_trd 가 404 였는데 사유가 정확했다.
+# ── 투자자별 수급은 이 키로 못 받는다 (2026-09-18 확정) ──────────
+# 이름을 8번 찍어서 8번 다 404 였다. 원인은 작명이 아니었다 —
+# **구독한 API 목록에 투자자별 매매동향이 아예 없다.**
 #
-#   {"respMsg":"[svc/apis/sto/stk_isu_invsr_trd] API referenced by the path
-#    does not exist.","respCode":"404"}
+#   신청된 것:  유가증권 일별매매정보 · 코스닥 일별매매정보
+#               유가증권 종목기본정보 · 코스닥 종목기본정보
+#               선물 일별매매정보
 #
-# 호스트·인증은 맞고 **이름만 틀렸다.** 확인된 이름의 작명 규칙을 따라
-# 후보를 넓힌다 — stk(유가증권)/ksq(코스닥) · bydd(일별) · trd(거래).
-# 투자자는 invsr 로 보인다.
-_INVSR = ["stk_invsr_trd", "ksq_invsr_trd", "invsr_trd",
-          "stk_bydd_invsr_trd", "stk_isu_bydd_trd", "stk_invsr_bydd_trd",
-          "stk_isu_inv_trd", "stk_trdr_trd"]
+# 404 메시지도 "API referenced by the path does not exist" 였다. 미구독이면
+# 403/401 이 왔을 것이다. 즉 이 카탈로그에 그 API 가 없다.
+#
+# **여기서 더 찍지 마라.** 수급이 필요하면 다른 경로여야 한다 —
+# 네이버 모바일 API(naver.py 가 이미 Actions 에서 닿는 것을 확인했다)나
+# KRX 정보데이터시스템 웹(pykrx 가 쓰던 곳)이다.
 
-CANDIDATES = [(f"투자자별 후보 · {n}", f"{BASE}/sto/{n}?basDd={{date}}", "header")
-              for n in _INVSR]
+# ── 아직 안 써본 것 — 종목기본정보 (구독돼 있다) ─────────────────
+# 일별매매정보와 같은 작명 규칙일 것으로 보고 후보를 만든다.
+_BASE_INFO = ["stk_isu_base_info", "ksq_isu_base_info",
+              "stk_base_info", "ksq_base_info", "stk_isu_info"]
+
+CANDIDATES = [(f"종목기본정보 후보 · {n}", f"{BASE}/sto/{n}?basDd={{date}}", "header")
+              for n in _BASE_INFO]
 
 # 대조군 — 되는 것이 계속 되는지 확인한다. 빼면 회귀를 못 읽는다.
 CANDIDATES += [
     ("✅ 확정 · 유가증권 일별매매", CONFIRMED["kospi_daily"], "header"),
     ("✅ 확정 · 코스닥 일별매매", CONFIRMED["kosdaq_daily"], "header"),
 ]
-
-# 공공데이터포털은 접는다. 2차에서 SERVICE_KEY_IS_NOT_REGISTERED_ERROR —
-# KRX 키는 거기 키가 아니다. 별개 서비스라 이 키로는 영영 안 된다.
 
 UA = {"User-Agent": "hegemony-tree/1.0 (+https://github.com/hokyun896kim/US_Hegemony)"}
 
@@ -361,6 +365,10 @@ def selftest() -> int:
     t(len(CONFIRMED) == 2, "유가증권·코스닥 두 시장을 각각 받는다")
     t(not any("data.go.kr" in u for _, u, _ in CANDIDATES),
       "공공데이터포털은 후보에서 뺐다 — KRX 키로는 영영 안 된다")
+    # 이름을 8번 찍어 8번 틀렸다. 원인은 작명이 아니라 그 API 가 카탈로그에
+    # 없다는 것이었다(구독 목록으로 확인). 여기 다시 넣으면 같은 삽질이다.
+    t(not any("invsr" in u for _, u, _ in CANDIDATES),
+      "투자자별 후보를 뺐다 — 구독 목록에 그 API 가 없다")
     t(any(n.startswith("✅ 확정") for n, _, _ in CANDIDATES),
       "되는 것을 대조군으로 남긴다 — 빼면 회귀를 못 읽는다")
 
