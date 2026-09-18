@@ -395,6 +395,31 @@ def selftest() -> int:
 if __name__ == "__main__":
     if "--selftest" in sys.argv:
         sys.exit(selftest())
+    if "--liquidity" in sys.argv:
+        # 실물로 끝까지 돌려 본다. 파서를 빌더에 붙이기 전 마지막 확인.
+        if not enabled():
+            print("[!] KRX_KEY 가 없다.", file=sys.stderr); sys.exit(1)
+        i = sys.argv.index("--liquidity")
+        n = int(sys.argv[i + 1]) if len(sys.argv) > i + 1 else 5
+        r = liquidity(days=n)
+        if not r:
+            print("[!] 한 종목도 못 받았다.", file=sys.stderr); sys.exit(1)
+        thin = sum(1 for v in r.values() if v["trdval_days"] < n)
+        nocap = sum(1 for v in r.values() if not v.get("mktcap"))
+        print(f"\n  종목 {len(r)}건 · 거래일 부족 {thin}건 · 시총 없음 {nocap}건")
+        for code in ("005930", "000660", "060310"):
+            v = r.get(code)
+            print(f"  {code}  {v}" if v else f"  {code}  (없음)")
+        top = sorted(r.items(), key=lambda kv: -kv[1]["trdval_avg"])[:3]
+        print("\n  거래대금 상위 3:")
+        for c, v in top:
+            print(f"    {c}  일평균 {v['trdval_avg']:,}원 ({v['trdval_days']}일)")
+        bot = sorted((kv for kv in r.items() if kv[1]["trdval_days"] >= n),
+                     key=lambda kv: kv[1]["trdval_avg"])[:3]
+        print("  거래대금 하위 3 (전 기간 거래된 것만):")
+        for c, v in bot:
+            print(f"    {c}  일평균 {v['trdval_avg']:,}원")
+        sys.exit(0)
     if "--probe" in sys.argv:
         i = sys.argv.index("--probe")
         code = sys.argv[i + 1] if len(sys.argv) > i + 1 else "005930"
