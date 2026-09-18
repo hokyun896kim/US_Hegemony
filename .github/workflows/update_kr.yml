@@ -167,6 +167,8 @@ jobs:
           # 분기 재무를 DART 에서 받는다 — yfinance 보다 1~3주 빠르다.
           # 키가 없으면 빌더가 조용히 yfinance 로 떨어지므로 없어도 돈다.
           DART_KEY: ${{ secrets.DART_KEY }}
+          # 거래대금·시총. 없으면 krx 모듈이 조용히 비활성이고 그 칸만 빈다.
+          KRX_KEY: ${{ secrets.KRX_KEY }}
         run: |
           python build_tree_kr.py \
             --limit ${{ steps.mode.outputs.limit }} \

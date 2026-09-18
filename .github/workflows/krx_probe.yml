@@ -16,6 +16,12 @@ on:
       code:
         description: '종목코드 6자리 (기본 005930 삼성전자)'
         default: '005930'
+      mode:
+        description: 'probe = 엔드포인트 두드리기 · liquidity = 실물 수집 끝까지'
+        default: 'probe'
+      days:
+        description: 'liquidity 모드에서 모을 거래일 수'
+        default: '5'
 
 permissions:
   contents: read
@@ -34,6 +40,15 @@ jobs:
         run: python krx.py --selftest
 
       - name: 실물 응답 확인
+        if: inputs.mode == 'probe'
         env:
           KRX_KEY: ${{ secrets.KRX_KEY }}
         run: python krx.py --probe ${{ inputs.code }}
+
+      # 파서를 빌더에 붙이기 전, 실물로 끝까지 돌려 본다. 손으로 옮긴
+      # 샘플만으로 믿으면 실제 응답의 가장자리(빈 값·휴장일)에서 깨진다.
+      - name: 유동성 실물 수집
+        if: inputs.mode == 'liquidity'
+        env:
+          KRX_KEY: ${{ secrets.KRX_KEY }}
+        run: python krx.py --liquidity ${{ inputs.days }}

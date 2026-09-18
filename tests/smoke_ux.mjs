@@ -114,6 +114,22 @@ for (const [file,dataFile,mk,otherHref] of [
     t(body.includes('현재 지침 버전 '+ver),
       '카드가 지침 버전을 보여준다 — 사용자가 자기 GPT 의 날짜와 대조할 수 있게');
     t(body.includes("copyPrompt('"+first+"',this)"), 'copyPrompt 가 this 전달(전역 event 미의존)');
+    // 유동성은 한국판만 — KRX OpenAPI 에서 온다. 미국판은 소스가 다르다.
+    if (mk === 'kr') {
+      t(body.includes('일평균 거래대금'), '트레이드 카드에 거래대금 표시');
+      const lvl = k => w.eval(`trdvalLvl(${JSON.stringify(k)})`);
+      // 하루 수억 원대는 경고여야 한다 — 분석과 무관하게 체결 자체가 비용이다
+      t(lvl({trdval_avg: 1.3e5, trdval_days: 20}).c === 'n', '13만원 → 경고');
+      t(lvl({trdval_avg: 5e9,   trdval_days: 20}).c === 'g', '50억 → 정상');
+      // 관측일이 적으면 평균을 못 믿는다. 거래정지·신규상장이 여기 걸린다.
+      const thin = lvl({trdval_avg: 5e9, trdval_days: 2});
+      t(thin.c === 'n' && thin.t.includes('표본부족'),
+        '관측일 부족이면 금액이 커도 경고 (' + thin.t + ')');
+      t(lvl({trdval_avg: null}).t === '—', '값이 없으면 대시');
+      // 단위가 틀리면 조 단위가 억으로 보인다
+      t(w.eval('trdvalText(3.37e12)') === '3.4조', '조 단위 표기');
+      t(w.eval('trdvalText(9.57e7)').includes('만'), '억 미만은 만 단위');
+    }
     d.getElementById('tradeModal').classList.remove('show');
   }
 
