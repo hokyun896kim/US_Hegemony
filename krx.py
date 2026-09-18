@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.parse
@@ -52,13 +53,33 @@ KEY = (os.environ.get("KRX_KEY") or "").strip()
 # "알려져 있다" 는 확인이 아니다. 그래서 둘 다 두드린다.
 CANDIDATES = [
     # (이름, URL 틀, 인증 방식)
-    ("KRX OpenAPI · 투자자별",
-     "http://openapi.krx.co.kr/svc/apis/sto/stk_isu_invsr_trd?basDd={date}&isuCd={code}",
+    #
+    # 1차 프로브(2026-09-18, Actions 실측)에서 배운 것:
+    #   · openapi.krx.co.kr/svc/apis/... → 404, 응답은 KRX 자체 에러페이지.
+    #     인증 실패(401/403)가 아니라 **서버에는 닿았고 경로가 틀린 것**이다.
+    #     openapi 는 포털(신청·문서)이고 데이터는 다른 호스트로 보인다.
+    #   · apis.data.go.kr → timed out. 키 문제가 아니라 닿지를 못한다.
+    #     공공데이터포털이 해외 IP 를 막는 사례가 있는데 Actions 러너는 미국이다.
+    #     이 경로는 키가 맞아도 안 될 수 있다.
+    #
+    # 그래서 데이터 호스트 후보를 넓힌다. 같은 경로를 여러 호스트에 두드려
+    # '호스트가 틀린 것'과 '경로가 틀린 것'을 가른다.
+    ("data-dbg · 투자자별",
+     "http://data-dbg.krx.co.kr/svc/apis/sto/stk_isu_invsr_trd?basDd={date}&isuCd={code}",
      "header"),
-    ("KRX OpenAPI · 일별시세",
+    ("data-dbg · 유가증권 일별매매",
+     "http://data-dbg.krx.co.kr/svc/apis/sto/stk_bydd_trd?basDd={date}",
+     "header"),
+    ("data-dbg · 코스닥 일별매매",
+     "http://data-dbg.krx.co.kr/svc/apis/sto/ksq_bydd_trd?basDd={date}",
+     "header"),
+    ("data (https) · 유가증권 일별매매",
+     "https://data.krx.co.kr/svc/apis/sto/stk_bydd_trd?basDd={date}",
+     "header"),
+    ("openapi · 유가증권 일별매매 (1차에서 404 — 대조군)",
      "http://openapi.krx.co.kr/svc/apis/sto/stk_bydd_trd?basDd={date}",
      "header"),
-    ("공공데이터 · 주식시세",
+    ("공공데이터 · 주식시세 (1차에서 timeout — 대조군)",
      "https://apis.data.go.kr/1160100/service/GetStockSecuritiesInfoService/getStockPriceInfo"
      "?serviceKey={key}&resultType=json&basDt={date}&likeSrtnCd={code}",
      "query"),
@@ -70,6 +91,21 @@ UA = {"User-Agent": "hegemony-tree/1.0 (+https://github.com/hokyun896kim/US_Hege
 def enabled() -> bool:
     """키가 없으면 조용히 비활성 — 빌더는 지금처럼 None 을 내보낸다."""
     return bool(KEY)
+
+
+def _why(body: str) -> str:
+    """HTML 에러페이지에서 사람이 읽을 부분만 뽑는다.
+
+    1차 프로브에서 본문 앞 300자를 그대로 찍었더니 <head> 보일러플레이트가
+    전부 먹어서 정작 사유가 안 보였다. DART 가 사유를 <title> 에 담아주던
+    것처럼, 여기도 title 과 태그를 걷어낸 본문이 단서다.
+    """
+    title = re.search(r"<title>(.*?)</title>", body, re.S | re.I)
+    text = re.sub(r"<script.*?</script>|<style.*?</style>", " ", body, flags=re.S | re.I)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    head = f"[{title.group(1).strip()}] " if title else ""
+    return (head + text)[:400]
 
 
 def _request(url: str, auth: str):
@@ -101,17 +137,19 @@ def probe(code: str, date: str = "20260917") -> int:
             print(f"  {e.code}  {name}\n       {shown}")
             # 본문에 거절 사유가 있으면 그게 제일 빠른 단서다
             try:
-                print(f"       {e.read(300).decode('utf-8', 'replace').strip()[:300]}")
+                print(f"       {_why(e.read(6000).decode('utf-8', 'replace'))}")
             except Exception:
                 pass
             continue
         except Exception as e:
             print(f"  ERR  {name}  ({type(e).__name__}: {e})")
             continue
-        hit += 1
-        print(f"  {status}  {name}\n       {shown}")
-        print(f"       {body[:700]}\n")
-    print(f"\n응답한 후보 {hit}/{len(CANDIDATES)}건")
+        looks_json = body.lstrip()[:1] in "{["
+        hit += 1 if looks_json else 0
+        mark = "JSON" if looks_json else "HTML(=데이터 아님)"
+        print(f"  {status}  {name}  → {mark}\n       {shown}")
+        print(f"       {body[:700] if looks_json else _why(body)}\n")
+    print(f"\nJSON 을 준 후보 {hit}/{len(CANDIDATES)}건")
     if not hit:
         print("어느 것도 안 됐다. 키 종류나 엔드포인트가 다르다는 뜻이다 — "
               "위 거절 사유를 읽고 후보를 고쳐서 다시 돌린다.")
@@ -145,6 +183,19 @@ def selftest() -> int:
             t("{key}" in tmpl, f"쿼리 인증 후보에 키 자리가 있다 — {name}")
         else:
             t("{key}" not in tmpl, f"헤더 인증 후보는 URL 에 키를 안 넣는다 — {name}")
+
+    print("\n━━ 거절 사유 추출 ━━")
+    # 1차 프로브는 본문 앞 300자를 그대로 찍었는데 <head> 보일러플레이트가
+    # 전부 먹어서 정작 사유가 안 보였다. 그래서 이걸 건다.
+    page = ('<html><head><title>에러페이지 - 한국거래소</title>'
+            '<meta charset="utf-8"><style>.x{color:red}</style>'
+            '<script>var a=1;</script></head>'
+            '<body><div>요청하신 페이지를 찾을 수 없습니다.</div></body></html>')
+    why = _why(page)
+    t("에러페이지" in why, "title 을 뽑는다")
+    t("찾을 수 없습니다" in why, "본문 메시지를 뽑는다")
+    t("charset" not in why and "var a" not in why,
+      "meta·script·style 잡동사니는 걷어낸다")
 
     print("\n━━ 키가 로그에 새지 않는가 ━━")
     # 프로브는 URL 을 찍는다. 쿼리 인증이면 거기에 키가 들어간다.
