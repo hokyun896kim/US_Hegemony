@@ -33,11 +33,23 @@ companyfacts 는 사실마다 end(기간말)·filed(공시일)·val 을 같이 �
 숫자가 그것이기 때문이다. 나중에 정정된 값을 쓰면 '그때는 아무도 몰랐던
 숫자'로 과거를 채점하게 된다 — 백테스트가 자기를 속이는 가장 흔한 길이다.
 
-계정 이름이 회사·시대마다 다르다
---------------------------------
+계정 이름이 회사·시대마다 다르다 — 그래서 합친다
+--------------------------------------------------
 매출은 Revenues · RevenueFromContractWithCustomerExcludingAssessedTax ·
-SalesRevenueNet 등으로 갈린다(ASC 606 전후로 바뀌었다). 우선순위대로 훑고
-처음 찾은 것을 쓴다. 못 찾으면 그 종목은 버린다 — 추측하지 않는다.
+SalesRevenueNet 등으로 갈린다(ASC 606 전후로 바뀌었다).
+
+처음에는 **우선순위대로 훑고 처음 찾은 계정 하나만** 썼다. 실측해 보니
+분기의 **42%가 비었다** — 한 회사가 시기마다 다른 계정을 쓰면 나머지
+분기를 통째로 잃는다. 매출이 없으면 스프레드가 안 나오므로, 그 종목은
+재현에서 재무가 전부 None 이 되고 **TOP5 가 0건**이 됐다.
+
+지금은 **분기 단위로 합친다.** 각 분기마다 우선순위가 가장 높은 계정의
+값을 쓰고, 그 계정이 없는 분기는 다음 계정으로 채운다.
+
+  ⚠️ 계정이 정확히 같은 것을 뜻하지는 않는다(예: 부과세 포함/제외).
+     한 회사의 시계열 안에서 계정이 바뀌는 지점에 작은 단차가 생길 수 있다.
+     그래도 분기의 42% 를 잃는 것보다는 낫다고 판단했다 — YoY 는 같은
+     분기끼리 비교하므로 단차가 한 번 지나가면 다시 일관된다.
 
 실측 (2026-09-18, Actions · 383종목)
 ------------------------------------
@@ -146,9 +158,10 @@ def pick_quarterly(facts: dict, tags: list[str]) -> dict:
     숫자로 과거를 채점하게 된다.
     """
     units = ((facts or {}).get("facts") or {}).get("us-gaap") or {}
-    for tag in tags:
+    out: dict[str, tuple[float, str]] = {}
+    covered: dict[str, int] = {}      # 분기 → 그 값을 준 계정의 우선순위
+    for rank, tag in enumerate(tags):
         rows = (units.get(tag) or {}).get("units", {}).get("USD") or []
-        out: dict[str, tuple[float, str]] = {}
         for r in rows:
             end, start, filed = r.get("end"), r.get("start"), r.get("filed")
             if not (end and start and filed) or r.get("val") is None:
@@ -156,12 +169,14 @@ def pick_quarterly(facts: dict, tags: list[str]) -> dict:
             n = _span_days(start, end)
             if n is None or not (Q_MIN_DAYS <= n <= Q_MAX_DAYS):
                 continue                      # 연간·반기·누적은 버린다
+            # 이 분기를 이미 더 높은 우선순위 계정이 채웠으면 건드리지 않는다
+            if end in covered and covered[end] < rank:
+                continue
             prev = out.get(end)
-            if prev is None or filed < prev[1]:
+            if prev is None or covered.get(end, rank) > rank or filed < prev[1]:
                 out[end] = (float(r["val"]), filed)
-        if out:
-            return out                        # 처음 찾은 계정을 쓴다
-    return {}
+                covered[end] = rank
+    return out
 
 
 def to_cache(facts: dict) -> dict | None:
@@ -228,6 +243,36 @@ def selftest() -> int:
     t(pick_quarterly(f3, REV_TAGS)["2020-03-31"][0] == 55,
       "Revenues 가 없으면 다음 계정으로 넘어간다")
     t(pick_quarterly({}, REV_TAGS) == {}, "빈 응답에도 안 죽는다")
+
+    print("\n━━ 계정을 분기 단위로 합친다 ━━")
+    # 실측 사고: 처음 찾은 계정 하나만 쓰다가 분기의 42%를 잃었다. 한 회사가
+    # 시기마다 다른 계정을 쓰면(ASC 606 전환 등) 나머지가 통째로 빈다.
+    # 매출이 없으면 스프레드가 안 나오고, 재현에서 TOP5 가 0건이 됐다.
+    mixed = {"facts": {"us-gaap": {
+        # 우선순위 1위 계정 — 최근 두 분기만 있다
+        "RevenueFromContractWithCustomerExcludingAssessedTax": {"units": {"USD": [
+            _fact("2024-01-01", "2024-03-31", "2024-05-01", 300),
+            _fact("2024-04-01", "2024-06-30", "2024-08-01", 310)]}},
+        # 3위 계정 — 옛 분기를 갖고 있다
+        "Revenues": {"units": {"USD": [
+            _fact("2017-01-01", "2017-03-31", "2017-05-01", 100),
+            _fact("2017-04-01", "2017-06-30", "2017-08-01", 110)]}},
+    }}}
+    q = pick_quarterly(mixed, REV_TAGS)
+    t(len(q) == 4, f"두 계정의 분기가 모두 살아난다 ({len(q)}개)")
+    t(q["2017-03-31"][0] == 100 and q["2024-03-31"][0] == 300,
+      "각 시기의 값이 제자리에")
+
+    print("\n━━ 같은 분기는 우선순위가 이긴다 ━━")
+    dup = {"facts": {"us-gaap": {
+        "RevenueFromContractWithCustomerExcludingAssessedTax": {"units": {"USD": [
+            _fact("2024-01-01", "2024-03-31", "2024-05-01", 300)]}},
+        "Revenues": {"units": {"USD": [
+            _fact("2024-01-01", "2024-03-31", "2024-05-01", 999)]}},
+    }}}
+    v = pick_quarterly(dup, REV_TAGS)["2024-03-31"][0]
+    # 순서가 뒤집히면 같은 회사에서 계정이 오락가락해 단차가 반복된다
+    t(v == 300, f"1순위 계정이 이긴다 (999 아님 → {v})")
     t(pick_quarterly({"facts": {}}, REV_TAGS) == {}, "facts 가 비어도 안 죽는다")
 
     print("\n━━ 캐시 모양 ━━")
