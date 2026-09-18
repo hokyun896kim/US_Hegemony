@@ -55,10 +55,20 @@ for (const [file,dataFile,mk,otherHref] of [
     t(v && v.textContent.includes('부호가 뒤집'), '구간에 따라 뒤집힌다는 사실을 적는다');
     t(v && v.textContent.includes(NUMS.lo) && v.textContent.includes(NUMS.hi),
       `뒤집히는 양쪽 숫자를 다 적는다 (${NUMS.lo} · ${NUMS.hi})`);
-    // 배점을 바꿨으면 화면이 그 사실과 이유를 말해야 한다. 조용히 바꾸면
+    // 배점을 바꿨으면 화면이 그 사실과 새 만점을 말해야 한다. 조용히 바꾸면
     // 어제 88점이던 종목이 오늘 73점인데 사용자는 이유를 알 길이 없다.
-    t(v && v.textContent.includes('0점으로 내렸습니다') && v.textContent.includes('85'),
-      '배점을 내린 사실과 새 만점을 밝힌다');
+    //
+    // 만점은 배점표에서 유도한다. 예전엔 85 를 그대로 박아뒀는데, rs6 를
+    // 15 → 5 로 내리자 그 숫자가 곧바로 낡아 테스트가 화면을 막는 게 아니라
+    // 화면을 따라가는 처지가 됐다. 배점이 바뀌면 이 기대값도 같이 움직인다.
+    const wsrc = fs.readFileSync(path.join(ROOT, file), 'utf8').match(/const W = \{([^}]*)\}/);
+    const W = Object.fromEntries((wsrc ? wsrc[1] : '').split(',')
+      .map(x => x.split(':').map(y => y.trim()))
+      .filter(x => x.length === 2).map(([k, n]) => [k, Number(n)]));
+    // 품질 = qsp + 가속12 + 매출동반12 + 추정치8 · 미반영 = fromHigh + rs6 · 타이밍10 · 밸류10
+    const MAX = W.qsp + 12 + 12 + 8 + W.fromHigh + W.rs6 + 10 + 10;
+    t(v && /내렸습니다|깎았습니다/.test(v.textContent) && v.textContent.includes(String(MAX)),
+      `배점을 내린 사실과 새 만점을 밝힌다 (만점 ${MAX})`);
     t(v && v.textContent.includes('선취매 레이더'),
       '안 고친 곳(레이더의 고점比 사용)을 밝힌다');
     // 설명 1번 뒤에 두면 순서대로 읽는 사람에게는 늦다 — GPT 지침의 V0 와 같은 실수다.
