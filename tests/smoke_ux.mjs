@@ -39,14 +39,28 @@ for (const [file,dataFile,mk,otherHref] of [
     const v = d.querySelector('.gi-verify');
     t(!!v, '화면에 검증 상태 블록이 있다');
     t(v && v.textContent.includes('우위가 확인되지 않았습니다'), '우위 없음을 명시');
-    t(v && v.textContent.includes('+0.12p'), '실측 숫자를 적는다 (말로만 얼버무리지 않음)');
+    // 시장마다 자기 실측을 적어야 한다. 예전엔 미국판에도 한국 숫자가 박혀
+    // 있었는데, 그때는 미국을 따로 재본 적이 없어서였다. 지금은 둘 다 있다.
+    // 여기서 시장별 숫자를 박아두지 않으면 한쪽 화면이 남의 시장 결과를
+    // 자기 것처럼 보여줘도 아무도 모른다 — 실제로 그런 상태였다.
+    const NUMS = mk === 'us'
+      ? {main: '+1.37p', lo: '−10.5%p', hi: '+22.0%p'}
+      : {main: '+0.12p', lo: '−3.81p',  hi: '+9.29p'};
+    t(v && v.textContent.includes(NUMS.main),
+      `실측 숫자를 적는다 (말로만 얼버무리지 않음 · ${NUMS.main})`);
     t(v && v.textContent.includes('증거가 아닙니다'), '점수는 필터일 뿐임을 명시');
     t(v && v.textContent.includes('52주 고점比'), '부호가 거꾸로인 축을 밝힌다');
-    // +0.12p 만 적으면 '안정적으로 같다' 로 읽힌다. 실제로는 앞 -3.81p ·
-    // 뒤 +9.29p 를 평균한 값이라, 구간이 바뀌면 부호가 뒤집힌다.
+    // 전체 평균만 적으면 '안정적으로 그렇다' 로 읽힌다. 실제로는 구간에 따라
+    // 부호가 뒤집히는 것을 평균한 값이다 — 양쪽 끝 숫자를 다 보여줘야 한다.
     t(v && v.textContent.includes('부호가 뒤집'), '구간에 따라 뒤집힌다는 사실을 적는다');
-    t(v && /−3\.81p|-3\.81p/.test(v.textContent) && v.textContent.includes('+9.29p'),
-      '뒤집히는 양쪽 숫자를 다 적는다');
+    t(v && v.textContent.includes(NUMS.lo) && v.textContent.includes(NUMS.hi),
+      `뒤집히는 양쪽 숫자를 다 적는다 (${NUMS.lo} · ${NUMS.hi})`);
+    // 배점을 바꿨으면 화면이 그 사실과 이유를 말해야 한다. 조용히 바꾸면
+    // 어제 88점이던 종목이 오늘 73점인데 사용자는 이유를 알 길이 없다.
+    t(v && v.textContent.includes('0점으로 내렸습니다') && v.textContent.includes('85'),
+      '배점을 내린 사실과 새 만점을 밝힌다');
+    t(v && v.textContent.includes('선취매 레이더'),
+      '안 고친 곳(레이더의 고점比 사용)을 밝힌다');
     // 설명 1번 뒤에 두면 순서대로 읽는 사람에게는 늦다 — GPT 지침의 V0 와 같은 실수다.
     const first = d.querySelector('#giBox .gi-body > *');
     t(first && first.classList.contains('gi-verify'), '설명 맨 앞에 온다 (뒤에 묻히지 않음)');
