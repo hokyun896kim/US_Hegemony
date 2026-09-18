@@ -726,12 +726,18 @@ async function loadData(){
 }
 const MXS_UNUSED=0, MXB_UNUSED=0;
 let view="tree", q="";
+// 시장지표가 없는 회차도 있다 — 백테스트 재현은 market 을 복원하지 않고(null),
+// 실제 빌드도 Yahoo 가 막히면 빈다. 예전엔 mk.vix 를 그대로 읽어 TypeError 를
+// 던졌는데, 첫 렌더 전체가 try/catch 안이라 그 예외 하나로 레이더·TOP5·트리가
+// 통째로 렌더되지 않았다(백테스트 미국판 후보 0의 실제 원인).
+// 한국판은 이미 null 안전하다 — 여기도 같은 모양으로 맞춘다.
 function initMarket(){
- const mk=D.market;
+ const mk=D.market||{};
+ const v=mk.vix;
  document.getElementById('mkt').innerHTML=`
- <div class="m"><span class="mlbl">VIX 환경필터</span><span class="mval"><span class="vix-dot" style="background:${mk.vix<16?'#4a9d7f':mk.vix<22?'#d4af37':'#c2544d'}"></span>${mk.vix}</span><span class="mlbl" style="margin-top:2px">${mk.vix_state}</span></div>
- <div class="m"><span class="mlbl">SPY 3개월</span><span class="mval sm">${mk.spy3>0?'+':''}${mk.spy3}%</span></div>
- <div class="m"><span class="mlbl">SPY 6개월</span><span class="mval sm">${mk.spy6>0?'+':''}${mk.spy6}%</span></div>
+ <div class="m"><span class="mlbl">VIX 환경필터</span><span class="mval"><span class="vix-dot" style="background:${v==null?'var(--mut)':v<16?'#4a9d7f':v<22?'#d4af37':'#c2544d'}"></span>${v==null?'—':v}</span><span class="mlbl" style="margin-top:2px">${mk.vix_state||'—'}</span></div>
+ <div class="m"><span class="mlbl">SPY 3개월</span><span class="mval sm">${mk.spy3==null?'—':(mk.spy3>0?'+':'')+mk.spy3+'%'}</span></div>
+ <div class="m"><span class="mlbl">SPY 6개월</span><span class="mval sm">${mk.spy6==null?'—':(mk.spy6>0?'+':'')+mk.spy6+'%'}</span></div>
  <div class="m"><span class="mlbl">벤치마크</span><span class="mval sm">S&P 500</span></div>`;
 }
 function fb(med,mx){const p=med>=0;return{p,w:Math.min(46,Math.abs(med)/mx*46)};}
