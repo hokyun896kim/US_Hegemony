@@ -119,8 +119,19 @@ def _why(body: str) -> str:
     return (head + text)[:400]
 
 
-def _request(url: str, auth: str):
-    """후보 하나를 두드린다. 성공하면 (status, 본문 앞부분) 을 돌려준다."""
+def _request(url: str, auth: str, limit: int | None = 4000):
+    """한 번 호출한다. limit 은 **읽을 바이트 수 상한**이다.
+
+    기본값이 4000 인 것은 이 함수가 원래 프로브용이었기 때문이다 — 응답의
+    '모양'만 보면 되니 앞부분으로 충분했다.
+
+    그런데 수집 쪽이 이걸 그대로 재사용해서 **잘린 JSON 을 파싱**했다.
+    전종목 응답은 수백 KB 인데 4KB 에서 끊기니 매번 JSONDecodeError 다
+    (실측: "Unterminated string ... column 3941"). 손으로 옮긴 샘플로는
+    절대 안 잡히고, 빌더에 붙인 뒤였다면 주간 빌드 안에서 터졌을 것이다.
+
+    그래서 **limit=None 이면 끝까지 읽는다.** 수집은 반드시 None 을 준다.
+    """
     headers = dict(UA)
     if auth == "header":
         headers["AUTH_KEY"] = KEY
@@ -128,7 +139,8 @@ def _request(url: str, auth: str):
         url = url.replace("{key}", urllib.parse.quote(KEY, safe=""))
     req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req, timeout=20) as r:
-        return r.status, r.read(4000).decode("utf-8", "replace")
+        raw = r.read() if limit is None else r.read(limit)
+        return r.status, raw.decode("utf-8", "replace")
 
 
 def probe(code: str, date: str = "20260917") -> int:
@@ -235,7 +247,9 @@ def fetch_day(date_yyyymmdd: str, log=print) -> dict:
     out = {}
     for name, tmpl in CONFIRMED.items():
         try:
-            _, body = _request(tmpl.format(date=date_yyyymmdd), "header")
+            # limit=None — 자르면 JSON 이 깨진다. 위 _request 주석 참고.
+            _, body = _request(tmpl.format(date=date_yyyymmdd), "header",
+                               limit=None)
             out.update(parse_daily(json.loads(body)))
         except Exception as e:
             log(f"    {date_yyyymmdd} {name} 실패({type(e).__name__}: {e})")
@@ -332,6 +346,31 @@ def selftest() -> int:
     t(a["n"] == 2, f"관측된 날 수를 같이 준다 ({a['n']})")
     t("Z" not in avg_trdval([{"Z": {"trdval": None}}]),
       "전부 비어 있으면 아예 안 넣는다 — 0 으로 오해되면 안 된다")
+
+    print("\n━━ 잘린 응답 회귀 ━━")
+    # 실측 사고: _request 가 프로브용이라 앞 4000바이트만 읽었는데 수집이
+    # 그걸 재사용해 잘린 JSON 을 파싱했다. 전종목 응답은 수백 KB 다.
+    #   JSONDecodeError: Unterminated string ... column 3941
+    # 손으로 옮긴 샘플로는 안 잡힌다. 호출 인자를 직접 건다.
+    seen = {}
+
+    def spy(url, auth, limit=4000):
+        seen["limit"] = limit
+        big = {"OutBlock_1": [{"ISU_CD": f"{i:06d}", "ISU_NM": "가" * 40,
+                               "ACC_TRDVAL": "100", "MKTCAP": "900",
+                               "LIST_SHRS": "9"} for i in range(200)]}
+        return 200, json.dumps(big, ensure_ascii=False)
+
+    saved = globals()["_request"]
+    globals()["_request"] = spy
+    try:
+        got = fetch_day("20260917", log=lambda *_: None)
+    finally:
+        globals()["_request"] = saved
+    t(seen.get("limit") is None, f"수집은 끝까지 읽는다 (limit={seen.get('limit')})")
+    t(len(got) == 200, f"큰 응답을 온전히 파싱한다 ({len(got)}종목)")
+    # 응답이 4000바이트를 훨씬 넘는지 — 넘지 않으면 이 테스트가 무의미하다
+    t(len(json.dumps({"x": "가" * 4000})) > 4000, "시험 응답이 상한보다 크다")
 
     print("\n━━ 수집 루프 (네트워크 대역) ━━")
     import datetime as _dt
