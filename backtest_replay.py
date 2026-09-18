@@ -95,8 +95,36 @@ def latest_ir(stock, today: str):
 
 
 # ── 연간 ─────────────────────────────────────────────────────────
+def _fiscal_by_marker(known):
+    """fy_end 로 끊어 묶는다. 한 묶음은 그 표시까지의 분기들이다."""
+    fy, cur, idx = {}, [], 0
+    for q in known:                       # known 은 q_end 오름차순이다
+        cur.append(q)
+        if q.get("fy_end"):
+            idx += 1
+            ok = all(x.get("rev") is not None and x.get("op") is not None
+                     for x in cur)
+            fy[f"{idx:04d}|{q['q_end']}"] = {
+                "rev": sum(x["rev"] for x in cur) if ok else 0.0,
+                "op": sum(x["op"] for x in cur) if ok else 0.0,
+                "n": len(cur), "ok": ok, "end": q["q_end"]}
+            cur = []
+    return fy
+
+
 def fiscal_years(known):
-    """회계연도별 (매출합, 영익합, 분기수). 12월 결산만 다룬다."""
+    """회계연도별 (매출합, 영익합, 분기수).
+
+    분기에 fy_end 표시가 있으면 **그 분기에서 회계연도를 끊는다.** 미국은
+    회계연도가 제각각이라 달력연도로 묶으면 한 회계연도가 두 달력연도에
+    걸려 영영 안 찬다 — 실측에서 361종목 중 연간 스프레드가 95종목뿐이었고,
+    그래서 스코어러 1층이 통과를 못 해 후보가 0건이 됐다.
+
+    표시가 없으면(한국 DART) 지금까지처럼 달력연도로 묶는다. 12월 결산이
+    대부분이라 그 근사가 통했고, **기존 결과를 바꾸지 않기 위해서**다.
+    """
+    if any(q.get("fy_end") for q in known):
+        return _fiscal_by_marker(known)
     fy = {}
     for q in known:
         y = q["q_end"][:4]
@@ -121,7 +149,17 @@ def annual_yoy(known):
     if len(years) < 2:
         return None, None
     cur, prv = fy[years[-1]], fy[years[-2]]
-    if int(years[-1]) - int(years[-2]) != 1:
+    if "|" in years[-1]:
+        # fy_end 로 묶은 키는 "0007|2024-06-30" 이다. 두 회계연도 끝이 약
+        # 1년 떨어져 있어야 YoY 다 — 중간 연도가 빠졌으면 2년 비교가 된다.
+        from datetime import date as _d
+        try:
+            gap = (_d.fromisoformat(cur["end"]) - _d.fromisoformat(prv["end"])).days
+        except Exception:
+            return None, None
+        if not (330 <= gap <= 400):
+            return None, None
+    elif int(years[-1]) - int(years[-2]) != 1:
         return None, None            # 연도가 붙어 있지 않으면 YoY 가 아니다
     # pct·sane 은 build_tree_kr 것을 그대로 쓴다. 분모 하한(10억 원)과 기저효과
     # 상한(매출 300% · 영익 500%)이 화면과 달라지면 백테스트가 다른 잣대를 쓴다.
@@ -434,6 +472,34 @@ def selftest() -> int:
     q24, c24 = yr(2024, 30e12, 2e12, "2025-03-11")
     full = _stock(q23 + q24 + [_q("2025-03-31", 40e12, 3e12)],
                   c23 + c24 + [_cal("2025-03-31", "2025-05-15")])
+    print("\n━━ 비12월 결산 (fy_end 표시) ━━")
+    # 미국은 회계연도가 제각각이라 달력연도로 묶으면 한 회계연도가 두 달력연도에
+    # 걸려 영영 안 찬다. 실측에서 361종목 중 연간 스프레드가 95종목뿐이었고,
+    # 그래서 스코어러 1층이 통과를 못 해 후보가 0건이 됐다.
+    B = 1e9
+
+    def _fq(e, rev, op, fy=False):
+        d = {"q_end": e, "rev": rev, "op": op}
+        if fy:
+            d["fy_end"] = True
+        return d
+
+    jun = [_fq("2022-09-30", 25 * B, 1 * B), _fq("2022-12-31", 25 * B, 1 * B),
+           _fq("2023-03-31", 25 * B, 1 * B), _fq("2023-06-30", 25 * B, 1 * B, True),
+           _fq("2023-09-30", 30 * B, 2 * B), _fq("2023-12-31", 30 * B, 2 * B),
+           _fq("2024-03-31", 30 * B, 2 * B), _fq("2024-06-30", 30 * B, 2 * B, True)]
+    jr, jo = annual_yoy(jun)
+    t(jr is not None and abs(jr - 20.0) < 0.01, f"6월 결산 매출 +20% (실제 {jr})")
+    t(jo is not None and abs(jo - 100.0) < 0.01, f"6월 결산 영익 +100% (실제 {jo})")
+    # 표시가 없으면 달력연도로 떨어진다 — 한국 경로가 그대로라는 뜻이다
+    bare = [{k: v for k, v in q.items() if k != "fy_end"} for q in jun]
+    t(annual_yoy(bare) == (None, None),
+      "표시가 없으면 달력연도로 묶여 이 배열은 못 센다(한국 경로 보존)")
+    # 회계연도 사이가 비면 2년 비교가 된다
+    skip = jun[:4] + [_fq("2025-09-30", 30 * B, 2 * B), _fq("2025-12-31", 30 * B, 2 * B),
+                      _fq("2026-03-31", 30 * B, 2 * B), _fq("2026-06-30", 30 * B, 2 * B, True)]
+    t(annual_yoy(skip) == (None, None), "회계연도가 2년 떨어지면 YoY 가 아니다")
+
     r, o = annual_yoy(known_at(full, "2025-06-01"))
     t(r is not None and abs(r - 20.0) < 0.01, f"매출 100조→120조 = +20% (실제 {r})")
     t(o is not None and abs(o - 100.0) < 0.01, f"영익 4조→8조 = +100% (실제 {o})")

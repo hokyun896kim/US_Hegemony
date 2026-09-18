@@ -257,13 +257,22 @@ def to_cache(facts: dict) -> dict | None:
                    _spans(facts, OP_TAGS, Y_MIN_DAYS, Y_MAX_DAYS))
     if not op:
         return None            # 영업이익이 없으면 스프레드를 못 낸다
+    # 회계연도 끝을 표시해 둔다. 재현 쪽(annual_yoy)이 달력연도로 묶으면
+    # 비12월 결산 회사는 회계연도가 두 달력연도에 걸려 영영 안 찬다.
+    # 여기가 연간 기간을 실제로 본 유일한 곳이므로 여기서 알려준다.
+    fy_ends = set(_spans(facts, OP_TAGS, Y_MIN_DAYS, Y_MAX_DAYS))
+    fy_ends |= set(_spans(facts, REV_TAGS, Y_MIN_DAYS, Y_MAX_DAYS))
+
     quarters, calendar = [], []
     for q_end in sorted(set(rev) | set(op)):
         r = rev.get(q_end)
         o = op.get(q_end)
-        quarters.append({"q_end": q_end,
-                         "rev": r[0] if r else None,
-                         "op": o[0] if o else None})
+        q = {"q_end": q_end,
+             "rev": r[0] if r else None,
+             "op": o[0] if o else None}
+        if q_end in fy_ends:
+            q["fy_end"] = True          # 이 분기로 회계연도가 끝난다
+        quarters.append(q)
         # 매출과 영업이익의 공시일이 다르면 **늦은 쪽**이 '둘 다 알려진' 시점이다
         filed = max([x[1] for x in (r, o) if x] or [""])
         calendar.append({"q_end": q_end, "rcept_dt": filed,
