@@ -163,6 +163,110 @@ def probe(code: str, date: str = "20260917") -> int:
     return 0 if hit else 1
 
 
+# ─────────────────────────────────────────────────────────────────
+# 유동성 — 확정된 엔드포인트로 실제 수집한다
+# ─────────────────────────────────────────────────────────────────
+def parse_daily(js) -> dict:
+    """하루치 응답을 {종목코드: {...}} 로. 숫자는 문자열로 온다.
+
+    KRX 는 값을 전부 문자열로 준다("304551315"). 그대로 화면에 넘기면
+    정렬·비교가 문자열 순서로 된다 — 9억이 10억보다 크다고 나온다.
+    여기서 숫자로 바꾼다.
+    """
+    out = {}
+    for row in (js or {}).get("OutBlock_1") or []:
+        code = (row.get("ISU_CD") or "").strip()
+        if not code:
+            continue
+        out[code] = {
+            "nm": (row.get("ISU_NM") or "").strip(),
+            "mkt": (row.get("MKT_NM") or "").strip(),
+            "trdval": _int(row.get("ACC_TRDVAL")),   # 거래대금(원)
+            "mktcap": _int(row.get("MKTCAP")),       # 시총(원)
+            "shrs": _int(row.get("LIST_SHRS")),      # 상장주식수
+            "close": _int(row.get("TDD_CLSPRC")),
+        }
+    return out
+
+
+def _int(v):
+    """'304551315' → 304551315 · '' 나 '-' 는 None."""
+    if v is None:
+        return None
+    t = str(v).replace(",", "").strip()
+    if not t or t in {"-", "0-"}:
+        return None
+    try:
+        return int(float(t))
+    except ValueError:
+        return None
+
+
+def avg_trdval(days: list[dict]) -> dict:
+    """여러 날의 parse_daily 결과에서 종목별 일평균 거래대금을 낸다.
+
+    **거래가 없던 날을 0 으로 세지 않는다.** 거래정지 하루가 끼면 평균이
+    절반이 되는데, 그건 '유동성이 낮다'가 아니라 '그날 거래가 없었다'다.
+    둘을 섞으면 정지 이력이 있는 종목이 전부 저유동성으로 보인다.
+
+    대신 **관측된 날 수를 같이 돌려준다** — 20일 요청했는데 3일뿐이면
+    그 평균은 믿을 게 못 되고, 화면이 그걸 알아야 한다.
+    """
+    acc: dict[str, list[int]] = {}
+    for d in days:
+        for code, row in d.items():
+            v = row.get("trdval")
+            if v:                                  # 0·None 은 안 센다
+                acc.setdefault(code, []).append(v)
+    return {c: {"avg": round(sum(v) / len(v)), "n": len(v)}
+            for c, v in acc.items() if v}
+
+
+def fetch_day(date_yyyymmdd: str, log=print) -> dict:
+    """하루치 — 유가증권 + 코스닥 전종목. 호출 2건이다.
+
+    휴장일이면 OutBlock_1 이 비어 온다(에러가 아니다). 부르는 쪽이
+    '며칠치를 모았나' 로 판단하므로 여기서는 조용히 빈 dict 를 준다.
+    """
+    out = {}
+    for name, tmpl in CONFIRMED.items():
+        try:
+            _, body = _request(tmpl.format(date=date_yyyymmdd), "header")
+            out.update(parse_daily(json.loads(body)))
+        except Exception as e:
+            log(f"    {date_yyyymmdd} {name} 실패({type(e).__name__}: {e})")
+    return out
+
+
+def liquidity(days: int = 20, today=None, log=print) -> dict:
+    """최근 days 영업일(근사)의 일평균 거래대금·최신 시총.
+
+    달력일로 뒤로 걸으며 응답이 빈 날(휴장)은 그냥 건너뛴다. 한국 공휴일
+    표를 들고 있지 않으므로 '영업일'을 정확히 세지 않는다 — 대신 **실제로
+    데이터가 온 날만** 센다. avg_trdval 이 관측 일수를 같이 돌려주므로
+    부르는 쪽이 얼마나 믿을지 판단할 수 있다.
+    """
+    from datetime import date as _date, timedelta
+    cur = today or _date.today()
+    got, latest = [], {}
+    # 넉넉히 뒤로 본다 — 주말·연휴가 끼므로 days 만큼만 걸으면 모자란다
+    for _ in range(int(days * 2.2) + 10):
+        if len(got) >= days:
+            break
+        d = fetch_day(cur.strftime("%Y%m%d"), log=log)
+        if d:
+            got.append(d)
+            if not latest:
+                latest = d          # 제일 최근 날이 시총 기준
+        cur -= timedelta(days=1)
+    log(f"  거래일 {len(got)}/{days}일 · 종목 {len(latest)}")
+    avg = avg_trdval(got)
+    return {code: {"trdval_avg": a["avg"], "trdval_days": a["n"],
+                   "mktcap": (latest.get(code) or {}).get("mktcap"),
+                   "shrs": (latest.get(code) or {}).get("shrs")}
+            for code, a in avg.items()}
+
+
 def selftest() -> int:
     ok = [True]
 
@@ -192,6 +296,62 @@ def selftest() -> int:
             t("{key}" in tmpl, f"쿼리 인증 후보에 키 자리가 있다 — {name}")
         else:
             t("{key}" not in tmpl, f"헤더 인증 후보는 URL 에 키를 안 넣는다 — {name}")
+
+    print("\n━━ 유동성 파싱 ━━")
+    # 3차 프로브가 실제로 받은 모양 그대로 건다
+    js = {"OutBlock_1": [
+        {"BAS_DD": "20260917", "ISU_CD": "095570", "ISU_NM": "AJ네트웍스",
+         "MKT_NM": "KOSPI", "TDD_CLSPRC": "4120", "ACC_TRDVOL": "74190",
+         "ACC_TRDVAL": "304551315", "MKTCAP": "186441367080",
+         "LIST_SHRS": "45252759"},
+        {"BAS_DD": "20260917", "ISU_CD": "006840", "ISU_NM": "AK홀딩스",
+         "MKT_NM": "KOSPI", "TDD_CLSPRC": "6830", "ACC_TRDVAL": "98973210",
+         "MKTCAP": "90480841630", "LIST_SHRS": "13247561"},
+    ]}
+    d = parse_daily(js)
+    t(len(d) == 2, f"두 종목을 읽는다 ({len(d)})")
+    t(d["095570"]["trdval"] == 304551315, "거래대금을 숫자로 바꾼다")
+    t(isinstance(d["095570"]["mktcap"], int), "시총도 숫자다")
+    # 문자열로 두면 정렬이 사전순이 된다 — 9억이 10억보다 커진다
+    t(d["095570"]["trdval"] > d["006840"]["trdval"],
+      "숫자로 비교된다 (문자열이면 여기서 뒤집힌다)")
+    t(parse_daily({}) == {} and parse_daily(None) == {}, "빈 응답에도 안 죽는다")
+    t(_int("") is None and _int("-") is None and _int(None) is None,
+      "빈 값·대시는 None")
+    t(_int("1,234") == 1234, "쉼표가 있어도 읽는다")
+
+    print("\n━━ 일평균 거래대금 ━━")
+    days = [{"A": {"trdval": 100}}, {"A": {"trdval": 0}}, {"A": {"trdval": 200}}]
+    a = avg_trdval(days)["A"]
+    # 0 을 세면 (100+0+200)/3 = 100 이 된다. 거래정지 하루에 평균이 반토막난다.
+    t(a["avg"] == 150, f"거래 없던 날을 0 으로 안 센다 ({a['avg']})")
+    t(a["n"] == 2, f"관측된 날 수를 같이 준다 ({a['n']})")
+    t("Z" not in avg_trdval([{"Z": {"trdval": None}}]),
+      "전부 비어 있으면 아예 안 넣는다 — 0 으로 오해되면 안 된다")
+
+    print("\n━━ 수집 루프 (네트워크 대역) ━━")
+    import datetime as _dt
+    calls = []
+
+    def fake(date, log=print):
+        calls.append(date)
+        # 주말은 빈 응답 — 실제 휴장일이 그렇게 온다
+        d = _dt.datetime.strptime(date, "%Y%m%d").date()
+        if d.weekday() >= 5:
+            return {}
+        return {"A": {"trdval": 100, "mktcap": 900, "shrs": 9}}
+
+    saved = globals()["fetch_day"]
+    globals()["fetch_day"] = fake
+    try:
+        r = liquidity(days=5, today=_dt.date(2026, 9, 17), log=lambda *_: None)
+    finally:
+        globals()["fetch_day"] = saved
+    t(r["A"]["trdval_days"] == 5, f"거래일 5일을 채운다 ({r['A']['trdval_days']})")
+    t(len(calls) > 5, f"휴장일을 만나 더 걸었다 ({len(calls)}일 조회)")
+    # 주말만큼만 더 걸어야지 무한정 걸으면 예산이 샌다
+    t(len(calls) <= 21, f"걷는 범위에 상한이 있다 ({len(calls)})")
+    t(r["A"]["mktcap"] == 900, "시총은 가장 최근 날 것을 쓴다")
 
     print("\n━━ 확정된 사실 (2차 프로브 실측) ━━")
     t(BASE.startswith("http://data-dbg.krx.co.kr"),
