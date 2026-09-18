@@ -1,0 +1,81 @@
+# 미국판 백테스트 — SEC companyfacts 로 과거 분기 재무 + 공시일 수집.
+#
+# 왜 미국인가 — 한국판에서 스코어러가 우위를 못 보였고 52주 고점比는 부호가
+# 거꾸로 나왔다. 두 구간으로 쪼개도 네 칸 전부 같은 방향이었다. 같은 데이터를
+# 더 쪼개서는 답이 안 나온다. 다른 시장에서도 같은 부호면 배점을 고칠 근거가
+# 되고, 다르면 한국 시장 특성이다.
+#
+# DART 와 달리 SEC 는 사실마다 filed(공시일)를 같이 준다. 분기와 달력을 따로
+# 맞출 필요가 없어 오히려 깔끔하다.
+name: Backtest US
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'probe = 실물 응답 확인 · fetch = 배치 수집'
+        default: 'probe'
+      cik:
+        description: 'probe 모드의 CIK (기본 320193 = 애플)'
+        default: '320193'
+      limit:
+        description: 'fetch 모드에서 앞 N종목만 (0 = 전체)'
+        default: '0'
+
+permissions:
+  contents: write
+
+jobs:
+  us:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Logic self-test (네트워크 불필요)
+        run: |
+          python sec.py --selftest
+          python backtest_fetch_us.py --selftest
+          python backtest_replay.py --selftest
+
+      # 파서를 배치에 태우기 전에 실물을 본다. KRX 에서 잘린 JSON 을 파싱하던
+      # 버그를 이 단계에서 잡았다 — 손으로 옮긴 샘플로는 안 잡힌다.
+      - name: 실물 응답 확인
+        if: inputs.mode == 'probe'
+        env:
+          SEC_UA: ${{ secrets.SEC_UA }}
+        run: python sec.py --probe ${{ inputs.cik }}
+
+      # SEC companyfacts 는 종목당 1건에 전체 이력이 온다. DART 가 종목당
+      # 22.1건인 것과 다르다 — 400종목이면 400건, 초당 3건으로 약 2분이다.
+      # 그래서 조각내기가 없다.
+      - name: 과거 분기 재무 수집
+        if: inputs.mode == 'fetch'
+        env:
+          SEC_UA: ${{ secrets.SEC_UA }}
+        run: |
+          python backtest_fetch_us.py \
+            --universe data/tree.json \
+            --limit ${{ inputs.limit }} \
+            --out data/backtest/us-quarters.json \
+            --deadline 300
+
+      - name: Commit
+        if: inputs.mode == 'fetch'
+        run: |
+          git config user.name  "hegemony-bot"
+          git config user.email "bot@users.noreply.github.com"
+          [ -f data/backtest/us-quarters.json ] && git add data/backtest/us-quarters.json || true
+          git diff --staged --quiet && echo "변경 없음" && exit 0
+          git commit -m "auto(backtest-us): SEC 과거 분기 재무 $(date +%Y-%m-%d)"
+          for i in 1 2 3 4 5; do
+            git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            git fetch origin "${GITHUB_REF_NAME}"
+            git rebase "origin/${GITHUB_REF_NAME}" || {
+              echo "::error::rebase 실패"; exit 1; }
+            sleep $((i * 3))
+          done
+          echo "::error::push 실패"; exit 1
