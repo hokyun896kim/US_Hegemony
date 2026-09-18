@@ -19,6 +19,12 @@ on:
       universe:
         description: '먼저 유니버스를 새로 받을 종목 수. 0 이면 건너뛴다.'
         default: '0'
+      bench:
+        description: '벤치마크 티커 (비우면 ^KS11 · 미국은 ^GSPC)'
+        default: ''
+      out:
+        description: '저장 경로'
+        default: 'data/backtest/kr-prices.json'
       src:
         description: '가격을 받을 종목 목록. 유니버스를 새로 받으면 그 파일을 준다.'
         default: 'data/backtest/kr-quarters.json'
@@ -54,6 +60,8 @@ jobs:
           python backtest_prices.py \
             --src '${{ inputs.src }}' \
             --start '${{ inputs.start }}' \
+            --bench '${{ inputs.bench }}' \
+            --out '${{ inputs.out }}' \
             --limit ${{ inputs.limit }}
 
       - name: Commit
@@ -62,7 +70,7 @@ jobs:
           git config user.email "bot@users.noreply.github.com"
           # 수집이 실패하면 파일이 없다. 없는 경로를 add 하면 pathspec 오류로
           # 스텝이 죽는다 — 미국판 run #22 와 같은 함정.
-          for f in data/backtest/kr-prices.json data/backtest/kr-universe.json; do
+          for f in '${{ inputs.out }}' data/backtest/kr-universe.json; do
             [ -f "$f" ] && git add "$f" || true
           done
           git diff --staged --quiet && echo "변경 없음" && exit 0
