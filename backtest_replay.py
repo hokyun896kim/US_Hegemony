@@ -112,6 +112,24 @@ def _fiscal_by_marker(known):
     return fy
 
 
+# 분모 하한 — 화면과 같은 잣대를 써야 하는데, 화면이 시장마다 다르다.
+#   build_tree_kr.MIN_BASE_KRW = 1e9   (10억 원 ≈ $700K)
+#   build_data.py              = 1e6   ($1M)
+# 재현이 둘 다 한국 값을 쓰고 있었다. 미국 영업이익에 $10억 하한을 걸면
+# 1000배 높은 문턱이 된다 — 실측에서 341종목 중 138종목이 여기서 탈락했고,
+# 그래서 연간 스프레드가 203종목에 그쳤다.
+MIN_BASE = {"kr": 1e9, "us": 1e6}
+
+
+def set_market(mk: str) -> None:
+    """회차의 시장을 알려준다. 분모 하한이 여기에 달려 있다.
+
+    build_tree_kr.pct 가 모듈 상수를 읽으므로 그 값을 바꾼다. 화면과 같은
+    잣대를 쓰는 것이 목적이고, 화면이 시장마다 다른 값을 쓰기 때문이다.
+    """
+    build_tree_kr.MIN_BASE_KRW = MIN_BASE[mk]
+
+
 def fiscal_years(known):
     """회계연도별 (매출합, 영익합, 분기수).
 
@@ -472,6 +490,24 @@ def selftest() -> int:
     q24, c24 = yr(2024, 30e12, 2e12, "2025-03-11")
     full = _stock(q23 + q24 + [_q("2025-03-31", 40e12, 3e12)],
                   c23 + c24 + [_cal("2025-03-31", "2025-05-15")])
+    print("\n━━ 분모 하한이 시장마다 다르다 ━━")
+    # 화면이 쓰는 값이 다르다: 한국 1e9(원) · 미국 1e6(달러). 재현이 둘 다
+    # 한국 값을 쓰고 있었다. 미국 영업이익에 $10억 하한을 걸면 1000배 높은
+    # 문턱이 되고, 실측에서 341종목 중 138종목이 여기서 탈락했다.
+    _saved = build_tree_kr.MIN_BASE_KRW
+    try:
+        set_market("us")
+        t(build_tree_kr.MIN_BASE_KRW == 1e6, "미국은 $1M")
+        t(build_tree_kr.pct(1.1e9, 1.0e9) is not None,
+          "영익 $1.0B→$1.1B 가 통과한다 (한국 하한이면 탈락)")
+        set_market("kr")
+        t(build_tree_kr.MIN_BASE_KRW == 1e9, "한국은 10억 원")
+        t(build_tree_kr.pct(1.1e9, 1.0e9) is not None, "한국도 그 규모는 통과")
+        # 한국 하한 아래는 여전히 막혀야 한다 — 0 근처 분모는 비율이 무의미하다
+        t(build_tree_kr.pct(1.1e8, 1.0e8) is None, "한국에서 1억 원 분모는 막힌다")
+    finally:
+        build_tree_kr.MIN_BASE_KRW = _saved
+
     print("\n━━ 비12월 결산 (fy_end 표시) ━━")
     # 미국은 회계연도가 제각각이라 달력연도로 묶으면 한 회계연도가 두 달력연도에
     # 걸려 영영 안 찬다. 실측에서 361종목 중 연간 스프레드가 95종목뿐이었고,

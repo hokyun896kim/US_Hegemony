@@ -291,6 +291,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     cfg = _BR.MARKETS[args.market]
+    R.set_market(args.market)
     out_path = args.out or cfg["out"].replace("backtest-", "backtest-factors-")
     cache = json.loads(Path(cfg["quarters"]).read_text(encoding="utf-8"))
     px = json.loads(Path(cfg["prices"]).read_text(encoding="utf-8"))

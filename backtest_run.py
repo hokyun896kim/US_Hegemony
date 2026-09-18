@@ -123,6 +123,9 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     cfg = MARKETS[args.market]
+    # 분모 하한이 시장마다 다르다. 안 알려주면 미국에 한국 하한(1000배)이 걸려
+    # 영업이익이 $10억 미만인 종목이 통째로 빠진다.
+    R.set_market(args.market)
     out_path = args.out or cfg["out"]
     cache, px, sk = load(cfg)
     bench, prices = series(px)
