@@ -21,10 +21,22 @@ from pathlib import Path
 import backtest_replay as R
 import backtest_report as B
 
-QUARTERS = "data/backtest/kr-quarters.json"
-PRICES = "data/backtest/kr-prices.json"
-SKELETON = "data/tree_kr.json"
-OUT = "docs/backtest-kr.md"
+# 시장별 경로. 재현은 시장 중립이고 입력만 다르다 — backtest_replay 의
+# 한국 의존은 테스트 픽스처뿐이었다.
+MARKETS = {
+    "kr": {"quarters": "data/backtest/kr-quarters.json",
+           "prices": "data/backtest/kr-prices.json",
+           "skeleton": "data/tree_kr.json",
+           "out": "docs/backtest-kr.md",
+           "page": "kr", "bench": "코스피",
+           "src": "DART 분기 합"},
+    "us": {"quarters": "data/backtest/us-quarters.json",
+           "prices": "data/backtest/us-prices.json",
+           "skeleton": "data/tree.json",
+           "out": "docs/backtest-us.md",
+           "page": "us", "bench": "S&P500",
+           "src": "SEC companyfacts 분기 합"},
+}
 
 NOTES = [
     "**생존 편향** — 오늘 살아 있는 종목만 본다. 그 사이 상장폐지·인수된 "
@@ -32,18 +44,18 @@ NOTES = [
     "**추정치·PER 미복원** — 스코어러 100점 중 18점(추정치 8 + 밸류 10)이 "
     "항상 중립이다. 화면의 적중률과 같다고 말할 수 없다.",
     "**연간 스프레드 출처가 다르다** — 화면은 yfinance 연간 손익계산서, 여기는 "
-    "DART 분기 합. 그때 화면이 보여준 값과 조금 다를 수 있다.",
+    "{src}. 그때 화면이 보여준 값과 조금 다를 수 있다.",
     "**겹치는 창** — 매달 평가에 3·6개월 수익률이라 이웃 관측이 기간의 대부분을 "
     "공유한다. 표의 *유효 시점* 을 보라.",
-    "**한 시장·한 구간** — 2022~2026 한국 시장 하나다. 다른 구간·다른 시장에서 "
+    "**한 시장·한 구간** — 2022~2026 {market} 시장 하나다. 다른 구간에서 "
     "같은 결과가 나온다는 근거는 없다.",
 ]
 
 
-def load():
-    return (json.loads(Path(QUARTERS).read_text(encoding="utf-8")),
-            json.loads(Path(PRICES).read_text(encoding="utf-8")),
-            json.loads(Path(SKELETON).read_text(encoding="utf-8")))
+def load(cfg):
+    return (json.loads(Path(cfg["quarters"]).read_text(encoding="utf-8")),
+            json.loads(Path(cfg["prices"]).read_text(encoding="utf-8")),
+            json.loads(Path(cfg["skeleton"]).read_text(encoding="utf-8")))
 
 
 def series(px):
@@ -54,7 +66,7 @@ def series(px):
     return bench, prices
 
 
-def score_all(cache, px, sk, dates, workdir: Path, log=print):
+def score_all(cache, px, sk, dates, workdir: Path, page="kr", log=print):
     """시점마다 tree 를 만들고 실제 화면으로 채점한다."""
     trees, outs = workdir / "trees", workdir / "out"
     trees.mkdir(parents=True, exist_ok=True)
@@ -65,7 +77,9 @@ def score_all(cache, px, sk, dates, workdir: Path, log=print):
         f.write_text(json.dumps(R.build_tree_at(cache, px, sk, t),
                                 ensure_ascii=False), encoding="utf-8")
         r = subprocess.run(
-            ["node", "snapshot.mjs", "kr", "--data", str(f),
+            # 미국 회차에 kr 을 넘기면 화면이 다른 스코어러를 쓴다 —
+            # 결과는 나오는데 '미국판을 검증했다' 가 거짓이 된다.
+            ["node", "snapshot.mjs", page, "--data", str(f),
              "--out", str(outs), "--name", f"{t}.json"],
             cwd="tests", capture_output=True, text=True)
         if r.returncode != 0:
@@ -104,17 +118,20 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--from", dest="start", default="2022-01-01")
     ap.add_argument("--to", dest="end", default="2026-03-31")
-    ap.add_argument("--out", default=OUT)
+    ap.add_argument("--market", default="kr", choices=sorted(MARKETS))
+    ap.add_argument("--out", default=None)
     args = ap.parse_args(argv)
 
-    cache, px, sk = load()
+    cfg = MARKETS[args.market]
+    out_path = args.out or cfg["out"]
+    cache, px, sk = load(cfg)
     bench, prices = series(px)
     dates = R.month_ends(args.start, args.end)
     print(f"[1/3] 평가 시점 {len(dates)}개 · {dates[0]} ~ {dates[-1]}")
 
     with tempfile.TemporaryDirectory() as td:
         print("[2/3] 시점마다 화면 재현 + 채점")
-        snaps = score_all(cache, px, sk, dates, Path(td))
+        snaps = score_all(cache, px, sk, dates, Path(td), page=cfg["page"])
     if not snaps:
         print("[!] 채점된 시점이 없다.", file=sys.stderr)
         return 1
@@ -132,7 +149,11 @@ def main(argv=None):
             urow += ur
         res[months] = B.compare(prow, urow)
 
-    body = [B.render(res, len(snaps), 1, unres, NOTES), "", "## 어느 축이 가르는가", "",
+    # 한계 문구에 시장 이름이 안 박히면 미국 보고서가 '한국 시장 하나다' 로
+    # 나간다. 숫자만 맞고 설명이 거짓인 문서가 제일 위험하다.
+    notes = [n.format(market=cfg["bench"].replace("코스피", "한국")
+                      .replace("S&P500", "미국"), src=cfg["src"]) for n in NOTES]
+    body = [B.render(res, len(snaps), 1, unres, notes), "", "## 어느 축이 가르는가", "",
             "스코어러의 세 축을 따로 떼어 전 종목을 5분위로 나눴다. "
             "가르는 힘이 있다면 1분위와 5분위가 벌어져야 한다.", ""]
     for field, label in (("rs6", "RS6M 상대강도 — 낮을수록 점수를 준다"),
@@ -149,12 +170,53 @@ def main(argv=None):
             body.append(f"| {i+1}분위{tag} | {n} | {med:+}p |")
         body.append("")
 
-    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-    Path(args.out).write_text("\n".join(body) + "\n", encoding="utf-8")
-    print(f"\n  보고서 {args.out}")
+    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+    Path(out_path).write_text("\n".join(body) + "\n", encoding="utf-8")
+    print(f"\n  보고서 {out_path}")
     print("\n".join(body))
     return 0
 
 
+def selftest() -> int:
+    """시장 배선만 검증한다 — 나머지는 replay·report 쪽 자가진단이 본다."""
+    ok = [True]
+
+    def t(c, m):
+        print(("  ok   " if c else "  FAIL ") + m)
+        if not c:
+            ok[0] = False
+
+    print("━━ 시장 배선 ━━")
+    # 미국 회차에 kr 을 넘기면 화면이 다른 스코어러를 쓴다. 결과는 나오는데
+    # '미국판을 검증했다' 가 거짓이 된다 — 숫자만 맞고 설명이 틀린 문서다.
+    t(set(MARKETS) == {"kr", "us"}, f"시장 둘 {sorted(MARKETS)}")
+    for m, c in MARKETS.items():
+        t(c["page"] == m, f"{m} 의 화면 인자가 {c['page']}")
+        t(m in c["quarters"] and m in c["prices"],
+          f"{m} 의 데이터 경로에 시장이 박혀 있다")
+    # 두 시장이 같은 파일을 가리키면 한쪽이 다른 쪽을 덮는다
+    paths = [c[k] for c in MARKETS.values() for k in ("quarters", "prices", "out")]
+    t(len(paths) == len(set(paths)), "시장 간 경로가 하나도 안 겹친다")
+
+    print("\n━━ 한계 문구에 시장이 박히는가 ━━")
+    # 안 박히면 미국 보고서가 '한국 시장 하나다' 로 나간다. 숫자만 맞고
+    # 설명이 거짓인 문서가 제일 위험하다.
+    tmpl = [n for n in NOTES if "{market}" in n]
+    t(bool(tmpl), "시장 자리를 가진 문구가 있다")
+    t("미국" in tmpl[0].format(market="미국", src="x"), "미국으로 채워진다")
+    t("한국" in tmpl[0].format(market="한국", src="x"), "한국으로 채워진다")
+    src = [n for n in NOTES if "{src}" in n]
+    t(bool(src) and "SEC" in src[0].format(market="미국", src="SEC companyfacts 분기 합"),
+      "재무 출처도 시장별로 바뀐다")
+    # 채우지 않고 내보내면 중괄호가 그대로 문서에 남는다
+    t(all("{" not in n.format(market="미국", src="x") for n in NOTES),
+      "채운 뒤에는 중괄호가 남지 않는다")
+
+    print("\n✅ 전부 통과" if ok[0] else "\n❌ 실패")
+    return 0 if ok[0] else 1
+
+
 if __name__ == "__main__":
+    if "--selftest" in sys.argv:
+        sys.exit(selftest())
     sys.exit(main())
