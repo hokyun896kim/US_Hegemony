@@ -77,6 +77,7 @@ jobs:
           python backtest_fetch.py --selftest
           python backtest_replay.py --selftest
           python backtest_report.py --selftest
+          python backtest_run.py --selftest
           python backtest_factors.py --selftest
           python backtest_universe.py --selftest
           python krx.py --selftest

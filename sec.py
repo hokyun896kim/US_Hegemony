@@ -33,11 +33,40 @@ companyfacts 는 사실마다 end(기간말)·filed(공시일)·val 을 같이 �
 숫자가 그것이기 때문이다. 나중에 정정된 값을 쓰면 '그때는 아무도 몰랐던
 숫자'로 과거를 채점하게 된다 — 백테스트가 자기를 속이는 가장 흔한 길이다.
 
-계정 이름이 회사·시대마다 다르다
---------------------------------
+계정 이름이 회사·시대마다 다르다 — 그래서 합친다
+--------------------------------------------------
 매출은 Revenues · RevenueFromContractWithCustomerExcludingAssessedTax ·
-SalesRevenueNet 등으로 갈린다(ASC 606 전후로 바뀌었다). 우선순위대로 훑고
-처음 찾은 것을 쓴다. 못 찾으면 그 종목은 버린다 — 추측하지 않는다.
+SalesRevenueNet 등으로 갈린다(ASC 606 전후로 바뀌었다).
+
+처음에는 **우선순위대로 훑고 처음 찾은 계정 하나만** 썼다. 실측해 보니
+분기의 **42%가 비었다** — 한 회사가 시기마다 다른 계정을 쓰면 나머지
+분기를 통째로 잃는다. 매출이 없으면 스프레드가 안 나오므로, 그 종목은
+재현에서 재무가 전부 None 이 되고 **TOP5 가 0건**이 됐다.
+
+지금은 **분기 단위로 합친다.** 각 분기마다 우선순위가 가장 높은 계정의
+값을 쓰고, 그 계정이 없는 분기는 다음 계정으로 채운다.
+
+  ⚠️ 계정이 정확히 같은 것을 뜻하지는 않는다(예: 부과세 포함/제외).
+     한 회사의 시계열 안에서 계정이 바뀌는 지점에 작은 단차가 생길 수 있다.
+     그래도 분기의 42% 를 잃는 것보다는 낫다고 판단했다 — YoY 는 같은
+     분기끼리 비교하므로 단차가 한 번 지나가면 다시 일관된다.
+
+회계 4분기는 대개 태깅이 없다 — 연간에서 뺀다
+----------------------------------------------
+미국은 **회계 4분기를 따로 태깅하지 않는 회사가 많다.** 10-K 가 연간만 싣기
+때문이다. 실측(360종목)에서 회계연도 마지막 달의 건수가 다른 달의 60~70%였다.
+
+    MSFT (6월 결산)   6월 13건 · 나머지 19건
+    WMT  (1월 결산)   1월 11건 · 나머지 18건
+    AAPL (9월 결산)   9월 12건 · 나머지 16~18건
+
+4분기가 비면 **회계연도가 영영 안 찬다.** 연간 YoY 가 안 나오고, 스코어러의
+1층이 통과를 못 해 **후보가 0건**이 된다. 실제로 그렇게 나왔다 — 유니버스는
+18,360건인데 TOP5 는 0건이었다.
+
+그래서 연간(350~380일)도 같이 받아 **연간 − 앞 세 분기**로 복원한다.
+공시일은 **연간 보고서의 것**을 쓴다. 그 값이 알려진 시점이 그때다 — 분기
+셋의 공시일을 쓰면 아직 안 나온 숫자를 쓰는 셈이다.
 
 실측 (2026-09-18, Actions · 383종목)
 ------------------------------------
@@ -93,6 +122,8 @@ OP_TAGS = ["OperatingIncomeLoss"]
 # 분기 한 칸의 길이(일). 회계 분기는 13주 전후라 정확히 90일이 아니다.
 # 이 창을 벗어나면 연간·반기·누적이므로 분기로 쓰면 안 된다.
 Q_MIN_DAYS, Q_MAX_DAYS = 80, 100
+# 연간 한 칸. 52/53주 회계력이라 365일에서 며칠씩 벗어난다.
+Y_MIN_DAYS, Y_MAX_DAYS = 350, 380
 
 _last = [0.0]
 
@@ -146,9 +177,10 @@ def pick_quarterly(facts: dict, tags: list[str]) -> dict:
     숫자로 과거를 채점하게 된다.
     """
     units = ((facts or {}).get("facts") or {}).get("us-gaap") or {}
-    for tag in tags:
+    out: dict[str, tuple[float, str]] = {}
+    covered: dict[str, int] = {}      # 분기 → 그 값을 준 계정의 우선순위
+    for rank, tag in enumerate(tags):
         rows = (units.get(tag) or {}).get("units", {}).get("USD") or []
-        out: dict[str, tuple[float, str]] = {}
         for r in rows:
             end, start, filed = r.get("end"), r.get("start"), r.get("filed")
             if not (end and start and filed) or r.get("val") is None:
@@ -156,12 +188,61 @@ def pick_quarterly(facts: dict, tags: list[str]) -> dict:
             n = _span_days(start, end)
             if n is None or not (Q_MIN_DAYS <= n <= Q_MAX_DAYS):
                 continue                      # 연간·반기·누적은 버린다
+            # 이 분기를 이미 더 높은 우선순위 계정이 채웠으면 건드리지 않는다
+            if end in covered and covered[end] < rank:
+                continue
             prev = out.get(end)
-            if prev is None or filed < prev[1]:
+            if prev is None or covered.get(end, rank) > rank or filed < prev[1]:
                 out[end] = (float(r["val"]), filed)
-        if out:
-            return out                        # 처음 찾은 계정을 쓴다
-    return {}
+                covered[end] = rank
+    return out
+
+
+def _spans(facts: dict, tags: list[str], lo: int, hi: int) -> dict:
+    """길이 창이 다른 것만 빼면 pick_quarterly 와 같다. (값, 최초공시일, 시작일)."""
+    units = ((facts or {}).get("facts") or {}).get("us-gaap") or {}
+    out: dict[str, tuple[float, str, str]] = {}
+    covered: dict[str, int] = {}
+    for rank, tag in enumerate(tags):
+        for r in (units.get(tag) or {}).get("units", {}).get("USD") or []:
+            end, start, filed = r.get("end"), r.get("start"), r.get("filed")
+            if not (end and start and filed) or r.get("val") is None:
+                continue
+            n = _span_days(start, end)
+            if n is None or not (lo <= n <= hi):
+                continue
+            if end in covered and covered[end] < rank:
+                continue
+            prev = out.get(end)
+            if prev is None or covered.get(end, rank) > rank or filed < prev[1]:
+                out[end] = (float(r["val"]), filed, start)
+                covered[end] = rank
+    return out
+
+
+def derive_q4(quarterly: dict, annual: dict) -> dict:
+    """연간에서 앞 세 분기를 빼 회계 4분기를 복원한다.
+
+    **왜 필요한가** — 미국은 회계 4분기를 따로 태깅하지 않는 회사가 많다.
+    10-K 가 연간만 싣기 때문이다. 실측(360종목)에서 회계연도 마지막 달의
+    건수가 다른 달의 60~70% 였다(MSFT 6월 13 vs 19 · WMT 1월 11 vs 18).
+
+    4분기가 비면 **회계연도가 영영 안 찬다.** 연간 YoY 가 안 나오고, 그러면
+    스코어러의 1층이 통과를 못 해 **후보가 0건**이 된다. 실제로 그랬다.
+
+    공시일은 **연간 보고서의 공시일**을 쓴다. 그 값이 알려진 시점이 그때다.
+    분기 세 개의 공시일을 쓰면 아직 안 나온 숫자를 쓰는 셈이 된다.
+    """
+    out = dict(quarterly)
+    for y_end, (y_val, y_filed, y_start) in annual.items():
+        if y_end in out:
+            continue                      # 이미 분기로 태깅돼 있으면 건드리지 않는다
+        # quarterly 는 (값, 공시일) 두 칸이다 — annual 만 시작일을 갖는다
+        inside = [(e, t[0]) for e, t in quarterly.items() if y_start < e < y_end]
+        if len(inside) != 3:
+            continue                      # 셋이 아니면 뺄셈이 성립하지 않는다
+        out[y_end] = (y_val - sum(v for _e, v in inside), y_filed)
+    return out
 
 
 def to_cache(facts: dict) -> dict | None:
@@ -170,17 +251,28 @@ def to_cache(facts: dict) -> dict | None:
     quarters 와 calendar 를 같이 만든다. 한국판은 DART 재무와 공시 달력을
     따로 받아 q_end 로 맞춰야 했는데, 여기서는 한 레코드에서 나온다.
     """
-    rev = pick_quarterly(facts, REV_TAGS)
-    op = pick_quarterly(facts, OP_TAGS)
+    rev = derive_q4({k: v[:2] for k, v in _spans(facts, REV_TAGS, Q_MIN_DAYS, Q_MAX_DAYS).items()},
+                    _spans(facts, REV_TAGS, Y_MIN_DAYS, Y_MAX_DAYS))
+    op = derive_q4({k: v[:2] for k, v in _spans(facts, OP_TAGS, Q_MIN_DAYS, Q_MAX_DAYS).items()},
+                   _spans(facts, OP_TAGS, Y_MIN_DAYS, Y_MAX_DAYS))
     if not op:
         return None            # 영업이익이 없으면 스프레드를 못 낸다
+    # 회계연도 끝을 표시해 둔다. 재현 쪽(annual_yoy)이 달력연도로 묶으면
+    # 비12월 결산 회사는 회계연도가 두 달력연도에 걸려 영영 안 찬다.
+    # 여기가 연간 기간을 실제로 본 유일한 곳이므로 여기서 알려준다.
+    fy_ends = set(_spans(facts, OP_TAGS, Y_MIN_DAYS, Y_MAX_DAYS))
+    fy_ends |= set(_spans(facts, REV_TAGS, Y_MIN_DAYS, Y_MAX_DAYS))
+
     quarters, calendar = [], []
     for q_end in sorted(set(rev) | set(op)):
         r = rev.get(q_end)
         o = op.get(q_end)
-        quarters.append({"q_end": q_end,
-                         "rev": r[0] if r else None,
-                         "op": o[0] if o else None})
+        q = {"q_end": q_end,
+             "rev": r[0] if r else None,
+             "op": o[0] if o else None}
+        if q_end in fy_ends:
+            q["fy_end"] = True          # 이 분기로 회계연도가 끝난다
+        quarters.append(q)
         # 매출과 영업이익의 공시일이 다르면 **늦은 쪽**이 '둘 다 알려진' 시점이다
         filed = max([x[1] for x in (r, o) if x] or [""])
         calendar.append({"q_end": q_end, "rcept_dt": filed,
@@ -228,7 +320,62 @@ def selftest() -> int:
     t(pick_quarterly(f3, REV_TAGS)["2020-03-31"][0] == 55,
       "Revenues 가 없으면 다음 계정으로 넘어간다")
     t(pick_quarterly({}, REV_TAGS) == {}, "빈 응답에도 안 죽는다")
+
+    print("\n━━ 계정을 분기 단위로 합친다 ━━")
+    # 실측 사고: 처음 찾은 계정 하나만 쓰다가 분기의 42%를 잃었다. 한 회사가
+    # 시기마다 다른 계정을 쓰면(ASC 606 전환 등) 나머지가 통째로 빈다.
+    # 매출이 없으면 스프레드가 안 나오고, 재현에서 TOP5 가 0건이 됐다.
+    mixed = {"facts": {"us-gaap": {
+        # 우선순위 1위 계정 — 최근 두 분기만 있다
+        "RevenueFromContractWithCustomerExcludingAssessedTax": {"units": {"USD": [
+            _fact("2024-01-01", "2024-03-31", "2024-05-01", 300),
+            _fact("2024-04-01", "2024-06-30", "2024-08-01", 310)]}},
+        # 3위 계정 — 옛 분기를 갖고 있다
+        "Revenues": {"units": {"USD": [
+            _fact("2017-01-01", "2017-03-31", "2017-05-01", 100),
+            _fact("2017-04-01", "2017-06-30", "2017-08-01", 110)]}},
+    }}}
+    q = pick_quarterly(mixed, REV_TAGS)
+    t(len(q) == 4, f"두 계정의 분기가 모두 살아난다 ({len(q)}개)")
+    t(q["2017-03-31"][0] == 100 and q["2024-03-31"][0] == 300,
+      "각 시기의 값이 제자리에")
+
+    print("\n━━ 같은 분기는 우선순위가 이긴다 ━━")
+    dup = {"facts": {"us-gaap": {
+        "RevenueFromContractWithCustomerExcludingAssessedTax": {"units": {"USD": [
+            _fact("2024-01-01", "2024-03-31", "2024-05-01", 300)]}},
+        "Revenues": {"units": {"USD": [
+            _fact("2024-01-01", "2024-03-31", "2024-05-01", 999)]}},
+    }}}
+    v = pick_quarterly(dup, REV_TAGS)["2024-03-31"][0]
+    # 순서가 뒤집히면 같은 회사에서 계정이 오락가락해 단차가 반복된다
+    t(v == 300, f"1순위 계정이 이긴다 (999 아님 → {v})")
     t(pick_quarterly({"facts": {}}, REV_TAGS) == {}, "facts 가 비어도 안 죽는다")
+
+    print("\n━━ 회계 4분기 복원 ━━")
+    # 실측: 회계연도 마지막 달 건수가 다른 달의 60~70% 였다. 10-K 가 연간만
+    # 싣기 때문이다. 4분기가 비면 회계연도가 영영 안 차고, 연간 YoY 가 안
+    # 나오고, 스코어러 1층이 통과를 못 해 **후보가 0건**이 된다.
+    q3 = {"2024-03-31": (100.0, "2024-05-01"),
+          "2024-06-30": (110.0, "2024-08-01"),
+          "2024-09-30": (120.0, "2024-11-01")}
+    yr = {"2024-12-31": (500.0, "2025-02-15", "2024-01-01")}
+    r = derive_q4(q3, yr)
+    t(r["2024-12-31"][0] == 170.0, f"연간 − 세 분기 = 4분기 ({r['2024-12-31'][0]})")
+    # 분기 셋의 공시일을 쓰면 아직 안 나온 숫자를 쓰는 셈이 된다
+    t(r["2024-12-31"][1] == "2025-02-15",
+      f"공시일은 연간 보고서 것 ({r['2024-12-31'][1]})")
+    t(len(r) == 4, "원래 분기는 그대로 남는다")
+
+    already = dict(q3); already["2024-12-31"] = (999.0, "2025-01-01")
+    t(derive_q4(already, yr)["2024-12-31"][0] == 999.0,
+      "이미 분기로 태깅돼 있으면 안 건드린다")
+    t("2024-12-31" not in derive_q4({k: q3[k] for k in list(q3)[:2]}, yr),
+      "분기가 둘뿐이면 뺄셈이 성립하지 않으므로 안 만든다")
+    # 연도 밖 분기를 끌어오면 엉뚱한 값이 나온다
+    far = dict(q3); far["2022-12-31"] = (50.0, "2023-02-01")
+    t(derive_q4(far, yr)["2024-12-31"][0] == 170.0,
+      "연간 기간 밖 분기는 안 센다")
 
     print("\n━━ 캐시 모양 ━━")
     f4 = {"cik": 320193, "facts": {"us-gaap": {

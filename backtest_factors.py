@@ -43,6 +43,7 @@ from pathlib import Path
 import backtest_replay as R
 import backtest_report as B
 
+import backtest_run as _BR          # 시장별 경로를 한 곳에서만 정의한다
 QUARTERS = "data/backtest/kr-quarters.json"
 PRICES = "data/backtest/kr-prices.json"
 OUT = "docs/backtest-factors-kr.md"
@@ -285,11 +286,15 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--from", dest="start", default="2022-01-01")
     ap.add_argument("--to", dest="end", default="2026-03-31")
-    ap.add_argument("--out", default=OUT)
+    ap.add_argument("--market", default="kr", choices=sorted(_BR.MARKETS))
+    ap.add_argument("--out", default=None)
     args = ap.parse_args(argv)
 
-    cache = json.loads(Path(QUARTERS).read_text(encoding="utf-8"))
-    px = json.loads(Path(PRICES).read_text(encoding="utf-8"))
+    cfg = _BR.MARKETS[args.market]
+    R.set_market(args.market)
+    out_path = args.out or cfg["out"].replace("backtest-", "backtest-factors-")
+    cache = json.loads(Path(cfg["quarters"]).read_text(encoding="utf-8"))
+    px = json.loads(Path(cfg["prices"]).read_text(encoding="utf-8"))
     dates = R.month_ends(args.start, args.end)
     print(f"[1/2] 평가 시점 {len(dates)}개 · 지표 {len(FACTORS)}종")
 
@@ -306,9 +311,9 @@ def main(argv=None):
             res[f] = (full, *verdict(full, a, b))
         parts.append(render(res, months, len(dates)))
 
-    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-    Path(args.out).write_text("\n\n---\n\n".join(parts) + "\n", encoding="utf-8")
-    print(f"\n  보고서 {args.out}\n")
+    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+    Path(out_path).write_text("\n\n---\n\n".join(parts) + "\n", encoding="utf-8")
+    print(f"\n  보고서 {out_path}\n")
     print("\n\n".join(parts))
     return 0
 
