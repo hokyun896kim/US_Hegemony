@@ -1,0 +1,39 @@
+# KRX 수급 프로브 — 파서를 쓰기 전에 실물 응답을 본다.
+#
+# 개발 컨테이너에서는 KRX 에 네트워크가 닿지 않는다(전부 000). DART 도 거기서는
+# 000 인데 Actions 에서는 멀쩡히 돈다 — 즉 개발 환경 결과는 근거가 못 된다.
+# 이 워크플로가 실물을 보는 유일한 창구다.
+#
+# 이 저장소는 프로브를 건너뛰어 두 번 당했다. DART 는 확장자 없이 부르면 조용히
+# 전부 거절당하는데 빌드는 성공해서, 키를 넣고도 한 번도 안 쓰인 채 돌았다.
+#
+# 쓰는 법 — 저장소 Secret 에 KRX_KEY 를 넣고 손으로 돌린다. 결과는 로그에 찍힌다.
+name: KRX Probe
+
+on:
+  workflow_dispatch:
+    inputs:
+      code:
+        description: '종목코드 6자리 (기본 005930 삼성전자)'
+        default: '005930'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Logic self-test (네트워크 불필요)
+        run: python krx.py --selftest
+
+      - name: 실물 응답 확인
+        env:
+          KRX_KEY: ${{ secrets.KRX_KEY }}
+        run: python krx.py --probe ${{ inputs.code }}
