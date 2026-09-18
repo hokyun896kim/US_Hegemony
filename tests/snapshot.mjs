@@ -64,6 +64,22 @@ const { window } = dom;
 const D = window.eval('D');
 if (!D || !D.subs) { console.log('FAIL: 데이터 로드 실패 — 박제하지 않습니다'); process.exit(1); }
 
+// 대안 배점 — 백테스트 3단계가 '축 하나의 무게를 바꾸면 결과가 달라지나' 를
+// 잴 때 쓴다. 화면 코드는 안 고친다. W 는 const 지만 객체 속을 바꾸는 것이라
+// Object.assign 이 통한다(바인딩이 아니라 내용을 바꾼다).
+//
+// 채점 전에 덮어써야 한다 — LAST_TOP5 는 페이지가 뜰 때 이미 기본 배점으로
+// 채워져 있으므로, 덮어쓴 뒤 renderTop5() 를 다시 불러 갈아끼운다.
+const WEIGHTS = flag('weights');
+if (WEIGHTS) {
+  const w = JSON.parse(WEIGHTS);
+  const known = new Set(Object.keys(window.eval('W')));
+  const bad = Object.keys(w).filter(k => !known.has(k));
+  // 오타를 조용히 무시하면 '배점을 바꿨는데 결과가 같다' 는 거짓 결론이 나온다
+  if (bad.length) { console.log(`FAIL: 배점표에 없는 항목 ${bad.join(', ')} (가능: ${[...known].join(', ')})`); process.exit(1); }
+  window.eval(`Object.assign(W, ${JSON.stringify(w)}); renderTop5();`);
+}
+
 const top5 = window.eval('LAST_TOP5') || [];
 // 레이더 '선취매 권역'. 화면에는 상위 6개만 보이지만 박제는 전부 남긴다 —
 // 나중에 적중률을 셀 때 잘린 목록으로는 못 센다.
@@ -85,6 +101,7 @@ const rec = {
   n_subs: D.subs.length,
   coverage: D.coverage ?? null,
   market: D.market ?? null,
+  weights: WEIGHTS ? JSON.parse(WEIGHTS) : null,
   top5, radar,
 };
 

@@ -66,8 +66,28 @@ def series(px):
     return bench, prices
 
 
-def score_all(cache, px, sk, dates, workdir: Path, page="kr", log=print):
-    """시점마다 tree 를 만들고 실제 화면으로 채점한다."""
+def _snap_cmd(page, data, outdir, name, weights=None):
+    """채점 한 번의 명령줄. 따로 뺀 이유는 자가진단이 이걸 직접 보기 위해서다.
+
+    미국 회차에 kr 을 넘기면 화면이 다른 스코어러를 쓴다 — 결과는 나오는데
+    '미국판을 검증했다' 가 거짓이 된다. 배점도 같다: --weights 를 조용히
+    떨어뜨리면 기본 배점 결과가 대안 배점 문서로 나간다.
+    """
+    cmd = ["node", "snapshot.mjs", page, "--data", str(data),
+           "--out", str(outdir), "--name", name]
+    if weights:
+        cmd += ["--weights", weights]
+    return cmd
+
+
+def score_all(cache, px, sk, dates, workdir: Path, page="kr", weights=None,
+              log=print):
+    """시점마다 tree 를 만들고 실제 화면으로 채점한다.
+
+    weights 는 화면 배점표(W)를 덮어쓰는 JSON. 배점을 바꿔 재보려고 화면
+    코드를 고치면 실험용 배점이 라이브로 새어나갈 수 있어서, 화면은 그대로
+    두고 채점 직전에 덮어쓴다. 없으면 화면 기본 배점 그대로다.
+    """
     trees, outs = workdir / "trees", workdir / "out"
     trees.mkdir(parents=True, exist_ok=True)
     outs.mkdir(parents=True, exist_ok=True)
@@ -76,12 +96,8 @@ def score_all(cache, px, sk, dates, workdir: Path, page="kr", log=print):
         f = trees / f"{t}.json"
         f.write_text(json.dumps(R.build_tree_at(cache, px, sk, t),
                                 ensure_ascii=False), encoding="utf-8")
-        r = subprocess.run(
-            # 미국 회차에 kr 을 넘기면 화면이 다른 스코어러를 쓴다 —
-            # 결과는 나오는데 '미국판을 검증했다' 가 거짓이 된다.
-            ["node", "snapshot.mjs", page, "--data", str(f),
-             "--out", str(outs), "--name", f"{t}.json"],
-            cwd="tests", capture_output=True, text=True)
+        r = subprocess.run(_snap_cmd(page, f, outs, f"{t}.json", weights),
+                           cwd="tests", capture_output=True, text=True)
         if r.returncode != 0:
             failed.append(t)
             continue
@@ -120,6 +136,9 @@ def main(argv=None):
     ap.add_argument("--to", dest="end", default="2026-03-31")
     ap.add_argument("--market", default="kr", choices=sorted(MARKETS))
     ap.add_argument("--out", default=None)
+    # 대안 배점 실험. 예: --weights '{"fromHigh":0,"qsp":33}'
+    # 기본 배점 결과를 덮어쓰지 않도록 --out 을 같이 주는 게 안전하다.
+    ap.add_argument("--weights", default=None)
     args = ap.parse_args(argv)
 
     cfg = MARKETS[args.market]
@@ -134,7 +153,8 @@ def main(argv=None):
 
     with tempfile.TemporaryDirectory() as td:
         print("[2/3] 시점마다 화면 재현 + 채점")
-        snaps = score_all(cache, px, sk, dates, Path(td), page=cfg["page"])
+        snaps = score_all(cache, px, sk, dates, Path(td), page=cfg["page"],
+                          weights=args.weights)
     if not snaps:
         print("[!] 채점된 시점이 없다.", file=sys.stderr)
         return 1
@@ -156,6 +176,12 @@ def main(argv=None):
     # 나간다. 숫자만 맞고 설명이 거짓인 문서가 제일 위험하다.
     notes = [n.format(market=cfg["bench"].replace("코스피", "한국")
                       .replace("S&P500", "미국"), src=cfg["src"]) for n in NOTES]
+    # 배점을 바꿔 돌린 문서가 기본 배점 문서와 똑같이 생기면 나중에 둘을
+    # 구분할 방법이 없다. 바꿨으면 한계 문구 맨 앞에 박는다.
+    if args.weights:
+        notes.insert(0, f"**기본 배점이 아니다** — 화면 배점표를 "
+                        f"`{args.weights}` 로 덮어쓰고 돌렸다. "
+                        f"라이브 화면은 이 배점을 쓰지 않는다.")
     body = [B.render(res, len(snaps), 1, unres, notes), "", "## 어느 축이 가르는가", "",
             "스코어러의 세 축을 따로 떼어 전 종목을 5분위로 나눴다. "
             "가르는 힘이 있다면 1분위와 5분위가 벌어져야 한다.", ""]
@@ -200,6 +226,18 @@ def selftest() -> int:
     # 두 시장이 같은 파일을 가리키면 한쪽이 다른 쪽을 덮는다
     paths = [c[k] for c in MARKETS.values() for k in ("quarters", "prices", "out")]
     t(len(paths) == len(set(paths)), "시장 간 경로가 하나도 안 겹친다")
+
+    print("\n━━ 대안 배점이 채점까지 실제로 전달되는가 ━━")
+    # 조용히 떨어뜨리면 기본 배점으로 돌린 결과가 '고점比를 뺐다' 는 제목을
+    # 달고 나간다. 숫자만 맞고 설명이 거짓인 문서 — 이 저장소가 제일 경계하는 것.
+    w = '{"fromHigh":0,"qsp":33}'
+    c = _snap_cmd("us", "t.json", "o", "x.json", w)
+    t("--weights" in c and c[c.index("--weights") + 1] == w,
+      "배점을 주면 명령줄에 그대로 실린다")
+    t("--weights" not in _snap_cmd("us", "t.json", "o", "x.json"),
+      "안 주면 붙지 않는다(화면 기본 배점)")
+    t(_snap_cmd("us", "t.json", "o", "x.json")[2] == "us",
+      "시장 인자는 그대로 간다")
 
     print("\n━━ 한계 문구에 시장이 박히는가 ━━")
     # 안 박히면 미국 보고서가 '한국 시장 하나다' 로 나간다. 숫자만 맞고

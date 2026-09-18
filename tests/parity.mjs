@@ -107,6 +107,26 @@ console.log('\n━━ 문턱값 상수(GATE)는 두 시장이 같아야 한다 �
   if (!same) { console.log('    KR ▸ ' + a); console.log('    US ▸ ' + b); }
 }
 
+console.log('\n━━ 배점표(W)는 두 시장이 같아야 한다 ━━');
+{
+  // 한쪽 배점만 바꾸면 같은 종목이 시장에 따라 다른 순위로 나온다. GATE 와
+  // 같은 이유로 여기서 막는다. 백테스트가 대안 배점을 실험할 때는 이 표를
+  // 런타임에 덮어쓰지, 파일을 고치지 않는다 — 고쳤다면 여기서 걸려야 한다.
+  const g = s => { const m = s.match(/const W = \{([\s\S]*?)\};/); return m ? strip(m[1]) : null; };
+  const a = g(KR), b = g(US);
+  t(!!a && !!b, 'W 배점표 양쪽에 존재');
+  const same = a === b;
+  t(same, 'W 값 동일');
+  if (!same) { console.log('    KR ▸ ' + a); console.log('    US ▸ ' + b); }
+  // 결측 대체값이 배점에서 유도되는지. 상수로 박으면 축을 0 으로 껐을 때
+  // 결측 종목만 공짜 점수를 받아 실험 자체가 거짓이 된다.
+  for (const [label, s2] of [['KR', KR], ['US', US]]) {
+    const sc = strip(fnBody(s2, 'scoreCandidate') || '');
+    t(/W\.fromHigh\/2/.test(sc) && /W\.rs6\/2/.test(sc),
+      `${label} 미반영 축의 결측 대체값이 배점에서 유도된다`);
+  }
+}
+
 console.log('\n━━ 시장별 문구는 달라도, 판정 요소는 양쪽에 다 있어야 한다 ━━');
 for (const [label, s] of [['KR', KR], ['US', US]]) {
   const radar = fnBody(s, 'renderRadar');
