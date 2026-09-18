@@ -28,6 +28,7 @@ from pathlib import Path
 
 import dart
 import est_trend
+import krx
 import naver
 
 OUT = Path(__file__).resolve().parent / "data" / "tree_kr.json"
@@ -970,15 +971,43 @@ def build(limit, min_cap, sleep, log=print, budget=None, stall=0, prev=None):
 
     log("[3/4] 시세")
     price, market = fetch_prices([m["tk"] for m in members], log, budget)
+
+    # 거래대금·시총 — KRX OpenAPI. 하루 2호출(유가증권+코스닥)에 전종목이
+    # 들어오므로 20영업일이면 약 60호출이다. 종목당 호출이 아니라 싸다.
+    #
+    # 키가 없으면 krx 모듈이 조용히 비활성이고 아래가 전부 None 이 된다 —
+    # 지금까지와 같은 상태이고 화면은 null 을 처리한다.
+    liq = {}
+    if krx.enabled():
+        log("  거래대금·시총 (KRX)")
+        try:
+            liq = krx.liquidity(days=20, log=lambda *a: log("   ", *a))
+        except Exception as e:
+            # 유동성은 보조 지표다. 못 받았다고 빌드 전체를 죽이지 않는다.
+            log(f"  [!] KRX 수집 실패({type(e).__name__}: {e}) — 유동성 없이 계속합니다")
+    else:
+        log("  KRX_KEY 없음 — 거래대금·시총 건너뜁니다")
+
     for m in members:
         p = price.get(m["tk"], {})
+        # 티커는 '005930.KS' 이고 KRX 는 '005930' 이다
+        lq = liq.get(m["tk"].split(".")[0], {})
         m.update({
             "rs3": p.get("rs3"), "rs6": p.get("rs6"),
             "gap": p.get("gap"), "gaplvl": p.get("gaplvl"),
             "from_high": p.get("from_high"),
-            # 수급: pykrx 가 KRX 계정을 요구하게 되어 미수집. 화면이 null 을 처리한다.
+            # 투자자별 수급: KRX OpenAPI 카탈로그에 그 API 가 없다(2026-09-18
+            # 구독 목록으로 확인). 이름을 여덟 번 찍어 전부 404 였고 원인이
+            # 작명이 아니었다. 필요하면 네이버 등 다른 경로여야 한다.
+            # 화면은 null 을 처리하므로 지금까지와 같다.
             "foreign_net": None, "inst_net": None, "foreign_pct": None,
             "supply": None,
+            # 유동성 — 하루 수억 원대면 분석 결과와 무관하게 진입·청산 자체가
+            # 비용이다. trdval_days 를 같이 내보낸다: 20일 요청에 3일뿐인
+            # 평균은 믿을 게 못 되고, 그 사실을 화면이 알아야 한다.
+            "trdval_avg": lq.get("trdval_avg"),
+            "trdval_days": lq.get("trdval_days"),
+            "mktcap": lq.get("mktcap"),
             # 화면의 '실적 D-7 이내' 경고가 쓰는 값. 실적일을 못 받으면 None.
             "d_until": days_until(m.get("next_earn")),
             # ir 은 여기서 만들지 않는다. 예전에는 yfinance 의 last_earn 으로
@@ -1211,7 +1240,8 @@ def selftest():
          "pe": 12.3, "fpe": None, "peg": None, "est30": 4.2, "est90": 9.1,
          "rs3": 4.0, "rs6": -8.0, "gap": 5.0, "gaplvl": "M", "from_high": -14.0,
          "foreign_net": None, "inst_net": None, "foreign_pct": None,
-         "supply": None, "d_until": None, "ir": None},
+         "supply": None, "trdval_avg": 337362116653, "trdval_days": 20,
+         "mktcap": 1476185348520000, "d_until": None, "ir": None},
         {"tk": "000660.KS", "nm": "SK하이닉스", "sector": "Technology",
          "industry": "Semiconductors", "rev": 20.0, "op": 15.0, "spread": -5.0,
          "q_rev": None, "q_op": None, "q_spread": None, "accel": None,
@@ -1220,7 +1250,8 @@ def selftest():
          "pe": None, "fpe": None, "peg": None, "est30": None, "est90": None,
          "rs3": None, "rs6": None, "gap": None, "gaplvl": None,
          "from_high": None, "foreign_net": None, "inst_net": None,
-         "foreign_pct": None, "supply": None, "d_until": None, "ir": None},
+         "foreign_pct": None, "supply": None, "trdval_avg": None,
+         "trdval_days": None, "mktcap": None, "d_until": None, "ir": None},
     ]
     data = assemble([dict(m) for m in members],
                     {"vix": 15.2, "vix_state": "안정", "spy3": 3.1, "spy6": 7.4},
@@ -1238,7 +1269,8 @@ def selftest():
     need = {"tk", "nm", "spread", "rev", "op", "q_rev", "q_op", "q_spread",
             "accel", "rs3", "rs6", "gap", "gaplvl", "ir", "q_note", "q_approx",
             "pe", "fpe", "peg", "from_high", "foreign_net", "inst_net",
-            "foreign_pct", "supply", "d_until"}
+            "foreign_pct", "supply", "trdval_avg", "trdval_days", "mktcap",
+            "d_until"}
     missing = need - set(data["subs"][0]["members"][0])
     check(not missing, f"member 필드 완비 (누락 {missing or '없음'})")
     check("sector" not in data["subs"][0]["members"][0], "내부 필드 제거")
