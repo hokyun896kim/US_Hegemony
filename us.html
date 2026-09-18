@@ -514,6 +514,13 @@ h1+.sub,h1~.sub:first-of-type{color:var(--txt2)}
   background:var(--panel2);border:1px solid var(--line);border-radius:2px;padding:0 5px;margin-left:2px}
 .hd-warn{color:var(--red);font-weight:700}
 
+/* 검증 상태 — 점수를 읽기 전에 먼저 봐야 하는 것 */
+.gi-verify{margin:0 0 14px;background:var(--panel3);border:1px solid var(--line);
+  border-left:3px solid #a8532a;border-radius:2px;padding:11px 13px;
+  font-size:12.5px;line-height:1.75;color:var(--txt2)}
+.gi-verify b{color:var(--txt)}
+.gi-verify .num{color:#a8532a;font-weight:700}
+
 /* 갱신 주기 설명 */
 .gi-fresh{margin-top:12px;background:var(--panel3);border:1px solid var(--line);
   border-left:3px solid var(--rule);border-radius:2px;padding:11px 13px;
@@ -544,6 +551,7 @@ h1+.sub,h1~.sub:first-of-type{color:var(--txt2)}
 <details class="gi" id="giBox">
 <summary class="gi-sum">📖 이 화면 읽는 법 <span class="gi-hint">· 30초면 충분합니다</span></summary>
 <div class="gi-body">
+<div class="gi-verify">🔬 <b>먼저 — 이 점수는 우위가 확인되지 않았습니다.</b><br>2022~2026 <b>한국</b> 유니버스 790종목으로 51개 시점을 되돌려 검증했습니다. TOP5 의 지수 대비 중앙 초과수익은 <span class="num">6개월 +0.12p · 3개월 −1.69p</span> — 유니버스 전체와 사실상 같거나 조금 낮았습니다. <b>미국판은 같은 스코어러를 쓰므로 이 결과가 여기에도 해당합니다 — 다만 미국 시장에서 따로 검증한 것은 아직 없습니다.</b><br><b>점수는 후보를 좁힌 필터일 뿐, 좋은 종목이라는 증거가 아닙니다.</b> 88점이 72점보다 낫다는 근거는 아직 없습니다. 반대로 "틀렸다"고 단정할 수도 없습니다 — 유효 시점이 8.5개뿐이고(겹치는 창 보정) 생존 편향이 있습니다.<br>한국 데이터에서 <b>분기TTM 스프레드</b>는 높은 분위일수록 성과가 나았고, <b>52주 고점比는 부호가 거꾸로</b>였습니다 — 깊게 눌린 쪽이 더 나빴는데 화면은 그쪽에 점수를 줍니다. 가설이라 배점은 아직 안 고쳤습니다.</div>
 <div class="gi-row"><div class="n">1</div><div class="t"><div class="h">헤게모니 스프레드 = 영업이익 증가율 − 매출 증가율</div><div class="d">매출이 10% 늘 때 이익이 30% 늘면 스프레드 +20p. <b>양수면 이익이 매출보다 빨리 느는 것</b> — 가격결정력·규모의 경제가 작동 중이라는 신호입니다. 이 숫자 하나로 산업과 종목을 줄 세웁니다.</div></div></div>
 <div class="gi-row"><div class="n">2</div><div class="t"><div class="h">가속 = 분기가 연간보다 강해짐</div><div class="d">연간은 이미 지나간 1년, <b>분기 TTM은 최근 1년</b>입니다. 분기가 더 높으면 <b>지금 막 붙기 시작한 것</b> — 시장이 아직 모를 때 발견하는 자리입니다.</div></div></div>
 <div class="gi-row"><div class="n">3</div><div class="t"><div class="h">🎯 선취매 레이더부터 보세요 (맨 위)</div><div class="d">가속 탭에는 <b>흑자전환 착시</b>(전년 이익이 바닥이라 비율만 폭발)와 <b>허수 가속</b>(아직 적자인데 덜 나빠진 것)이 섞여 있습니다. 레이더가 그걸 걷어내고 <b>주가가 아직 안 움직인 것</b>만 남깁니다. 카드마다 <b>근거</b>와 <b>조심할 점</b>이 한 줄씩 붙습니다.</div></div></div>

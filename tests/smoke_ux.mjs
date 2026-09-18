@@ -33,6 +33,19 @@ for (const [file,dataFile,mk,otherHref] of [
   t(gi && gi.open, '인라인 설명이 기본 펼침');
   t(gi && gi.textContent.includes('헤게모니 스프레드'), '인라인 설명에 핵심 지표 설명 있음');
   t(gi && gi.textContent.includes('매수·매도 신호가 아닙니다'), '인라인 설명에 면책 있음');
+  // 검증 결과는 GPT 지침에만 있었고 화면에는 없었다 — 사용자는 88점을 보면서
+  // 아무 경고도 못 받았다. 이 블록이 빠지면 그 상태로 돌아간다.
+  {
+    const v = d.querySelector('.gi-verify');
+    t(!!v, '화면에 검증 상태 블록이 있다');
+    t(v && v.textContent.includes('우위가 확인되지 않았습니다'), '우위 없음을 명시');
+    t(v && v.textContent.includes('+0.12p'), '실측 숫자를 적는다 (말로만 얼버무리지 않음)');
+    t(v && v.textContent.includes('증거가 아닙니다'), '점수는 필터일 뿐임을 명시');
+    t(v && v.textContent.includes('52주 고점比'), '부호가 거꾸로인 축을 밝힌다');
+    // 설명 1번 뒤에 두면 순서대로 읽는 사람에게는 늦다 — GPT 지침의 V0 와 같은 실수다.
+    const first = d.querySelector('#giBox .gi-body > *');
+    t(first && first.classList.contains('gi-verify'), '설명 맨 앞에 온다 (뒤에 묻히지 않음)');
+  }
   // 3) 전체 설명서는 버튼으로 열린다
   w.openGuide();
   t(d.getElementById('guideModal').classList.contains('show'), '버튼으로는 사용설명서 열림');
