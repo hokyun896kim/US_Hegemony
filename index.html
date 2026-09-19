@@ -541,6 +541,37 @@ h1+.sub,h1~.sub:first-of-type{color:var(--txt2)}
 .hd-reload.spin{animation:hdspin .6s linear}
 @keyframes hdspin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 @media print{.hd-clock,.hd-reload{display:none}}
+
+/* ===== 모바일 — 실측(tests/mobile.mjs)으로 잡은 것만 고친다 =====
+   추측으로 CSS 를 만지지 않는다. 아래는 전부 크로미움으로 320~430px 를
+   실제로 렌더해 '화면 밖으로 나갔다' 고 찍힌 것들이다.
+
+   넓은 표(#sigList·#accList·.drill.sub-d)는 손대지 않는다. 열을 다 보여주려고
+   min-width 를 주고 그 안에서 가로 스크롤시키는 의도된 설계다. */
+@media (max-width:640px){
+  /* TOP5 카드 머리줄 — 순위·종목명·권역배지·산업배지가 한 줄 flex 라
+     360px 에서도 산업배지가 화면 밖으로 밀려났다. 줄바꿈을 허용한다. */
+  .t5-row1{flex-wrap:wrap;row-gap:5px}
+  .t5-row1>span:nth-child(2){min-width:0;flex:1 1 auto}   /* 종목명이 줄어들 수 있게 */
+  .t5-sec{margin-left:0}                                   /* 오른쪽 끝으로 밀지 않는다 */
+  .t5-rel{white-space:normal}
+
+  /* 트리 막대 — 1fr 은 minmax(auto,1fr) 이라 내용의 최소폭이 줄을 넓힌다.
+     minmax(0,1fr) 로 바꿔야 이름이 줄어들며 줄이 화면에 맞는다. */
+  .bar{grid-template-columns:34px minmax(0,1fr) 104px 58px;gap:8px;padding:13px 11px}
+  .bar.sub{grid-template-columns:30px minmax(0,1fr) 96px 54px;gap:7px;padding:12px 10px}
+  .bar .nm,.bar .ko{min-width:0;overflow:hidden;text-overflow:ellipsis}
+
+  /* 팝업 — 좌우 20px 씩 40px 을 여백으로 버리면 320px 폰에서 본문이 280px 만
+     남는다. 팝업 안의 입력칸·표가 먼저 깨지는 원인이다. */
+  .modal-bg{padding:12px 10px}
+  .modal{border-radius:14px}
+
+  /* 트레이드 카드 안쪽 — 폰에서 입력칸 2열, 결과 3열은 너무 좁다.
+     .tc-2col·.tc-news-grid 는 이미 520px 에서 1열로 떨어지는데 이 둘만 빠져 있었다. */
+  .tc-inputs{grid-template-columns:1fr}
+  .tc-out{grid-template-columns:1fr 1fr;gap:7px}
+}
 </style></head><body><div class="wrap">
 <div class="kicker" style="display:flex;align-items:center;gap:10px;justify-content:space-between"><span>도토리 · KR Edition</span><a class="mkt-switch" href="./us.html">🇺🇸 미국판 →</a></div>
 <h1>한국 헤게모니 트리 <span style="font-size:.5em;color:var(--mut);-webkit-text-fill-color:var(--mut)">v1.3</span></h1>

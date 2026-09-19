@@ -107,6 +107,32 @@ console.log('\n━━ 문턱값 상수(GATE)는 두 시장이 같아야 한다 �
   if (!same) { console.log('    KR ▸ ' + a); console.log('    US ▸ ' + b); }
 }
 
+console.log('\n━━ 두 화면의 CSS 는 같아야 한다 ━━');
+{
+  // CSS 530줄이 두 파일에 그대로 복제돼 있다. 공통 파일로 빼는 게 맞지만
+  // 지금은 복제 상태이고, 그러면 디자인을 손댈 때 한쪽만 고치는 사고가 난다.
+  // 판정 로직에서 이미 한 번 겪은 드리프트다(산업 레이더의 자루 버킷이
+  // US 에만 빠져 있었다). CSS 는 그 방어가 아예 없었다 — 여기서 막는다.
+  const style = src => {
+    const i = src.indexOf('<style>'), j = src.indexOf('</style>');
+    return i < 0 ? null : src.slice(i + 7, j);
+  };
+  const a = style(KR), b = style(US);
+  t(!!a && !!b, '양쪽에 <style> 블록이 있다');
+  // 시장별로 달라도 되는 것은 명시적으로 허용한다. 지금은 미국판에만 있는
+  // .snap-hint 하나뿐이고, 늘어나면 여기에 이유와 함께 적어야 한다.
+  const ONLY_US = ['.snap-hint'];
+  const norm = css => strip(css).split('\n')
+    .filter(l => l.trim() && !ONLY_US.some(k => l.includes(k)));
+  const na = norm(a), nb = norm(b);
+  const onlyA = na.filter(x => !nb.includes(x));
+  const onlyB = nb.filter(x => !na.includes(x));
+  t(onlyA.length === 0 && onlyB.length === 0,
+    `CSS 동일 (허용된 예외: ${ONLY_US.join(', ')})`);
+  if (onlyA.length) console.log('    KR 에만: ' + onlyA.slice(0, 3).map(x => x.trim().slice(0, 70)).join(' / '));
+  if (onlyB.length) console.log('    US 에만: ' + onlyB.slice(0, 3).map(x => x.trim().slice(0, 70)).join(' / '));
+}
+
 console.log('\n━━ 배점표(W)는 두 시장이 같아야 한다 ━━');
 {
   // 한쪽 배점만 바꾸면 같은 종목이 시장에 따라 다른 순위로 나온다. GATE 와
