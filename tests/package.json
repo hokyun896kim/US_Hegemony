@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "python3 make_fixture.py && node smoke_kr.mjs && node smoke_ux.mjs && node parity.mjs && node qs_parity.mjs && node stale.mjs && node industry.mjs && node ind_checks.mjs && node drill.mjs && node alert.mjs && node freshness.mjs && node candidates.mjs && node market_null.mjs && node snapshot_meta.mjs && node mobile.mjs && node dark.mjs && node webapp.mjs",
+    "test": "python3 make_fixture.py && node smoke_kr.mjs && node smoke_ux.mjs && node parity.mjs && node qs_parity.mjs && node stale.mjs && node industry.mjs && node ind_checks.mjs && node changes_check.mjs && node blind.mjs && node liquidity.mjs && node drill.mjs && node alert.mjs && node freshness.mjs && node candidates.mjs && node market_null.mjs && node snapshot_meta.mjs && node mobile.mjs && node dark.mjs && node webapp.mjs",
     "test:ux": "node smoke_ux.mjs",
     "test:parity": "node parity.mjs",
     "test:qs": "node qs_parity.mjs",
