@@ -279,6 +279,42 @@ def best_op_ttm(cik):
         q=buildq(*collect_tag(cik,t)); r=ttm_yoy(q)
         if r is not None: return r,"세전대체",q[-1][0],latest_q_yoy(q)
     return None,"영익불가",None,None
+def quarter_series(cik, n=8):
+    """화면에 그릴 분기 추이. [[분기말, 매출, 영업이익], ...] 최신이 앞.
+
+    한국판(build_tree_kr.quarter_series)과 같은 모양·같은 뜻이다. TTM 스프레드
+    궤적이 아니라 원값(레벨)인 이유도 같다 — 궤적은 점마다 8분기가 필요하고,
+    레벨은 4분기만 있어도 그려지며 기저효과('전년 이익이 바닥이라 비율만
+    폭발')를 모양으로 보여준다.
+
+    화면의 스프레드와 같은 태그에서 뽑는다. 따로 읽으면 숫자와 그래프가
+    다른 분기를 가리킨다.
+    """
+    if not cik: return None
+    rev=None;be=""
+    for t in REV+["SalesRevenueNet"]:
+        x=buildq(*collect_tag(cik,t))
+        if len(x)>=4 and x[-1][0]>be: rev=x;be=x[-1][0]
+    op=None
+    for t in ["OperatingIncomeLoss"]:
+        x=buildq(*collect_tag(cik,t))
+        if len(x)>=4: op=x;break
+    if not rev or not op: return None
+    R=dict(rev); O=dict(op)
+    # 매출과 영업이익이 같은 분기를 가리켜야 한다. 한쪽만 있는 분기를 그냥
+    # 이어붙이면 그래프의 두 계열이 서로 다른 분기를 보여준다.
+    both=sorted(set(R)&set(O))
+    if len(both)<4: return None
+    return [[e,_sig(R[e]),_sig(O[e])] for e in reversed(both[-n:])]
+def _sig(v,digits=4):
+    """유효숫자 몇 자리만. 모양은 안 바뀌고 파일만 작아진다."""
+    if v is None: return None
+    try: v=float(v)
+    except (TypeError,ValueError): return None
+    if v==0: return 0
+    import math
+    k=digits-1-int(math.floor(math.log10(abs(v))))
+    return round(v,k) if k>0 else int(round(v,k))
 # --- 상대강도 (Yahoo) ---
 def yseries(sym):
     # (종가, 시가, 수정종가). 수익률·고점比는 수정종가로 계산한다 — 원종가는
@@ -347,6 +383,8 @@ for i,t in enumerate(allt):
         for m in r["members"]:
             if m["tk"]==t:
                 m["q_rev"]=qrev;m["q_op"]=qop;m["q_spread"]=qspread;m["q_note"]=qnote;m["q_end"]=qend
+                # 분기 추이 — 트레이드 카드가 그린다(한국판과 같은 모양)
+                m["qs"]=quarter_series(cik)
                 m["lq_rev"]=lq_rev;m["lq_op"]=lq_op
                 m["accel"]=round(qspread-m["spread"],1) if qspread is not None else None
                 m["rs3"]=rs3;m["rs6"]=rs6;m["gap"]=gap;m["gaplvl"]=gaplvl

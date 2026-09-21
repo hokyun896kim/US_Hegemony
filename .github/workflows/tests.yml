@@ -87,10 +87,12 @@ jobs:
           python est_trend.py --selftest
           python dart.py --selftest
           python naver.py --selftest
+          python verify_live.py --selftest
+          python review_build.py --selftest
           # build_data.py 는 첫 줄부터 네트워크를 타서 자가진단을 못 붙인다.
           # 최소한 문법은 본다 — 이게 없어서 파이썬만 고친 커밋에 CI 가
           # 아예 안 돌던 적이 있다.
-          python -m py_compile build_data.py refresh_prices.py build_tree_kr.py est_trend.py dart.py naver.py backtest_fetch.py backtest_replay.py backtest_report.py backtest_prices.py backtest_run.py backtest_factors.py backtest_universe.py krx.py sec.py backtest_fetch_us.py
+          python -m py_compile build_data.py refresh_prices.py build_tree_kr.py est_trend.py dart.py naver.py backtest_fetch.py backtest_replay.py backtest_report.py backtest_prices.py backtest_run.py backtest_factors.py backtest_universe.py krx.py sec.py backtest_fetch_us.py verify_live.py review_build.py
 
       # 데이터 파이프라인은 워크플로의 셸 한 줄이 틀려도 조용히 결과를 버린다.
       # 실제로 그런 일이 두 번 있었다(push 경합, git add pathspec) — 다만 그
@@ -122,6 +124,42 @@ jobs:
                   print(f"  FAIL {kind}: 종목이 0"); bad += 1; continue
               print(f"  ok   {kind}: {d['date']} · {d['n_members']}종목 · "
                     f"TOP5 {len(d['top5'])} · 선취매 {len(d['radar'])}")
+          sys.exit(bad)
+          PY
+
+      # 복기도 박제와 같은 처지다 — continue-on-error 라 깨져도 회차는 멀쩡히
+      # 끝나고 파일만 안 생긴다. 게다가 복기 스텝은 커밋 모드에서만 돌아서
+      # 개발 브랜치 스모크 빌드에서는 한 번도 안 밟힌다(실측: run #105 에서
+      # skipped). 그래서 매 CI 에서 실제로 돌려본다.
+      #
+      # 여기서는 --prices 로 얼린 가격 파일을 쓴다. 야후를 타면 CI 가 남의
+      # 서버 사정으로 빨개지고, 그러면 아무도 안 본다. 수집 경로 자체는
+      # review_build.py 의 자가진단이 yseries 를 가짜로 바꿔 확인한다.
+      - name: 박제 복기 스크립트 동작 확인
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, subprocess, sys
+          bad = 0
+          for kind, bt in (("kr", "kr"), ("us", "us")):
+              px = f"data/backtest/{bt}-prices.json"
+              if not pathlib.Path(px).exists():
+                  print(f"  ok   {kind}: 가격 파일이 없어 건너뜀 ({px})"); continue
+              out = pathlib.Path(f"/tmp/review-{kind}.json")
+              r = subprocess.run([sys.executable, "review_build.py", "--market", kind,
+                                  "--prices", px, "--out", str(out)],
+                                 capture_output=True, text=True)
+              if r.returncode:
+                  print(f"  FAIL {kind}: 죽었다 rc={r.returncode}\n{r.stderr}"); bad += 1; continue
+              if not out.exists():
+                  # 박제가 하나도 없으면 안 만드는 게 맞다 — 그건 고장이 아니다.
+                  print(f"  ok   {kind}: 복기할 박제 없음 ({r.stderr.strip()})"); continue
+              d = json.loads(out.read_text(encoding="utf-8"))
+              need = {"kind", "built", "spans", "rows"}
+              miss = need - set(d)
+              if miss:
+                  print(f"  FAIL {kind}: 키 누락 {miss}"); bad += 1; continue
+              picks = sum(len(x["picks"]) for x in d["rows"])
+              print(f"  ok   {kind}: {len(d['rows'])}회차 · 종목 {picks} · 기준 {d['built']}")
           sys.exit(bad)
           PY
 

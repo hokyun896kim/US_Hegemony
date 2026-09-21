@@ -147,6 +147,30 @@ jobs:
           npm install --no-audit --no-fund --prefix tests
           node tests/snapshot.mjs us
 
+      # ── 박제 복기 ──────────────────────────────────────────────────
+      # 박제한 TOP5 가 그 뒤로 어떻게 됐는지를 화면이 읽을 파일로 만든다.
+      # 박제 바로 뒤에 두는 이유는 이번 회차까지 포함해 다시 계산하기 위해서다.
+      #
+      # 가격은 얼린 백테스트 파일이 아니라 야후에서 새로 받는다 — 얼린 파일을
+      # 쓰면 기준일이 고정돼 회차가 쌓여도 경과 칸이 영원히 안 찬다.
+      # TOP5 에 든 종목만 받으므로 회차당 수십 건이다.
+      - name: 박제 복기
+        if: github.event.inputs.commit != 'false'
+        # 복기에 실패해도 회차를 잃지 않는다 — 데이터 커밋이 본체다.
+        continue-on-error: true
+        # continue-on-error 라 실패해도 회차를 잃지 않는데, 그래서 조용히
+        # 실패한다. 야후 수집 경로는 커밋 모드에서만 도는지라 개발 브랜치
+        # 스모크에서는 한 번도 안 밟히고, 첫 실행이 곧 첫 검증이다.
+        # 결과를 실행 요약에 적어 실패가 로그 속에 묻히지 않게 한다.
+        run: |
+          if out=$(python3 review_build.py --market us 2>&1); then
+            echo "### 📜 박제 복기" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### ⚠️ 박제 복기 실패" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          printf '```\n%s\n```\n' "$out" >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' "$out"
+
       - name: Commit
         if: github.event.inputs.commit != 'false'
         run: |
@@ -156,6 +180,7 @@ jobs:
           # 박제는 실패할 수 있다(continue-on-error). 없는 경로를 그냥 add
           # 하면 pathspec 오류로 스텝이 죽는다 — 아래 sec_tickers 와 같은 이유.
           [ -d data/snapshots ] && git add data/snapshots || true
+          [ -f data/review-us.json ] && git add data/review-us.json || true
           # 티커맵 캐시는 전체 빌드가 성공한 회차에만 생긴다. 없을 때 그냥
           # git add 하면 pathspec 오류로 스텝이 죽고 — 실측으로 run #22 에서
           # 가격 갱신을 다 해놓고 커밋을 못 했다 — 데이터가 통째로 버려진다.

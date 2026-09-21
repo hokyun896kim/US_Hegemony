@@ -261,6 +261,30 @@ jobs:
           npm install --no-audit --no-fund --prefix tests
           node tests/snapshot.mjs kr
 
+      # ── 박제 복기 ──────────────────────────────────────────────────
+      # 박제한 TOP5 가 그 뒤로 어떻게 됐는지를 화면이 읽을 파일로 만든다.
+      # 박제 바로 뒤에 두는 이유는 이번 회차까지 포함해 다시 계산하기 위해서다.
+      #
+      # 가격은 얼린 백테스트 파일이 아니라 야후에서 새로 받는다 — 얼린 파일을
+      # 쓰면 기준일이 고정돼 회차가 쌓여도 경과 칸이 영원히 안 찬다.
+      # TOP5 에 든 종목만 받으므로 회차당 수십 건이다.
+      - name: 박제 복기
+        if: steps.mode.outputs.commit == 'true' && inputs.probe == '' && steps.need.outputs.run == 'true'
+        # 복기에 실패해도 회차를 잃지 않는다 — 데이터 커밋이 본체다.
+        continue-on-error: true
+        # continue-on-error 라 실패해도 회차를 잃지 않는데, 그래서 조용히
+        # 실패한다. 야후 수집 경로는 커밋 모드에서만 도는지라 개발 브랜치
+        # 스모크에서는 한 번도 안 밟히고, 첫 실행이 곧 첫 검증이다.
+        # 결과를 실행 요약에 적어 실패가 로그 속에 묻히지 않게 한다.
+        run: |
+          if out=$(python3 review_build.py --market kr 2>&1); then
+            echo "### 📜 박제 복기" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### ⚠️ 박제 복기 실패" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          printf '```\n%s\n```\n' "$out" >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' "$out"
+
       - name: Commit
         if: steps.mode.outputs.commit == 'true' && inputs.probe == '' && steps.need.outputs.run == 'true'
         run: |
@@ -271,6 +295,7 @@ jobs:
           # 없는 경로를 그냥 add 하면 pathspec 오류로 스텝이 죽어 데이터를
           # 통째로 버린다 — 미국판이 실측으로 겪은 사고다(run #22).
           [ -d data/snapshots ] && git add data/snapshots || true
+          [ -f data/review-kr.json ] && git add data/review-kr.json || true
           # DART 고유번호 캐시도 남긴다 — 매 회차 다시 받을 이유가 없다.
           [ -f data/dart_corp.json ] && git add data/dart_corp.json || true
           git diff --staged --quiet && echo "변경 없음" && exit 0
