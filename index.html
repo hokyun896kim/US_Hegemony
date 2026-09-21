@@ -196,6 +196,10 @@ h1{font-size:clamp(24px,5.6vw,42px);font-weight:800;line-height:1.05;margin:8px 
 .ri-obs{display:inline-block;font-size:10.5px;font-weight:700;color:var(--mut);border:1px solid var(--line);border-radius:4px;padding:0 5px;margin-left:6px;vertical-align:1px}
 .ri-miss{font-size:11px;color:var(--mut);margin-top:4px}
 .ri-side{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+/* 산업을 펼치면 맨 위에 검증 복사. .bar 격자에 열을 더하는 방법도 있지만
+   320px 에서 이름 칸이 38px 까지 줄어 뭉개진다(실측) — 그래서 안쪽에 둔다.
+   표가 가로로 스크롤되므로 왼쪽에 고정해 밀려나지 않게 한다. */
+.sd-act{position:sticky;left:0;padding:8px 2px 6px}
 .ri-copy{font-size:13px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:2px 8px;cursor:pointer;line-height:1.4}
 .ri-copy:hover{border-color:var(--gold)}
 .ind-guide-btn{font-size:11px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 8px;cursor:pointer;color:var(--txt2);margin-left:4px}
@@ -1145,7 +1149,7 @@ function subBar(s,i){const f=fb(s.med,MXB),nm=s.ko||s.desc;
   <div class="nm">${nm} <span class="x">${s.desc} · ${s.n}개</span></div>
   <div class="track"><div class="center"></div><div class="fill ${f.p?'p':'n'}" data-w="${f.w}"></div></div>
   <div><div class="val ${f.p?'p':'n'}">${s.med>0?'+':''}${s.med}p</div><div class="cnt">${s.n}개</div></div>
- </div><div class="drill sub-d" id="sd_${s.sic}">${memberRows(s.members)}</div>`;}
+ </div><div class="drill sub-d" id="sd_${s.sic}"><div class="sd-act"><button class="ri-copy" title="이 산업의 집계·구성 종목·산업별 점검표를 한 번에 복사합니다" onclick="event.stopPropagation();copyIndSnapSub(${D.subs.indexOf(s)},this)">${SUB_COPY_LABEL}</button></div>${memberRows(s.members)}</div>`;}
 function renderTree(){const sl=document.getElementById('secList');sl.innerHTML='';
  D.sectors.forEach((sec,i)=>{const f=fb(sec.med,MXS);const subs=D.subs.filter(x=>x.gics===sec.gics);
   const row=document.createElement('div');
@@ -2011,6 +2015,36 @@ function gotoIndustry(ko){
 // 수요 사이클이 공유되지 않는 회사들의 평균이라 아무 뜻이 없고,
 // 자루일수록 구성원이 많아 통과 문턱만 쉽게 넘는다.
 // 한국은 야후 분류가 빠진 종목이 통째로 'Unknown' 한 칸에 들어간다(21종목).
+// 산업 집계 — 레이더 안에 있던 계산을 꺼낸 것이다. 트리·랭킹에서 아무 산업
+// 줄이나 눌러도 같은 숫자가 나와야 하고, 두 군데서 따로 계산하면 갈라진다.
+// 기저효과 종목을 빼고 중앙값을 내는 이유는 renderRadar 쪽 주석에 있다.
+function indAgg(s){
+ const clean=s.members.filter(m=>m.q_spread!=null && spreadQuality(m)!=='base'
+                              && (m.accel==null||Math.abs(m.accel)<=150));
+ return {s, clean, hits:s.members.filter(realAccel),
+   acc:medOf(clean.map(m=>m.accel)),
+   qsp:medOf(clean.map(m=>m.q_spread)),
+   rs :medOf(clean.map(m=>m.rs6))};
+}
+// 본후보: 네 조건을 다 통과한 산업
+const indPass=x=>x.hits.length>=1 && x.acc>0 && x.qsp>0 && x.rs!=null&&x.rs<10;
+// 어떤 조건이 모자랐는지 — 관찰 줄에 그대로 적는다. 조건을 몰래 완화하는 게
+// 아니라, 못 채운 조건을 밝힌 채로 보여주는 것이다.
+// null 을 따로 받는 이유: 레이더는 acc·qsp 가 있는 산업만 넘기지만, 트리·랭킹은
+// 아무 산업이나 넘긴다. JS 에서 null<=0 은 true 라 그냥 두면 '가속 중앙 nullp'
+// 라고 적힌다.
+function indMiss(x){const w=[];
+ if(x.hits.length<1) w.push('통과 종목 0');
+ if(x.acc==null)     w.push('가속 중앙 확인 불가');
+ else if(x.acc<=0)   w.push(`가속 중앙 ${x.acc}p`);
+ if(x.qsp==null)     w.push('분기 중앙 확인 불가');
+ else if(x.qsp<=0)   w.push(`분기 중앙 ${x.qsp}p`);
+ if(x.rs==null)      w.push('RS 확인 불가');
+ else if(x.rs>=10)   w.push(`RS6M 중앙 +${x.rs}% — 이미 반쯤 깨어남`);
+ return w;}
+// 레이더 목록 밖의 산업에도 같은 판정을 붙여 넘긴다. 안 붙이면 스냅샷이
+// x.obs 를 못 읽어 전부 '본후보' 라고 적는다 — 그건 거짓말이다.
+function indAggJudged(s){const x=indAgg(s); x.miss=indMiss(x); x.obs=x.miss.length>0; return x;}
 const isBag=s=>{const d=(s.desc||'').trim();
   return !d || d==='Unknown' || s.gics==='Unknown';};
 function renderRadar(){
@@ -2063,25 +2097,8 @@ function renderRadar(){
  // 중앙값을 전 종목으로 내면 흑자전환 착시가 그대로 들어와(항공 +95p 같은 값)
  // 종목 쪽에서 걷어낸 노이즈가 산업 쪽으로 되살아난다. 그래서 기저효과 종목을
  // 뺀 '깨끗한' 구성원만으로 계산하고, 실제 후보를 최소 1개는 품은 산업만 남긴다.
- const indAll=D.subs.map(s=>{
-     const clean=s.members.filter(m=>m.q_spread!=null && spreadQuality(m)!=='base'
-                                  && (m.accel==null||Math.abs(m.accel)<=150));
-     return {s, clean, hits:s.members.filter(realAccel),
-       acc:medOf(clean.map(m=>m.accel)),
-       qsp:medOf(clean.map(m=>m.q_spread)),
-       rs :medOf(clean.map(m=>m.rs6))};
-   }).filter(x=>!isBag(x.s) && x.clean.length>=2 && x.acc!=null && x.qsp!=null);
- // 본후보: 네 조건을 다 통과한 산업
- const indPass=x=>x.hits.length>=1 && x.acc>0 && x.qsp>0 && x.rs!=null&&x.rs<10;
- // 어떤 조건이 모자랐는지 — 관찰 줄에 그대로 적는다. 조건을 몰래 완화하는 게
- // 아니라, 못 채운 조건을 밝힌 채로 보여주는 것이다.
- const indMiss=x=>{const w=[];
-   if(x.hits.length<1) w.push('통과 종목 0');
-   if(x.acc<=0)        w.push(`가속 중앙 ${x.acc}p`);
-   if(x.qsp<=0)        w.push(`분기 중앙 ${x.qsp}p`);
-   if(x.rs==null)      w.push('RS 확인 불가');
-   else if(x.rs>=10)   w.push(`RS6M 중앙 +${x.rs}% — 이미 반쯤 깨어남`);
-   return w;};
+ const indAll=D.subs.map(indAgg)
+   .filter(x=>!isBag(x.s) && x.clean.length>=2 && x.acc!=null && x.qsp!=null);
  const qual=indAll.filter(indPass).sort((a,b)=>b.acc-a.acc);
  // 본후보가 3개가 안 되면 '아깝게 떨어진' 산업으로 채운다 — 미충족 조건이
  // 적은 순, 같으면 가속 순. 왜 관찰인지는 줄에 표시된다.
@@ -2581,7 +2598,7 @@ function indSnapshot(x){
 - 가속 중앙 ${f(x.acc)} · 분기TTM 스프레드 중앙 ${f(x.qsp)} · RS6M 중앙 ${f(x.rs,'%')}
 - 전 조건 통과 종목 ${x.hits.length}개${x.hits.length?` (${x.hits.map(m=>m.tk).join(', ')})`:''}
 - 스크리너 판정: ${x.obs?`관찰 (미충족: ${x.miss.join(' · ')})`:'본후보 — 가속>0 · 분기>0 · RS6M<+10% · 통과종목≥1 모두 충족'}
-${prelim?`- 구성 중 ${prelim}종목은 최신 분기가 잠정실적(확정에서 바뀔 수 있음)\n`:''}
+${prelim?`- 구성 중 ${prelim}종목은 최신 분기가 잠정실적(확정에서 바뀔 수 있음)\n`:''}${x.clean.length<2?`- ⚠ **표본이 ${x.clean.length}종목이다 — 중앙값이라고 부를 수 없다.** 이 줄의 숫자로 '산업'을 말하지 마라. 아래 구성 종목을 개별 회사로 읽어라.\n`:''}${isBag(x.s)?`- ⚠ **분류 미상(자루)이다.** 산업을 못 받은 종목을 한데 모아둔 것이라 공통 동인이 없다. 여기서는 '산업 가속'이라는 말 자체가 성립하지 않는다.\n`:''}
 [구성 종목 — 분기TTM 스프레드 순 상위 ${mem.length}]
 ${mem.map(m=>`- ${m.tk} ${m.nm} | 연간 ${f(m.spread)} | 분기 ${f(m.q_spread)} | 가속 ${f(m.accel)} | 매출${m.q_rev!=null?'분기':'연간'} ${f(revClass(m).r,'%')} | RS6M ${f(m.rs6,'%')} | 고점比 ${f(m.from_high,'%')} | PER ${peShow(m)}${flags(m)}`).join('\n')}
 
@@ -2592,16 +2609,25 @@ ${mem.map(m=>`- ${m.tk} ${m.nm} | 연간 ${f(m.spread)} | 분기 ${f(m.q_spread)
 
 ${indCheck(x)}`;
 }
-function copyIndSnap(i,btn){
- const x=LAST_INDS[i]; if(!x) return;
- const txt=indSnapshot(x);
+function copySnapText(txt,btn,restore){
  const prev=document.getElementById('promptPreview');
  if(prev){prev.textContent=txt;prev.classList.add('show');}
- const done=()=>{btn.textContent='✅';setTimeout(()=>{btn.textContent='📋';},2000);};
+ const done=()=>{btn.textContent='✅ 복사됨';setTimeout(()=>{btn.textContent=restore;},2000);};
  if(navigator.clipboard&&navigator.clipboard.writeText){
    navigator.clipboard.writeText(txt).then(done).catch(()=>{fallbackCopy(txt);done();});
  }else{fallbackCopy(txt);done();}
 }
+function copyIndSnap(i,btn){
+ const x=LAST_INDS[i]; if(!x) return;
+ copySnapText(indSnapshot(x),btn,'📋');
+}
+// 트리·랭킹에서 산업을 펼치면 나오는 버튼. 레이더 목록에 없는 산업도 눌리므로
+// 판정을 여기서 붙여 넘긴다(indAggJudged).
+function copyIndSnapSub(si,btn){
+ const s=D.subs[si]; if(!s) return;
+ copySnapText(indSnapshot(indAggJudged(s)),btn,SUB_COPY_LABEL);
+}
+const SUB_COPY_LABEL='📋 산업 스냅샷 복사';
 function copyIndGuide(btn){
  const done=()=>{btn.textContent='✅ 복사됨! 프로젝트룸의 Instructions(지침) 칸에 붙여넣으세요';btn.classList.add('done');setTimeout(()=>{btn.textContent='🏭 산업 검증 GPT 지침 복사 — 프로젝트룸에 최초 1회';btn.classList.remove('done');},2600);};
  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(IND_GUIDE).then(done).catch(()=>{fallbackCopy(IND_GUIDE);done();});}

@@ -165,9 +165,16 @@ for (const [label, s] of [['KR', KR], ['US', US]]) {
   t(ac && /staleness\(m\)\.s==='stale'/.test(strip(ac)), `${label} 실적 미반영 종목을 후보에서 제외`);
   t(/STALE\s*=\s*\{/.test(strip(s)), `${label} STALE 문턱 상수 정의`);
   t(/isBag\s*=/.test(strip(s)), `${label} isBag 정의 존재`);
-  // 산업 중앙값은 기저효과 종목을 뺀 구성원으로만 낸다
-  t(/spreadQuality\(m\)!=='base'/.test(strip(radar)), `${label} 산업 중앙값이 기저효과 종목을 제외`);
-  t(/x\.hits\.length>=1/.test(strip(radar)), `${label} 실제 후보 1개 이상인 산업만`);
+  // 산업 중앙값은 기저효과 종목을 뺀 구성원으로만 낸다.
+  // 계산은 renderRadar 밖(indAgg·indPass)으로 나왔다 — 트리·랭킹에서 산업을
+  // 펼쳤을 때도 같은 숫자가 나와야 하기 때문이다. 그래서 renderRadar 본문이
+  // 아니라 그 함수들을 본다. 여기서 renderRadar 를 계속 보면 계산이 어디로
+  // 가든 통과하는 시험이 된다.
+  const agg = fnBody(s, 'indAgg');
+  t(!!agg, `${label} indAgg 정의 존재`);
+  t(agg && /spreadQuality\(m\)!=='base'/.test(strip(agg)), `${label} 산업 중앙값이 기저효과 종목을 제외`);
+  t(/indPass=x=>x\.hits\.length>=1/.test(strip(s)), `${label} 실제 후보 1개 이상인 산업만`);
+  t(/indAll=D\.subs\.map\(indAgg\)/.test(strip(radar)), `${label} 레이더가 그 집계를 그대로 쓴다`);
   // 감춘 개수를 밝힌다 — '조용한 절삭' 금지
   t(/picksAll\.length/.test(strip(radar)), `${label} 상한으로 감춘 개수를 공개`);
   // 축소형 레버리지는 삭제가 아니라 별도 구간으로 — 사라지면 사용자가 이유를 알 수 없다
