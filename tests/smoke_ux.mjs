@@ -90,11 +90,16 @@ for (const [file,dataFile,mk,otherHref] of [
 
   // 5) 웹앱 메타 + 실제 파일 존재
   const need=[['meta[name="apple-mobile-web-app-capable"]','content','yes'],
-              // 라이트 테마로 바꾸면서 상태바 색도 흰색으로 — 매니페스트와 같아야 한다
-              ['meta[name="theme-color"]','content','#ffffff']];
+              // 상태바 색은 '무슨 색인지' 가 아니라 '있고, 매니페스트와 같은지' 가
+              // 불변식이다(바로 위 5-b). 예전엔 여기에 #ffffff 를 박아놨는데
+              // 신문 지면 톤으로 바꾸자마자 낡아서, 테스트가 화면을 막는 게 아니라
+              // 화면을 따라가는 처지가 됐다. 색은 박지 않고 형식만 본다.
+              ['meta[name="theme-color"]','content',null]];
   need.forEach(([sel,attr,val])=>{
     const el=d.querySelector(sel);
-    t(el && (val===null || el.getAttribute(attr)===val), `메타 ${sel}`);
+    const got=el&&el.getAttribute(attr);
+    const ok2 = el && (val===null ? /^#[0-9a-f]{6}$/i.test(got||'') : got===val);
+    t(ok2, `메타 ${sel} (${got})`);
   });
   for(const [sel,attr] of [['link[rel="apple-touch-icon"]','href'],['link[rel="manifest"]','href']]){
     const el=d.querySelector(sel); const p=el&&el.getAttribute(attr);

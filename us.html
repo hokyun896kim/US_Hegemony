@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="미국 증시의 이익 레버리지로 주도 산업과 종목을 찾는 도구">
-<meta name="theme-color" content="#ffffff">
+<meta name="theme-color" content="#faf8f3">
 <!-- 홈 화면에 추가하면 사파리 UI 없이 앱처럼 뜬다 -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -11,6 +11,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-us-192.png">
 <link rel="manifest" href="./app-us.webmanifest">
 <title>US HEGEMONY TREE v1.2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700;900&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css">
 <style>
 :root{--bg:#ffffff;--panel:#ffffff;--panel2:#f2f5f9;--panel3:#f8fafc;--line:#dce2ea;--line2:#b6bfcc;--rule:#1b2a4a;--gold:#1b2a4a;--gold2:#2f4a7a;--txt:#14181f;--txt2:#39414e;--mut:#67717f;--neg:#8a929e;--up:#d02f26;--dn:#1257b0;--grn:#1b2a4a;--red:#a8532a;--warnbg:#fdf5ec;--warnline:#e8d3ba;--okbg:#eef3fa;--okline:#c9d6e8;--on-dark:#ffffff;--chip:#eef2f7;--chip-line:#ccd4de;--badbg:#fbeee9;--badline:#e9cfc2;--badtxt:#7a4b32;--okgrn:#1b6b4a;--okgrnline:#bcd3c6;--amber:#8a6d1f;--amberbg:#f6f3ea;--amberline:#e0d5bb;--track:#e8edf4;--fillp:#5a76ad;--filln:#c3ccd8;--graybg:#eef1f6;--notebg:#fff6e5;--noteline:#f0c880;--notetxt:#7a4f00;--earn:#d99a2b;--radartxt:#7a5f22}
@@ -573,6 +574,64 @@ h1+.sub,h1~.sub:first-of-type{color:var(--txt2)}
   .tc-inputs{grid-template-columns:1fr}
   .tc-out{grid-template-columns:1fr 1fr;gap:7px}
 }
+
+
+/* ===== 신문 지면 톤 =====
+   화면 UI 가 아니라 '인쇄된 지면' 으로 읽히게 한다. 바꾸는 것은 셋이다.
+
+   1. 활자 — 본문과 제목은 명조(Noto Serif KR), 숫자와 조작부는 고딕 유지.
+      금융 지면이 쓰는 구성이다. 표의 수치까지 명조로 돌리면 자간이 들쭉날쭉해
+      세로로 읽히지 않는다. tabular-nums 가 걸린 자리는 전부 고딕으로 둔다.
+   2. 색 — 차가운 회청색(#ffffff·#f2f5f9)에서 따뜻한 신문지색으로. 글자도
+      푸른 먹(#14181f)에서 따뜻한 먹(#1a1815)으로.
+   3. 모서리 — 종이에는 둥근 모서리가 없다. 카드·버튼을 각지게.
+
+   상승=빨강 / 하락=파랑은 건드리지 않는다. */
+:root{
+  --serif:"Noto Serif KR",ui-serif,Georgia,"Apple SD Gothic Neo",serif;
+  --bg:#faf8f3; --panel:#fffefb; --panel2:#f2efe7; --panel3:#f7f4ed;
+  --line:#ddd8cc; --line2:#bdb6a6;
+  --txt:#1a1815; --txt2:#413c34; --mut:#6b6459; --neg:#8d867a;
+  --rule:#1f1d19; --gold:#1f1d19; --gold2:#4a4135;
+  --grn:#1f1d19;
+  --chip:#f0ece2; --chip-line:#cfc8b8;
+  --okbg:#f2efe7; --okline:#d6cfbe;
+  --warnbg:#faf2e3; --warnline:#e3d6b8;
+  --track:#e8e3d7; --fillp:#5a5246; --filln:#c9c2b3;
+  --graybg:#f0ece2;
+  /* 타이밍 B 배지가 11px 라 4.41 로 AA(4.5)에 살짝 못 미쳤다. 한 단계 진하게. */
+  --amber:#6f5714;
+}
+/* 배경의 방사형 그라데이션은 '화면' 의 문법이다. 지면은 평평하다. */
+body{background:var(--bg);font-family:"Pretendard Variable",Pretendard,-apple-system,sans-serif}
+
+/* 제호 — 신문 1면처럼 굵은 명조에 자간을 좁히고, 아래에 굵은선+가는선 이중괘 */
+h1{font-family:var(--serif);font-weight:900;letter-spacing:-.035em;line-height:1.08}
+.hd-rule{border:0;border-top:3px solid var(--rule);margin:10px 0 0;position:relative}
+.hd-rule::after{content:"";position:absolute;left:0;right:0;top:2px;
+  border-top:1px solid var(--rule);opacity:.55}
+
+/* 본문 산문 — 읽는 글은 명조로. 표·숫자·조작부는 고딕 그대로 둔다. */
+.gi-body,.gi-verify,.gi-warn,.gi-fresh,.gi-row .d,.gi-row .h,
+.hint,.radar-note,.radar-sub,.top5-sub,.top5-disc,.coverage-note,
+.foot,.modal-body p,.tc-case,.rc-l,.t5-reasons,.def,
+.src-note,.sub{font-family:var(--serif)}
+.gi-body,.gi-verify{line-height:1.8}
+
+/* 난외 제목(섹션 라벨) — 신문 칼럼 머리처럼 자간을 넓힌 작은 대문자 */
+.lbl{font-family:var(--serif);font-weight:700;letter-spacing:.2em}
+
+/* 숫자는 반드시 고딕 + 등폭. 명조가 섞이면 세로 정렬이 깨진다. */
+.val,.mval,.tr,.th,.bar,.t5-metrics,.rc-m,.ri-m,.tc-badge,.tc-out,
+.sp,.qsp,.acc,.rs,.g1,.gq,.g2,.cnt,.med,.n,
+input,button,select,.search{font-family:"Pretendard Variable",Pretendard,-apple-system,sans-serif}
+
+/* 종이에는 둥근 모서리가 없다 — 카드·패널을 각지게 */
+.rc,.top5-card,.gi,.foot,.modal,.wl-card,.al-row,.tc-case,.coverage-note,
+.bar,.bar.sub,.search,.tabs button,.tc-field input,.wl-add input{border-radius:2px}
+.snap-btn,.wl-add button,.tc-ai-copy,.tc-save,.gi-more,.help-btn-top,
+.mkt-switch,.ir-btn,.tc-open{border-radius:2px}
+.t5-rank{border-radius:2px}
 
 @media (prefers-color-scheme: dark){
 /* 테마 토글 — 시스템 설정을 기본으로 두되 손으로도 바꿀 수 있게.

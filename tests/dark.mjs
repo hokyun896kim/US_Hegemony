@@ -41,9 +41,9 @@ const CHROME = (() => {
 if (!CHROME) { console.log('SKIP: 크로미움 없음'); process.exit(0); }
 const browser = await chromium.launch({ executablePath: CHROME });
 
-for (const page_file of ['index.html', 'us.html']) {
-  console.log(`\n━━━━ ${page_file} ━━━━`);
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: 'dark' });
+for (const [page_file, MODE] of [['index.html','dark'],['index.html','light'],['us.html','dark'],['us.html','light']]) {
+  console.log(`\n━━━━ ${page_file} · ${MODE === 'dark' ? '어둡게' : '밝게'} ━━━━`);
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: MODE });
   const pg = await ctx.newPage();
   await pg.goto(`http://127.0.0.1:${PORT}/${page_file}`, { waitUntil: 'networkidle' });
   await pg.waitForTimeout(700);
@@ -79,14 +79,33 @@ for (const page_file of ['index.html', 'us.html']) {
       return .2126 * f(c.r) + .7152 * f(c.g) + .0722 * f(c.b);
     };
     const ratio = (a, b) => { const [x, y] = a > b ? [a, b] : [b, a]; return (x + .05) / (y + .05); };
+    // 그라데이션 배경도 배경이다. backgroundColor 만 보면 투명으로 읽혀
+    // 그 층을 건너뛰고, 훨씬 위에 있는 어두운 오버레이 위 글자로 계산된다 —
+    // 실제로 .modal 이 linear-gradient 라서 팝업 안 글자가 전부 '대비 1.3'
+    // 으로 찍혔다. 색 정지점들을 평균해 불투명 층으로 친다.
+    const gradColor = el => {
+      const bi = getComputedStyle(el).backgroundImage;
+      if (!bi || bi === 'none' || !/gradient\(/.test(bi)) return null;
+      const cols = (bi.match(/rgba?\([^)]*\)/g) || []).map(rgba).filter(c => c && c.a > 0);
+      if (!cols.length) return null;
+      const n = cols.length;
+      return { r: cols.reduce((a, c) => a + c.r, 0) / n,
+               g: cols.reduce((a, c) => a + c.g, 0) / n,
+               b: cols.reduce((a, c) => a + c.b, 0) / n,
+               a: cols.reduce((a, c) => a + c.a, 0) / n };
+    };
     // 요소가 실제로 깔고 앉은 색 — 반투명이면 부모 위에 차례로 합성한다
     const bgColorOf = el => {
       const stack = [];
       for (let e = el; e; e = e.parentElement) {
+        const g = gradColor(e);
         const c = rgba(getComputedStyle(e).backgroundColor);
-        if (!c || c.a === 0) continue;
-        stack.push(c);
-        if (c.a === 1) break;
+        const layer = (c && c.a > 0) ? c : g;
+        if (!layer) continue;
+        // 색 위에 그라데이션이 얹힌 경우 둘 다 쌓는다
+        if (c && c.a > 0 && g) stack.push(g);
+        stack.push(layer === g ? g : c);
+        if (layer.a === 1) break;
       }
       let base = { r: 255, g: 255, b: 255, a: 1 };
       const root = rgba(getComputedStyle(document.documentElement).backgroundColor);
@@ -129,15 +148,23 @@ for (const page_file of ['index.html', 'us.html']) {
              bright, low: uniq };
   });
 
-  t(r.bodyLum !== null && r.bodyLum < .12,
-    `배경이 실제로 어둡다 (밝기 ${r.bodyLum === null ? '?' : r.bodyLum.toFixed(3)})`);
-  t(r.bright.length === 0,
-    `어두운 배경 위에 남은 밝은 면 없음${r.bright.length ? ` → ${r.bright.join(', ')}` : ''}`);
+  if (MODE === 'dark') {
+    t(r.bodyLum !== null && r.bodyLum < .12,
+      `배경이 실제로 어둡다 (밝기 ${r.bodyLum.toFixed(3)})`);
+    t(r.bright.length === 0,
+      `어두운 배경 위에 남은 밝은 면 없음${r.bright.length ? ` → ${r.bright.join(', ')}` : ''}`);
+  } else {
+    // 신문 지면 톤 — 순백이 아니라 따뜻한 종이색이어야 한다. 다만 너무
+    // 어두워지면 '종이' 가 아니라 '바랜 종이' 가 되므로 위아래를 다 본다.
+    t(r.bodyLum > .70 && r.bodyLum < .99,
+      `배경이 종이색이다 (밝기 ${r.bodyLum.toFixed(3)} · 순백 1.0 아님)`);
+  }
   t(r.low.length === 0, `글자 대비가 WCAG AA 를 넘는다 (미달 ${r.low.length}종)`);
   r.low.slice(0, 10).forEach(l =>
     console.log(`         ${l.key}  대비 ${l.cr} (필요 ${l.need}, ${l.fs}px)  "${l.t}"`));
   await ctx.close();
 
+  if (MODE !== 'dark') { continue; }
   // 토글 — OS 가 라이트인 사람도 다크를 쓸 수 있어야 한다. 없으면 머지해도
   // 그 사람 화면에서는 아무 일도 안 일어난다.
   const c2 = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: 'light' });
