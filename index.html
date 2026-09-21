@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700;900&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css">
 <style>
-:root{--bg:#ffffff;--panel:#ffffff;--panel2:#f2f5f9;--panel3:#f8fafc;--line:#dce2ea;--line2:#b6bfcc;--rule:#1b2a4a;--gold:#1b2a4a;--gold2:#2f4a7a;--txt:#14181f;--txt2:#39414e;--mut:#67717f;--neg:#8a929e;--up:#d02f26;--dn:#1257b0;--grn:#1b2a4a;--red:#a8532a;--warnbg:#fdf5ec;--warnline:#e8d3ba;--okbg:#eef3fa;--okline:#c9d6e8;--on-dark:#ffffff;--chip:#eef2f7;--chip-line:#ccd4de;--badbg:#fbeee9;--badline:#e9cfc2;--badtxt:#7a4b32;--okgrn:#1b6b4a;--okgrnline:#bcd3c6;--amber:#8a6d1f;--amberbg:#f6f3ea;--amberline:#e0d5bb;--track:#e8edf4;--fillp:#5a76ad;--filln:#c3ccd8;--graybg:#eef1f6;--notebg:#fff6e5;--noteline:#f0c880;--notetxt:#7a4f00;--earn:#d99a2b;--radartxt:#7a5f22}
+:root{--bg:#ffffff;--panel:#ffffff;--panel2:#f2f5f9;--panel3:#f8fafc;--line:#dce2ea;--line2:#b6bfcc;--rule:#1b2a4a;--gold:#1b2a4a;--gold2:#2f4a7a;--txt:#14181f;--txt2:#39414e;--mut:#67717f;--neg:#8a929e;--up:#d02f26;--dn:#1257b0;--grn:#1b2a4a;--red:#a8532a;--warnbg:#fdf5ec;--warnline:#e8d3ba;--okbg:#eef3fa;--okline:#c9d6e8;--on-dark:#ffffff;--on-up:#ffffff;--chip:#eef2f7;--chip-line:#ccd4de;--badbg:#fbeee9;--badline:#e9cfc2;--badtxt:#7a4b32;--okgrn:#1b6b4a;--okgrnline:#bcd3c6;--amber:#8a6d1f;--amberbg:#f6f3ea;--amberline:#e0d5bb;--track:#e8edf4;--fillp:#5a76ad;--filln:#c3ccd8;--graybg:#eef1f6;--notebg:#fff6e5;--noteline:#f0c880;--notetxt:#7a4f00;--earn:#d99a2b;--radartxt:#7a5f22}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:"Pretendard Variable",sans-serif;background:radial-gradient(1100px 560px at 82% -10%,var(--panel2) 0%,transparent 55%),radial-gradient(820px 460px at -8% 108%,var(--panel2) 0%,transparent 50%),var(--bg);color:var(--txt);min-height:100vh;letter-spacing:-.01em;-webkit-text-size-adjust:100%;padding:calc(clamp(14px,3.5vw,38px) + env(safe-area-inset-top)) calc(clamp(14px,3.5vw,38px) + env(safe-area-inset-right)) calc(clamp(22px,4vw,38px) + env(safe-area-inset-bottom)) calc(clamp(14px,3.5vw,38px) + env(safe-area-inset-left))}
 .wrap{max-width:1000px;margin:0 auto}
@@ -533,7 +533,11 @@ h1+.sub,h1~.sub:first-of-type{color:var(--txt2)}
   font-size:13px;letter-spacing:.02em}
 .hd-clock .clk-s{font-size:10.5px;font-weight:700;color:var(--mut);
   background:var(--panel2);border:1px solid var(--line);border-radius:2px;padding:0 5px}
-.hd-clock .clk-s.on{color:var(--on-dark);background:var(--up);border-color:var(--up)}
+.hd-clock .clk-s.on{color:var(--on-up);background:var(--up);border-color:var(--up)}
+/* --on-dark(항상 흰색)를 쓰면 다크에서 --up 이 밝은 적색이라 대비 2.79 로
+   AA 미달이 된다. 장중에만 뜨는 배지라 평일 낮에만 재현됐고, main 에서도
+   같은 값이 나온다(실측). 배경이 밝아지면 글자도 어두워져야 하므로
+   토큰으로 뺀다. */
 .hd-reload{margin-left:8px;width:24px;height:24px;flex-shrink:0;cursor:pointer;
   border:1px solid var(--line);background:var(--panel);border-radius:2px;
   color:var(--rule);font-size:14px;line-height:1;font-family:inherit;
@@ -718,7 +722,7 @@ input,button,select,.search{font-family:"Pretendard Variable",Pretendard,-apple-
   --grn:#7fa8dd; --red:#e0865a;
   --warnbg:#2a2418; --warnline:#4a412a;
   --okbg:#1c2533;   --okline:#2f3f57;
-  --on-dark:#ffffff; --chip:#232c3a; --chip-line:#2f3a49;
+  --on-dark:#ffffff;--on-up:#0d1117; --chip:#232c3a; --chip-line:#2f3a49;
   --badbg:#2e1f1a; --badline:#4a3228; --badtxt:#e0a184;
   --okgrn:#4fc48c; --okgrnline:#2d4a3d;
   --amber:#d4b25a; --amberbg:#2a2418; --amberline:#4a412a;
@@ -793,7 +797,7 @@ input,button,select,.search{font-family:"Pretendard Variable",Pretendard,-apple-
   --grn:#7fa8dd; --red:#e0865a;
   --warnbg:#2a2418; --warnline:#4a412a;
   --okbg:#1c2533;   --okline:#2f3f57;
-  --on-dark:#ffffff; --chip:#232c3a; --chip-line:#2f3a49;
+  --on-dark:#ffffff;--on-up:#0d1117; --chip:#232c3a; --chip-line:#2f3a49;
   --badbg:#2e1f1a; --badline:#4a3228; --badtxt:#e0a184;
   --okgrn:#4fc48c; --okgrnline:#2d4a3d;
   --amber:#d4b25a; --amberbg:#2a2418; --amberline:#4a412a;
@@ -1325,7 +1329,12 @@ function renderReview(){
     </tr>`).join('')}
    </tbody></table>
   </div>`).join('')}
- <div class="rv-foot">가격 기준 ${REVIEW.built}. 상장폐지·거래정지로 가격을 못 구한 종목은 <b>—</b> 로 둡니다(빼지 않습니다 — 빼면 망한 종목이 사라져 기록이 실제보다 좋아집니다).</div>`;
+ <div class="rv-foot">가격 기준 ${REVIEW.built}.
+  ${filled
+   ? '상장폐지·거래정지로 가격을 못 구한 종목은 <b>—</b> 로 둡니다(빼지 않습니다 — 빼면 망한 종목이 사라져 기록이 실제보다 좋아집니다).'
+   // 한 칸도 안 찼을 때 위 문장을 그대로 두면, 아직 안 온 구간이라 그은
+   // 줄 열다섯 개를 보고 '다섯 종목이 전부 상장폐지됐다' 로 읽는다.
+   : '지금 <b>—</b> 는 전부 <b>아직 그 시점이 오지 않았다</b>는 뜻입니다. 나중에 상장폐지·거래정지로 가격을 못 구한 칸도 같은 <b>—</b> 로 남습니다(빼지 않습니다 — 빼면 망한 종목이 사라져 기록이 실제보다 좋아집니다).'}</div>`;
 }
 
 // 분기 추이 — 스프레드가 '어떻게 거기 도달했는지' 를 보여준다.
