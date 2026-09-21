@@ -607,6 +607,9 @@ h1+.sub,h1~.sub:first-of-type{color:var(--txt2)}
 .chg-row .pt{color:var(--txt2);font-size:11.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .chg-row .rs{display:block;color:var(--mut);font-size:11.5px;margin-top:1px}
 .chg-none{font-size:12.5px;color:var(--mut);padding:4px 0}
+.liq{font-size:11px;font-weight:700;border-radius:5px;padding:2px 6px;white-space:nowrap;
+  border:1px solid var(--warnline);background:var(--warnbg);color:var(--badtxt)}
+.liq.n{border-color:var(--badline);background:var(--badbg)}
 /* 사각지대 — 이 도구가 못 보는 것 */
 .bs{margin:20px 0 6px}
 .bs-hdr{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin:0 0 6px}
@@ -1126,6 +1129,63 @@ function fb(med,mx){const p=med>=0;return{p,w:Math.min(46,Math.abs(med)/mx*46)};
 function rsC(v){return v==null?'na':v>=0?'pos':'neg'}function rsT(v){return v==null?'—':(v>0?'+':'')+v+'%'}
 function qspC(v){return v==null?'na':v>=0?'p':'n'}
 // 밸류에이션 색: 저PER=초록, 보통=금색, 고PER/적자=빨강, 없음=회색
+function trdvalText(v){
+  if(v==null) return '—';
+  if(v>=1e12) return (v/1e12).toFixed(1)+'조';
+  if(v>=1e8)  return Math.round(v/1e8).toLocaleString()+'억';
+  return Math.round(v/1e4).toLocaleString()+'만';
+}
+function trdvalLvl(m){
+  const v=m.trdval_avg;
+  if(v==null) return {c:'m', t:'—'};
+  // 관측일이 적으면 평균 자체를 못 믿는다 — 거래정지·신규상장이 여기 걸린다
+  if((m.trdval_days||0)<5) return {c:'n', t:trdvalText(v)+' ⚠표본부족'};
+  if(v<5e8)  return {c:'n', t:trdvalText(v)};        // 5억 미만
+  if(v<30e8) return {c:'p', t:trdvalText(v)};        // 30억 미만
+  return {c:'g', t:trdvalText(v)};
+}
+// 유동성 경고 — 목록에서 바로 보이게.
+//
+// 거래대금은 트레이드 카드에만 있었다. 그런데 하루 5억 원도 안 도는 종목은
+// **분석 결과와 무관하게 진입·청산 자체가 비용**이라, 카드를 열기 전에
+// 알아야 한다. 후보 목록에 그냥 올라와 있으면 열어보기 전까지 모른다.
+//
+// 충분한 종목에는 아무것도 붙이지 않는다. 매 줄에 '137억'을 적으면 그건
+// 잡음이고, 드물게 뜨는 '⚠ 4억'만 신호다.
+//
+// 단위가 원(억·조)이라 한국 데이터 전용이다. 미국 트리에는 trdval_avg 가
+// 아예 없어 조용히 아무것도 안 붙는다 — 미국 쪽 출처가 생기면 달러 표기를
+// 따로 만들어야 한다(이 함수를 그대로 쓰면 안 된다).
+function liqWarn(m){
+ if(m==null||m.trdval_avg==null) return '';
+ const L=trdvalLvl(m);
+ if(L.c==='g'||L.c==='m') return '';
+ const t=(m.trdval_days||0)<5 ? '관측일이 모자라 평균을 믿기 어렵다'
+   : m.trdval_avg<5e8 ? '하루 5억 미만 — 진입·청산 자체가 비용이다'
+   : '하루 30억 미만 — 분할매수 간격을 넓혀야 한다';
+ return `<span class="liq ${L.c}" title="일평균 거래대금(최근 20거래일) · ${t}">💧 ${L.t}</span>`;
+}
+// 유동성 경고 — 목록에서 바로 보이게.
+//
+// 거래대금은 트레이드 카드에만 있었다. 그런데 하루 5억 원도 안 도는 종목은
+// **분석 결과와 무관하게 진입·청산 자체가 비용**이라, 카드를 열기 전에
+// 알아야 한다. 후보 목록에 그냥 올라와 있으면 열어보기 전까지 모른다.
+//
+// 충분한 종목에는 아무것도 붙이지 않는다. 매 줄에 '137억'을 적으면 그건
+// 잡음이고, 드물게 뜨는 '⚠ 4억'만 신호다.
+//
+// 단위가 원(억·조)이라 한국 데이터 전용이다. 미국 트리에는 trdval_avg 가
+// 아예 없어 조용히 아무것도 안 붙는다 — 미국 쪽 출처가 생기면 달러 표기를
+// 따로 만들어야 한다(이 함수를 그대로 쓰면 안 된다).
+function liqWarn(m){
+ if(m==null||m.trdval_avg==null) return '';
+ const L=trdvalLvl(m);
+ if(L.c==='g'||L.c==='m') return '';
+ const t=(m.trdval_days||0)<5 ? '관측일이 모자라 평균을 믿기 어렵다'
+   : m.trdval_avg<5e8 ? '하루 5억 미만 — 진입·청산 자체가 비용이다'
+   : '하루 30억 미만 — 분할매수 간격을 넓혀야 한다';
+ return `<span class="liq ${L.c}" title="일평균 거래대금(최근 20거래일) · ${t}">💧 ${L.t}</span>`;
+}
 function valColor(pe){if(pe==null)return'm';if(pe<=0)return'n';if(pe<20)return'g';if(pe<35)return'p';return'n';}
 function accCell(m){if(m.accel==null)return'<span class="acc na">—</span>';
  if(Math.abs(m.accel)>150)return`<span class="acc na" title="기저효과">~</span>`;
@@ -2277,6 +2337,7 @@ function renderRadar(){
     <span>고점比 <b class="${sg(m.from_high)}">${m.from_high==null?'—':m.from_high+'%'}</b></span>
     <span>PER <b>${peShow(m)}</b></span>
    </div>
+   ${liqWarn(m)?`<div class="rc-l"><span class="k">유동성</span><span>${liqWarn(m)}</span></div>`:''}
    <div class="rc-l why"><span class="k">근거</span><span>${radarWhy(m)}</span></div>
    <div class="rc-l risk"><span class="k">조심</span><span>${radarRisk(m)}</span></div>
    ${sc?`<div class="rc-score" title="헤게모니 품질 50 · 가격 미반영 5 · 타이밍 10 · 밸류 10 (만점 75 — 52주 고점比는 백테스트에서 기여가 음수라 0으로, RS6M 은 15가 너무 높아 5로 내렸습니다)">
@@ -2364,6 +2425,7 @@ function renderTop5(){
      <span class="t5-rank">${i+1}</span>
      <span><span class="t5-tk">${m.tk}</span> <span class="t5-nm">${m.nm}</span></span>
      <span class="t5-rel ${radarRel(m).in?'in':''}">${radarRel(m).t}</span>
+     ${liqWarn(m)}
      <span class="t5-sec">${QLABEL[m._grade]||''} · ${m.sec}</span>
     </div>
     <div class="t5-metrics">
