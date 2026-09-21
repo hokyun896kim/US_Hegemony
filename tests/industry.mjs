@@ -25,7 +25,9 @@ const sub = (desc, ko, members) => ({ sic: desc, desc, ko, gics: '산업재',
 
 // 산업 4개: 본후보 1 · 아깝게 떨어진 것 2(관찰로 채워져야 함) · 자루(제외)
 const D = {
-  updated: AS_OF, fund_updated: AS_OF, market: 'KOSPI+KOSDAQ', sectors: [],
+  updated: AS_OF, fund_updated: AS_OF, market: 'KOSPI+KOSDAQ', // 대섹터가 없으면 renderTree 가 아무것도 안 그린다 — 그러면 트리 탭 검사가
+  // '버튼이 0개'로 통과해버려(실제로는 화면이 빈 것) 아무것도 못 잡는다.
+  sectors: [{ gics: '산업재', med: 12, n_sub: 5, n_co: 12 }],
   subs: [
     // (a) 본후보 — 전 조건 통과. 잠정실적 종목을 하나 심어 스냅샷 경고를 검증한다.
     sub('Shipbuilding', '조선', [stock('SHIP1'), stock('SHIP2'),
@@ -104,6 +106,60 @@ for (const [file, url] of [['index.html', 'https://x.test/'], ['us.html', 'https
   d.querySelector('#radarPanel .ri-copy').click();
   await new Promise(r => setTimeout(r, 80));
   t((w.__copied || '').includes('산업 스냅샷'), '스냅샷 버튼 → 클립보드에 스냅샷');
+
+  // 3-b) 트리·랭킹에서도 산업을 펼치면 같은 복사가 된다
+  //
+  // 레이더는 산업을 3~4개만 보여주므로, 잘려나간 산업(여기서는 화학)은 레이더
+  // 경로로는 영원히 검증할 수 없었다. 트리·랭킹의 모든 산업 줄에 같은 버튼을
+  // 붙이되, 레이더 목록 밖 산업에도 판정이 제대로 붙는지가 핵심이다 —
+  // 안 붙으면 스냅샷이 전부 '본후보'라고 적는다(거짓말).
+  const nSub = E('D').subs.length;
+  t(d.querySelectorAll('#secList .sd-act .ri-copy').length === nSub,
+    `트리 탭 산업 줄마다 복사 버튼 (${d.querySelectorAll('#secList .sd-act .ri-copy').length}/${nSub})`);
+  d.querySelector('.tabs button[data-v="flat"]').click();
+  await new Promise(r => setTimeout(r, 120));
+  const flatBtns = d.querySelectorAll('#subList .sd-act .ri-copy');
+  t(flatBtns.length === nSub, `랭킹 탭 산업 줄마다 복사 버튼 (${flatBtns.length}/${nSub})`);
+
+  w.__copied = '';
+  flatBtns[0].click();
+  await new Promise(r => setTimeout(r, 80));
+  t((w.__copied || '').includes('산업 스냅샷'), '랭킹 탭 버튼 → 클립보드에 스냅샷');
+  t((w.__copied || '').includes('이 산업에서 먼저 볼 것'), '그 스냅샷에도 산업별 점검표가 붙는다');
+
+  // 레이더에서 잘려나간 산업(화학)도 판정이 붙는다.
+  // 반드시 '버튼을 눌러' 확인한다 — indAggJudged 를 직접 부르면, 버튼이 판정
+  // 없는 indAgg 를 쓰도록 되돌아가도 시험은 통과한다(실제로 그 사보타주가
+  // 안 잡혔다). 판정이 없으면 스냅샷은 모든 산업을 '본후보'라고 적는다.
+  const clickSub = async (name) => {
+    const i = E('D').subs.findIndex(x => (x.ko || x.desc) === name);
+    w.__copied = '';
+    d.querySelectorAll('#subList .sd-act .ri-copy')[i].click();
+    await new Promise(r => setTimeout(r, 80));
+    return w.__copied || '';
+  };
+  const chemSnap = await clickSub('화학');
+  t(/화학/.test(chemSnap), '화학 줄의 버튼이 화학 스냅샷을 준다');
+  t(/스크리너 판정: 관찰 \(미충족/.test(chemSnap) && !/스크리너 판정: 본후보/.test(chemSnap),
+    '레이더 목록 밖 산업도 판정이 붙는다(전부 본후보라고 적지 않는다)');
+
+  // 자루는 '산업'이 아니라고 말한다 — 트리·랭킹에서는 자루도 눌린다
+  const bag = E('D').subs.find(x => E('isBag')(x));
+  if (bag) t(/분류 미상\(자루\)이다/.test(await clickSub(bag.ko || bag.desc)),
+    '자루 산업은 공통 동인이 없다고 밝힌다');
+  else t(true, '(픽스처에 자루 없음)');
+
+  // 표본이 2개 미만이면 중앙값이라 부르지 않는다
+  const thin = { s: { ko: '얇은산업', desc: 'Thin', members: [], n: 0 }, clean: [],
+                 hits: [], acc: null, qsp: null, rs: null };
+  thin.miss = E('indMiss')(thin); thin.obs = true;
+  const thinSnap = E('indSnapshot')(thin);
+  t(/중앙값이라고 부를 수 없다/.test(thinSnap), '표본이 얇으면 중앙값이라 부르지 않는다');
+  // null 을 'nullp' 로 적지 않는다 (JS 에서 null<=0 은 true 다)
+  t(!/null/.test(thinSnap), `없는 값을 null 로 적지 않는다`);
+
+  d.querySelector('.tabs button[data-v="tree"]').click();
+  await new Promise(r => setTimeout(r, 120));
 
   // 4) 본후보가 4개 이상이면 채우지 않고 그대로 4개까지만 (기존 동작 유지)
   //    — 여기서는 계산 함수 수준으로만 확인한다
