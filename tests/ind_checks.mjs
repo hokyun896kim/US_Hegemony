@@ -66,6 +66,42 @@ for (const [page, data, label] of [['index.html', 'data/tree_kr.json', '한국']
     t(true, '(이번 데이터엔 산업 후보가 없어 스냅샷 확인 생략)');
   }
 
+  // ── 종목 프롬프트 쪽 ───────────────────────────────────────────
+  // 산업 스냅샷이 통과해도 종목 프롬프트는 따로 샐 수 있다. 실제로 종목은
+  // m.sec 에 ko||desc 중 한쪽만 들고 있어서, 그걸로 매칭하면 미국 25종목
+  // (컴퓨터 프로그래밍·컴퓨터 통합시스템·곡물가공·전자상거래)이 빠진다.
+  // 그래서 색인이 양쪽 이름을 다 들고 있는지부터 잰다.
+  const IDX = w.eval('TKINDEX');
+  const tks = Object.keys(IDX);
+  t(tks.length > 0, `종목 색인 ${tks.length}개`);
+  const withBoth = tks.filter(k => IDX[k].secEn !== undefined || IDX[k].secKo !== undefined).length;
+  t(withBoth === tks.length, `색인이 산업 이름을 양쪽 다 싣는다 (${withBoth}/${tks.length})`);
+
+  let hit = 0, skipped = 0;
+  for (const k of tks) {
+    const m = IDX[k];
+    if (/^unknown$/i.test((m.secEn || '').trim())) { skipped++; continue; }
+    if (CHECKS.some(v => v.re.test((m.secKo || '') + ' ' + (m.secEn || '')))) hit++;
+  }
+  const scov = hit / (tks.length - skipped);
+  t(scov >= FLOOR[page],
+    `종목 프롬프트 커버리지 ${(scov * 100).toFixed(1)}% ≥ ${FLOOR[page] * 100}% ` +
+    `(${hit}/${tks.length - skipped}${skipped ? ` · 분류미상 ${skipped} 제외` : ''})`);
+
+  // 실제로 프롬프트 본문에 붙는가 — 매칭만 되고 안 실리면 아무 소용이 없다.
+  const sample = tks.find(k => CHECKS.some(v => v.re.test((IDX[k].secKo || '') + ' ' + (IDX[k].secEn || ''))));
+  const pr = w.eval('buildPrompt')(sample);
+  t(/\[이 종목이 속한 산업에서 먼저 볼 것/.test(pr),
+    `종목 프롬프트에 점검표가 실린다 (${sample})`);
+  t(/백테스트로 검증한 것이 아니라/.test(pr), '종목 프롬프트도 검증된 목록이 아님을 밝힌다');
+  // 종목 쪽은 산업용 문구('V2 의 1차 지표')가 아니라 제 문구를 써야 한다
+  t(/이 산업의 1차 지표/.test(pr) && !/V2 의 1차 지표/.test(pr),
+    '종목 프롬프트는 종목용 문구를 쓴다');
+
+  // 종목 지침도 그걸 읽으라고 말하는가
+  const SG = w.eval('GPT_GUIDE');
+  t(/이 종목이 속한 산업에서 먼저 볼 것/.test(SG), '종목 지침 V2 가 점검표를 가리킨다');
+
   // 지침이 스냅샷의 점검표를 쓰라고 말하는가 — 안 말하면 GPT 는 여전히 추측한다.
   const G = w.eval('IND_GUIDE');
   t(/이 산업에서 먼저 볼 것/.test(G), '지침 V2 가 스냅샷의 점검표를 가리킨다');
