@@ -13,24 +13,38 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 let ok = true;
 const t = (c, m) => { console.log((c ? '  ok   ' : '  FAIL ') + m); ok = ok && !!c; };
 
-for (const [label, page, data, tz, mkt] of [
-  ['한국', 'index.html', 'data/tree_kr.json', 'Asia/Seoul', 'KRX'],
-  ['미국', 'us.html', 'data/tree.json', 'America/New_York', 'NYSE'],
+for (const [label, page, data, tz, mkt, review] of [
+  ['한국', 'index.html', 'data/tree_kr.json', 'Asia/Seoul', 'KRX', 'data/review-kr.json'],
+  ['미국', 'us.html', 'data/tree.json', 'America/New_York', 'NYSE', 'data/review-us.json'],
 ]) {
   console.log(`\n━━ ${label} ━━`);
   const raw = fs.readFileSync(path.join(ROOT, data), 'utf8');
-  let fetches = 0;
+  const rawReview = fs.readFileSync(path.join(ROOT, review), 'utf8');
+  // 요청을 URL 로 갈라 센다. 한 덩어리로 세면 복기 파일이 하나 늘 때마다
+  // '데이터 1회 조회' 가 깨져서, 그때마다 숫자를 올려주는 시험이 된다 —
+  // 그러면 무엇이 몇 번 나가는지를 아무도 안 보게 된다.
+  let fetches = 0, rfetches = 0;
   const dom = new JSDOM(fs.readFileSync(path.join(ROOT, page), 'utf8'),
     { runScripts: 'dangerously', pretendToBeVisual: true,
       url: 'https://x.test/' + (page === 'us.html' ? 'us.html' : ''),
       beforeParse(w) {
-        w.fetch = async () => { fetches++; return { ok: true, status: 200, json: async () => JSON.parse(raw) }; };
+        w.fetch = async (u) => {
+          const isReview = String(u).includes('/review-');
+          if (isReview) rfetches++; else fetches++;
+          return { ok: true, status: 200,
+                   json: async () => JSON.parse(isReview ? rawReview : raw) };
+        };
         w.alert = () => {}; w.navigator.clipboard = { writeText: async () => {} };
       } });
   await new Promise(r => setTimeout(r, 1500));
   const w = dom.window, d = w.document;
 
   t(fetches === 1, `첫 로드에서 데이터 1회 조회 (실제 ${fetches})`);
+  t(rfetches === 1, `첫 로드에서 복기 1회 조회 (실제 ${rfetches})`);
+  // 복기 파일을 줬으면 실제로 표가 그려져야 한다. 빈 채로 넘어가면
+  // '조용히 아무것도 안 하는' 상태를 통과로 읽게 된다.
+  t(/rv-t/.test(d.getElementById('reviewPanel').innerHTML),
+    '복기 표가 실제로 그려진다');
 
   // 1) 새로고침 버튼 — standalone 에는 브라우저 크롬이 없으므로 이게 유일한 수단
   const btn = d.getElementById('hdReload');

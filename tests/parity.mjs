@@ -190,6 +190,25 @@ for (const [label, s] of [['KR', KR], ['US', US]]) {
   }
 }
 
+// ── 박제 복기 ──────────────────────────────────────────────────────
+// 화면은 양쪽에 넣고 빌더는 한쪽에만 붙이는 사고를 분기 추이에서 한 번 냈다.
+// 여기서는 화면 쪽 세 조각(파일 경로·불러오기·그릴 자리)이 두 페이지에
+// 모두 있고, 각자 자기 시장의 파일을 보는지까지 확인한다.
+console.log('\n━━━━ 박제 복기 ━━━━');
+for (const [label, s, want] of [['index.html', KR, './data/review-kr.json'],
+                                ['us.html',    US, './data/review-us.json']]) {
+  t(s.includes(`const REVIEW_FILE="${want}"`), `${label} 자기 시장 파일을 본다 (${want})`);
+  t(/function renderReview\(/.test(s) && /async function loadReview\(/.test(s),
+    `${label} loadReview·renderReview 존재`);
+  t(/loadReview\(\);/.test(s), `${label} 첫 렌더에서 부른다`);
+  t(/id="reviewPanel"/.test(s), `${label} 그릴 자리가 있다`);
+  // 절대 수익만 굵게 보여주면 시장이 좋았던 구간을 점수의 실력으로 읽는다.
+  t(/<b>\$\{f\(o\.excess\)\}p<\/b>/.test(s), `${label} 굵은 숫자는 초과수익이다`);
+  // 가격을 못 구한 종목을 빼면 망한 종목이 사라져 기록이 실제보다 좋아진다.
+  t(/rv-na">—/.test(s), `${label} 가격 없는 종목은 빼지 않고 — 로 남긴다`);
+  t(/ review:\{k:/.test(s), `${label} i 버튼이 열 설명(TIPS.review)이 있다`);
+}
+
 // (GPT 지침이 문서와 같은지는 smoke_ux.mjs 가 실제 DOM 에서 이미 확인한다)
 
 console.log(ok ? '\n✅ 파리티 통과' : '\n❌ 파리티 실패');

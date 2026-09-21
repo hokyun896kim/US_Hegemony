@@ -573,6 +573,43 @@ h1+.sub,h1~.sub:first-of-type{color:var(--txt2)}
   .tc-inputs{grid-template-columns:1fr}
   .tc-out{grid-template-columns:1fr 1fr;gap:7px}
 }
+/* 박제 복기 */
+.rv{margin:20px 0 6px}
+.rv-blk{margin:0 0 14px}
+.rv-head{font-size:12px;font-weight:800;color:var(--gold2);letter-spacing:.04em;margin:0 0 5px}
+.rv-t{width:100%;border-collapse:collapse;font-size:12.5px;
+  font-variant-numeric:tabular-nums;
+  font-family:"Pretendard Variable",Pretendard,-apple-system,sans-serif}
+.rv-t th{text-align:right;font-size:10.5px;color:var(--mut);font-weight:700;
+  padding:3px 6px;border-bottom:1px solid var(--gold);letter-spacing:.03em;white-space:nowrap}
+.rv-t th:first-child{text-align:left}
+.rv-t td{padding:6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+/* 숫자 열은 폭을 고정한다. 안 그러면 회차마다 열 너비가 달라져 위아래
+   블록의 같은 구간이 다른 자리에 서고, 눈으로 회차를 비교할 수가 없다. */
+.rv-t th:not(:first-child),.rv-t td:not(.rv-nm){width:64px}
+.rv-nm{text-align:left!important;max-width:1px;width:99%;overflow:hidden;text-overflow:ellipsis}
+.rv-nm span{color:var(--mut);font-size:11px}
+.rv-pts{color:var(--txt2);font-weight:700}
+.rv-up b{color:var(--up)}
+.rv-dn b{color:var(--dn)}
+.rv-raw{display:block;font-size:10.5px;color:var(--mut)}
+.rv-na{color:var(--mut)}   /* --neg 는 대비 3.4 로 AA 미달 — tests/dark.mjs 가 잡았다 */
+.rv-foot{font-size:11px;color:var(--mut);line-height:1.6;
+  border-top:1px solid var(--line);padding-top:8px}
+@media (max-width:640px){
+  /* 열은 하나도 지우지 않는다 — '다 본다' 는 요구는 여기서도 같다.
+     다만 가로로 밀게 두면 3개월·6개월이 화면 밖에 있고 회차마다 따로
+     밀어야 해서, 사실상 안 보이는 것과 같았다. 그래서 종목 칸을
+     두 줄(티커 / 이름)로 접어 숫자 세 열을 화면 안으로 들인다. */
+  .rv-blk{overflow-x:auto}
+  .rv-t{font-size:12px}
+  .rv-t td{padding:6px 3px}
+  .rv-t th{padding:3px}
+  .rv-t th:not(:first-child),.rv-t td:not(.rv-nm){width:52px}
+  /* .rv-t td 의 nowrap 을 이겨야 한다(.rv-nm 단독으로는 특이도가 낮아 진다) */
+  .rv-t td.rv-nm{white-space:normal;line-height:1.35}
+  .rv-nm span{display:block;font-size:10.5px}
+}
 
 /* 분기 추이 그래프 — 카드 폭을 다 쓴다 */
 .tc-qchart{display:block;width:100%;margin:0 0 14px;box-sizing:border-box}
@@ -823,6 +860,7 @@ input,button,select,.search{font-family:"Pretendard Variable",Pretendard,-apple-
 <div class="alert" id="alertPanel"></div>
 <div class="radar" id="radarPanel"></div>
 <div class="top5" id="top5Panel"></div>
+<div class="rv" id="reviewPanel"></div>
 <div class="tabs">
 <button class="on" data-v="tree">🌳 탑다운 트리<i class="help-i" onclick="event.stopPropagation();tip(&quot;tree&quot;)">i</i></button>
 <button data-v="flat">📊 세부산업 랭킹<i class="help-i" onclick="event.stopPropagation();tip(&quot;flat&quot;)">i</i></button>
@@ -988,6 +1026,7 @@ async function loadData(){
   }
   // 시장 배지 + 첫 화면
   initMarket(); renderRadar(); renderTop5(); renderAlerts(); renderTree(); loadWatch();
+  loadReview();
  }catch(e){
   document.getElementById('secList').innerHTML='<div style="padding:20px;color:var(--red);font-size:13px">⚠️ 데이터 로드 실패: '+e.message+'<br><span style="color:var(--mut);font-size:11px">data/tree_kr.json이 있는지 확인하세요. 로컬에서 file://로 열면 CORS로 막히니 로컬 서버(python -m http.server)나 배포본으로 여세요.</span></div>';
  }
@@ -1169,6 +1208,7 @@ const TIPS={
  col_rs:{k:"컬럼 설명",t:"상대강도 (RS)",b:"<p><b>종목 수익률 − 코스피(KOSPI) 수익률</b> (3개월·6개월).</p><p>가공 차트지표가 아니라 원시 수익률 차이입니다. 양수(녹색)=시장보다 강함. <b>종목을 고르는 신호가 아니라</b>, 펀더로 고른 종목의 진입 타이밍(시장이 깨웠는지)을 보는 보조 지표입니다.</p>"},
  col_gap:{k:"컬럼 설명",t:"갭 위험",b:"<p>최근 60거래일 중 <b>전일 종가 대비 시가 최대 괴리(%)</b>.</p><p>H(빨강)=실적 발표 등으로 갭이 크게 벌어지는 종목 → 진입 시 변동성 주의. L(녹색)=상대적으로 안정. 리스크 관리용 참고치입니다.</p>"},
  col_val:{k:"컬럼 설명",t:"밸류에이션 (PER)",b:"<p><b>PER</b> = 주가 ÷ 주당순이익. 낮을수록 저평가. <b>Forward PER</b>는 향후 1년 예상 이익 기준.</p><p>헤게모니가 강해도 PER이 과도하게 높으면(예: 40↑) 이미 기대가 가격에 반영된 것 → 진입 신중. 저PER(20↓)+강한 헤게모니가 이상적.</p><p><b>숫자 뒤 F</b> 는 후행 PER이 없어 <b>선행(Forward) PER</b>로 대체했다는 뜻입니다 — 한국 종목은 야후가 후행 PER을 자주 비워둡니다.</p>"},
+ review:{k:"기능 설명",t:"📜 지난 TOP5 는 어떻게 됐나",b:"<p>매주 박제한 TOP5 를 <b>그대로 두고</b> 그 뒤 성과를 적습니다. 고른 뒤에 목록을 손대지 않기 때문에, 지금 화면의 점수가 실제로 무엇을 했는지 뒤늦게 꾸미지 않고 볼 수 있습니다.</p><p><b>굵은 숫자는 지수 대비 초과수익(%p)</b>, 작은 숫자는 절대 수익입니다. 절대 수익만 보면 시장 전체가 좋았던 구간을 점수의 실력으로 잘못 읽게 됩니다.</p><p><b>이건 통계가 아니라 기록입니다.</b> 회차가 몇 개뿐이라 여기서 '이 도구가 시장을 이긴다' 를 말할 수는 없습니다 — 그 판정은 회차가 충분히 쌓인 뒤 <code>verify_live.py</code> 가 따로 합니다. 여기서는 진 종목도 빼지 않고 그대로 둡니다.</p><p>상장폐지·거래정지 등으로 가격을 못 구한 종목은 <b>—</b> 로 남깁니다. 빼버리면 망한 종목이 목록에서 사라져 기록이 실제보다 좋아 보입니다.</p>"},
  supply:{k:"실험 기능",t:"🇰🇷 수급 보너스(실험)",b:"<p>한국 시장은 <b>외국인·기관 수급</b>이 핵심이라, 최근 순매수를 점수에 ±가산하는 <b>실험 오버레이</b>입니다.</p><p><b>가산:</b> 쌍끌이 매집(외+기) +12 · 외국인 매집 +8 · 기관만 +4 / <b>감산:</b> 동반 이탈 −10 · 혼조 −2 (대규모 ±500억 추가 ±2~3).</p><p><b>⚠️ 현재 이 빌드는 수급을 수집하지 않습니다.</b> pykrx가 KRX 계정을 요구하도록 바뀌어 자동 빌드에서 뺐습니다. 그래서 토글을 켜도 대부분 0점으로 동작하며, 수급은 네이버 금융의 '투자자별 매매동향'에서 직접 보셔야 합니다. 데이터가 채워지면 토글이 자동으로 나타납니다.</p>"},
 };
 function tip(key){const d=TIPS[key];if(!d)return;
@@ -1229,6 +1269,63 @@ function bullBear(m){
  if(!bull.length)bull.push('<span class="none">뚜렷한 강세 논거 없음 — 신중 검토</span>');
  if(!bear.length)bear.push('<span class="none">뚜렷한 약세 논거 없음 — 단, 과신 경계</span>');
  return {bull,bear};
+}
+
+const REVIEW_FILE="./data/review-kr.json";
+// 박제 복기 — "그때 그 종목 어떻게 됐나"
+//
+// 스코어러의 우위는 확인되지 않았고, 진짜 표본 밖 검증은 2027-03 은 되어야
+// 첫 숫자가 나온다. 그때까지 사용자는 88점을 보면서 그 점수가 무엇을 했는지
+// 한 번도 못 본다. 이 블록은 통계가 아니라 기록이다 — 진 종목까지 그대로
+// 보여준다. 유의성은 주장하지 않는다(그건 verify_live 의 일이다).
+//
+// 경과는 빌드가 계산해 data/review-*.json 에 적는다. 화면에서 계산하려면
+// 과거 가격을 매주 들고 다녀야 한다.
+let REVIEW=null;
+async function loadReview(){
+ try{
+  const r=await fetch(REVIEW_FILE+'?v='+Date.now());
+  if(!r.ok) return;
+  REVIEW=await r.json();
+  renderReview();
+ }catch(e){}   // 복기는 없어도 화면이 돌아야 한다
+}
+function renderReview(){
+ const el=document.getElementById('reviewPanel');
+ if(!el||!REVIEW||!REVIEW.rows||!REVIEW.rows.length) return;
+ const spans=REVIEW.spans||[1,3,6];
+ // 한 칸이라도 채워진 회차가 있는지. 하나도 없으면 표 대신 안내만 띄운다 —
+ // 빈 칸만 가득한 표는 '성과가 0' 으로 오해된다.
+ const filled=REVIEW.rows.some(r=>r.picks.some(p=>(p.out||[]).length));
+ const cell=(p,n)=>{
+  const o=(p.out||[]).find(x=>x.span===n);
+  if(!o) return '<td class="rv-na">—</td>';
+  const c=o.excess>0?'up':o.excess<0?'dn':'';
+  // 소수 한 자리로 고정한다. 22 와 37.8 이 섞이면 자릿수가 어긋나 표가 흔들린다.
+  const f=v=>(v>0?'+':'')+v.toFixed(1);
+  return `<td class="rv-${c}"><b>${f(o.excess)}p</b>
+    <span class="rv-raw">${f(o.ret)}%</span></td>`;
+ };
+ el.innerHTML=`
+ <div class="lbl">📜 지난 TOP5 는 어떻게 됐나<i class="help-i" onclick="tip('review')">i</i></div>
+ <div class="hint">지난 회차의 TOP5 를 그대로 두고 그 뒤 성과를 적습니다.
+  <b>굵은 숫자가 지수 대비 초과수익</b>이고 작은 숫자가 절대 수익입니다 —
+  절대 수익만 보면 시장이 좋았던 구간을 점수의 실력으로 읽게 됩니다.
+  <b>이건 통계가 아니라 기록입니다.</b> 진 종목도 그대로 둡니다.
+  ${filled?'':'<b>아직 경과한 구간이 없습니다</b> — 회차가 쌓이면 1개월부터 차례로 찹니다.'}</div>
+ ${REVIEW.rows.map(r=>`
+  <div class="rv-blk">
+   <div class="rv-head">${r.date} 회차</div>
+   <table class="rv-t"><thead><tr><th>종목</th><th>점수</th>
+    ${spans.map(n=>`<th>${n}개월</th>`).join('')}</tr></thead><tbody>
+   ${r.picks.map(p=>`<tr>
+     <td class="rv-nm"><b>${p.tk}</b> <span>${p.nm||''}</span></td>
+     <td class="rv-pts">${p.pts==null?'—':p.pts}</td>
+     ${spans.map(n=>cell(p,n)).join('')}
+    </tr>`).join('')}
+   </tbody></table>
+  </div>`).join('')}
+ <div class="rv-foot">가격 기준 ${REVIEW.built}. 상장폐지·거래정지로 가격을 못 구한 종목은 <b>—</b> 로 둡니다(빼지 않습니다 — 빼면 망한 종목이 사라져 기록이 실제보다 좋아집니다).</div>`;
 }
 
 // 분기 추이 — 스프레드가 '어떻게 거기 도달했는지' 를 보여준다.
