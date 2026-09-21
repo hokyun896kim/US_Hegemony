@@ -127,6 +127,42 @@ jobs:
           sys.exit(bad)
           PY
 
+      # 복기도 박제와 같은 처지다 — continue-on-error 라 깨져도 회차는 멀쩡히
+      # 끝나고 파일만 안 생긴다. 게다가 복기 스텝은 커밋 모드에서만 돌아서
+      # 개발 브랜치 스모크 빌드에서는 한 번도 안 밟힌다(실측: run #105 에서
+      # skipped). 그래서 매 CI 에서 실제로 돌려본다.
+      #
+      # 여기서는 --prices 로 얼린 가격 파일을 쓴다. 야후를 타면 CI 가 남의
+      # 서버 사정으로 빨개지고, 그러면 아무도 안 본다. 수집 경로 자체는
+      # review_build.py 의 자가진단이 yseries 를 가짜로 바꿔 확인한다.
+      - name: 박제 복기 스크립트 동작 확인
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, subprocess, sys
+          bad = 0
+          for kind, bt in (("kr", "kr"), ("us", "us")):
+              px = f"data/backtest/{bt}-prices.json"
+              if not pathlib.Path(px).exists():
+                  print(f"  ok   {kind}: 가격 파일이 없어 건너뜀 ({px})"); continue
+              out = pathlib.Path(f"/tmp/review-{kind}.json")
+              r = subprocess.run([sys.executable, "review_build.py", "--market", kind,
+                                  "--prices", px, "--out", str(out)],
+                                 capture_output=True, text=True)
+              if r.returncode:
+                  print(f"  FAIL {kind}: 죽었다 rc={r.returncode}\n{r.stderr}"); bad += 1; continue
+              if not out.exists():
+                  # 박제가 하나도 없으면 안 만드는 게 맞다 — 그건 고장이 아니다.
+                  print(f"  ok   {kind}: 복기할 박제 없음 ({r.stderr.strip()})"); continue
+              d = json.loads(out.read_text(encoding="utf-8"))
+              need = {"kind", "built", "spans", "rows"}
+              miss = need - set(d)
+              if miss:
+                  print(f"  FAIL {kind}: 키 누락 {miss}"); bad += 1; continue
+              picks = sum(len(x["picks"]) for x in d["rows"])
+              print(f"  ok   {kind}: {len(d['rows'])}회차 · 종목 {picks} · 기준 {d['built']}")
+          sys.exit(bad)
+          PY
+
       - name: 워크플로 YAML·셸 문법
         run: |
           # 이 러너에는 파이썬만 깔려 있고 PyYAML 은 없다. 로컬에 마침 있어서

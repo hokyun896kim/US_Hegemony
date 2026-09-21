@@ -272,7 +272,18 @@ jobs:
         if: steps.mode.outputs.commit == 'true' && inputs.probe == '' && steps.need.outputs.run == 'true'
         # 복기에 실패해도 회차를 잃지 않는다 — 데이터 커밋이 본체다.
         continue-on-error: true
-        run: python3 review_build.py --market kr
+        # continue-on-error 라 실패해도 회차를 잃지 않는데, 그래서 조용히
+        # 실패한다. 야후 수집 경로는 커밋 모드에서만 도는지라 개발 브랜치
+        # 스모크에서는 한 번도 안 밟히고, 첫 실행이 곧 첫 검증이다.
+        # 결과를 실행 요약에 적어 실패가 로그 속에 묻히지 않게 한다.
+        run: |
+          if out=$(python3 review_build.py --market kr 2>&1); then
+            echo "### 📜 박제 복기" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### ⚠️ 박제 복기 실패" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          printf '```\n%s\n```\n' "$out" >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' "$out"
 
       - name: Commit
         if: steps.mode.outputs.commit == 'true' && inputs.probe == '' && steps.need.outputs.run == 'true'
