@@ -397,6 +397,54 @@ def quarterly_ttm(qinc, inc, qseries=None):
     return r, o, "정상", True, qend
 
 
+def quarter_series(qinc, inc, qseries=None, n=8):
+    """화면에 그릴 분기 추이. [[분기말, 매출, 영업이익], ...] 최신이 앞.
+
+    왜 TTM 스프레드가 아니라 원값(레벨)인가
+    ---------------------------------------
+    스프레드 궤적을 그리려면 점 하나마다 8분기가 필요하고, 한국 종목은 야후가
+    8분기를 거의 주지 않는다(quarterly_ttm 주석 참고). 대부분 빈 그래프가 된다.
+
+    레벨은 4분기만 있어도 그려지고, 정작 이 도구의 1번 맹점인 기저효과를
+    더 잘 보여준다. '전년 이익이 바닥이라 비율만 폭발' 한 경우, 영업이익
+    막대가 바닥에서 솟는 모양이 그대로 보인다. 글로 열 줄 경고하는 것보다
+    이 그림 하나가 강하다.
+
+    quarterly_ttm 과 같은 소스·같은 정렬(align_quarters)을 쓴다. 따로 읽으면
+    화면의 스프레드와 그래프가 다른 분기를 가리키게 된다.
+    """
+    if qseries is not None:
+        qrev = [(e, r) for e, r, o in reversed(qseries) if r is not None]
+        qop = [(e, o) for e, r, o in reversed(qseries) if o is not None]
+    else:
+        qrev = series_values(pick_row(qinc, REV_ROWS))
+        qop = series_values(pick_row(qinc, OP_ROWS))
+    qrev, qop = align_quarters(qrev, qop)
+    if len(qrev) < 4:
+        return None
+    out = []
+    for (e, r), (_, o) in zip(qrev[:n], qop[:n]):
+        # 화면은 억/백만 단위로만 쓰므로 원값을 그대로 실을 이유가 없다.
+        # 파일이 커지면 매주 받는 사람이 그 비용을 낸다.
+        out.append([str(e)[:10], _sig(r), _sig(o)])
+    return out
+
+
+def _sig(v, digits=4):
+    """유효숫자 몇 자리만. 그래프의 모양은 안 바뀌고 파일만 작아진다."""
+    if v is None:
+        return None
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return None
+    if v == 0:
+        return 0
+    import math
+    k = digits - 1 - int(math.floor(math.log10(abs(v))))
+    return round(v, k) if k > 0 else int(round(v, k))
+
+
 def is_dart(src: str) -> bool:
     """이 분기 숫자가 DART 계열(확정 또는 확정+잠정)에서 왔는가.
 
@@ -550,6 +598,10 @@ def fetch_stock(tk, log=print):
     (q_src, q_rev, q_op, q_note, q_approx, q_end,
      lq_rev, lq_op) = pick_quarterly(qinc, inc, qseries, prelim)
 
+    # 화면에 그릴 분기 추이. 스프레드·가속과 같은 소스를 쓴다 — 따로 읽으면
+    # 숫자와 그래프가 다른 분기를 가리킨다.
+    qs_chart = quarter_series(qinc, inc, qseries)
+
     info = {}
     try:
         info = t.get_info() or {}
@@ -594,6 +646,10 @@ def fetch_stock(tk, log=print):
         "lq_rev": None if lq_rev is None else round(lq_rev, 1),
         "lq_op": None if lq_op is None else round(lq_op, 1),
         "q_src": q_src,
+        # 분기 추이 [[분기말, 매출, 영업이익], ...] 최신이 앞. 화면이 트레이드
+        # 카드에 작게 그린다. 기저효과(전년 이익이 바닥)를 글이 아니라 모양으로
+        # 보여주는 게 목적이라 TTM 스프레드가 아니라 원값이다.
+        "qs": qs_chart,
         # DART 정기공시에서 받은 공시일·원문 링크. 화면의 공시 버튼과
         # staleness 의 공시일 기반 정밀 판정이 이 값을 쓴다.
         "ir": ir,
@@ -1044,6 +1100,30 @@ def selftest():
         nonlocal ok
         print(("  ok  " if cond else "  FAIL") + " " + msg)
         ok = ok and bool(cond)
+
+    # ── 분기 추이(qs) ── 화면이 트레이드 카드에 그린다
+    # DART 모양: (기말, 매출, 영업이익), 오래된 것이 앞
+    _q = [(f"{y}-{m:02d}-30", 1000e8 + i * 10e8, base)
+          for i, (y, m, base) in enumerate(
+              [(2024, 3, 5e8), (2024, 6, 6e8), (2024, 9, 7e8), (2024, 12, 8e8),
+               (2025, 3, 9e8), (2025, 6, 10e8), (2025, 9, 11e8), (2025, 12, 300e8)])]
+    qs = quarter_series(None, None, _q)
+    check(qs is not None and len(qs) == 8, f"8분기를 다 싣는다 ({qs and len(qs)})")
+    check(qs[0][0] == "2025-12-30", f"최신이 앞 ({qs[0][0]})")
+    # 기저효과를 그림으로 보여주는 게 목적이다. 마지막 분기만 30배로 솟은
+    # 모양이 그대로 남아야 한다 — 여기서 뭉개면 글 경고로 되돌아간다.
+    check(qs[0][2] / qs[1][2] > 25, f"바닥에서 솟은 모양이 보존된다 ({qs[0][2]}/{qs[1][2]})")
+    check(quarter_series(None, None, _q[:3]) is None, "4분기 미만이면 안 그린다")
+    check(quarter_series(None, None, _q, n=4) is not None
+          and len(quarter_series(None, None, _q, n=4)) == 4, "n 으로 길이를 줄인다")
+    # 매출만 있고 영업이익이 없는 분기가 섞이면 align_quarters 가 맞춘다 —
+    # 안 맞추면 그래프의 매출과 영익이 다른 분기를 가리킨다.
+    _mixed = [(e, r, None if i == 5 else o) for i, (e, r, o) in enumerate(_q)]
+    qm = quarter_series(None, None, _mixed)
+    check(qm is not None and all(x[1] is not None and x[2] is not None for x in qm),
+          "한쪽만 있는 분기는 빠진다(매출·영익이 같은 분기를 가리킨다)")
+    check(_sig(1234567.0) == 1235000, f"유효숫자로 줄인다 ({_sig(1234567.0)})")
+    check(_sig(None) is None and _sig(0) == 0, "None·0 을 그대로 둔다")
 
     check(pct(120e8, 100e8) == 20, "pct 기본")
     check(pct(100e8, 0) is None, "pct 0 기저 차단")
