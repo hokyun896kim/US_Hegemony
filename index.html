@@ -609,6 +609,29 @@ h1+.sub,h1~.sub:first-of-type{color:var(--txt2)}
 .liq{font-size:11px;font-weight:700;border-radius:5px;padding:2px 6px;white-space:nowrap;
   border:1px solid var(--warnline);background:var(--warnbg);color:var(--badtxt)}
 .liq.n{border-color:var(--badline);background:var(--badbg)}
+/* 강도 밴드 · 국면 · 타이밍 배지 */
+.bnd{font-size:10.5px;font-weight:800;border-radius:4px;padding:1px 5px;white-space:nowrap;
+  border:1px solid var(--line);color:var(--txt2);background:var(--panel3)}
+.bnd.b-hi{border-color:var(--gold);color:var(--gold2);background:var(--okbg)}
+.bnd.b-ok{border-color:var(--okline);color:var(--okgrn);background:var(--okbg)}
+.bnd.b-lo{color:var(--mut)}
+.bnd.b-neg{border-color:var(--badline);color:var(--badtxt);background:var(--badbg)}
+.bnd.b-na{color:var(--mut)}   /* --neg 는 AA 미달 — 지금은 null med 가 없어 안 걸리지만 같은 잠재 버그다 */
+.ph,.tm{font-size:10.5px;font-weight:800;border-radius:4px;padding:2px 6px;white-space:nowrap;
+  border:1px solid var(--line);background:var(--panel3);color:var(--txt2)}
+.ph.ph-good{border-color:var(--okgrnline);color:var(--okgrn);background:var(--okbg)}
+.ph.ph-ok{color:var(--txt2)}
+.ph.ph-turn{border-color:var(--amberline);color:var(--amber);background:var(--amberbg)}
+.ph.ph-warn{border-color:var(--warnline);color:var(--badtxt);background:var(--warnbg)}
+.ph.ph-bad{border-color:var(--badline);color:var(--badtxt);background:var(--badbg)}
+.ph.ph-na{color:var(--mut)}   /* --neg 는 대비 3.3 으로 AA 미달 — .rv-na 때와 같은 실수를 반복했다 */
+.tm.t-g{border-color:var(--okgrnline);color:var(--okgrn);background:var(--okbg)}
+.tm.t-p{border-color:var(--amberline);color:var(--amber);background:var(--amberbg)}
+.tm.t-n{border-color:var(--badline);color:var(--badtxt);background:var(--badbg)}
+.tm.t-m{color:var(--mut)}
+.band-sum{font-size:12px;color:var(--mut);margin:-6px 0 12px;line-height:1.7}
+.band-sum b{color:var(--txt2)}
+.band-sum .none{color:var(--badtxt);font-weight:700}
 /* 사각지대 — 이 도구가 못 보는 것 */
 .bs{margin:20px 0 6px}
 .bs-hdr{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin:0 0 6px}
@@ -938,7 +961,8 @@ input,button,select,.search{font-family:"Pretendard Variable",Pretendard,-apple-
 <button data-v="watch">📌 내 워치리스트<i class="help-i" onclick="event.stopPropagation();tip(&quot;watch&quot;)">i</i></button>
 </div>
 <input class="search" id="q" placeholder="검색: 반도체, 방산, 005930 …">
-<div id="treeView"><div class="lbl">대섹터 헤게모니 (연간 기준)</div><div id="secList"></div></div>
+<div id="treeView"><div class="lbl">대섹터 헤게모니 (연간 기준)</div>
+<div class="band-sum" id="bandSum"></div><div id="secList"></div></div>
 <div id="flatView" class="hide"><div class="lbl">세부산업 전체</div><div id="subList"></div></div>
 <div id="signalView" class="hide"><div class="lbl">1층 통과 + 2층 시그널</div><div class="hint">GO=펀더+상대강도 동반강세 · 관망=펀더 좋고 상대강도 약함 · 매복=시장 미반영 잠복 · 과열주의=상대강도 과도+갭위험.</div><div id="sigList" style="overflow-x:auto"></div></div>
 <div id="watchView" class="hide"><div class="lbl">내 워치리스트 · 피크아웃 모니터</div><div id="watchBody"></div></div>
@@ -969,10 +993,14 @@ input,button,select,.search{font-family:"Pretendard Variable",Pretendard,-apple-
    <div class="usecase"><div class="u-t">④ 1차 자료로 직접 점프</div><div class="u-d">트레이드 카드에서 DART 전자공시·네이버 금융으로 바로가기. 가이던스·경영진 톤은 여기서 직접 읽거나 다른 AI에 던져 분석.</div></div>
 
    <h3>📋 추천 워크플로</h3>
-   <div class="step"><div class="num">1</div><div class="txt"><b>탑다운 트리</b>에서 대섹터 헤게모니 순위 확인 → 강한 대섹터를 펼친다</div></div>
-   <div class="step"><div class="num">2</div><div class="txt">그 안에서 <b>스프레드 높은 세부산업</b>을 펼쳐 구성 종목을 본다</div></div>
-   <div class="step"><div class="num">3</div><div class="txt"><b>분기TTM과 가속</b>을 확인 — 연간만 좋고 분기가 꺾였으면 피크아웃 의심, 분기가 더 강하면 가속 국면</div></div>
-   <div class="step"><div class="num">4</div><div class="txt"><b>상대강도(RS)</b>로 타이밍 판단 — 펀더 좋은데 RS 약하면 "아직 시장이 안 깨운 매복 후보", RS도 강하면 진행 중</div></div>
+   <div class="step"><div class="num">1</div><div class="txt"><b>탑다운 트리</b>에서 대섹터 헤게모니 순위 확인 → <b>강함</b> 배지가 붙은 대섹터를 펼친다.<br>
+    강도 눈금은 <b>강함 +20p↑ · 양호 +5~20p · 미미 0~+5p · 마진압박 음수</b>이고, 줄마다 표시됩니다. 트리 머리에 <b>이번 회차에 강함이 몇 개인지</b>도 적힙니다 — <b>0개인 회차도 있습니다</b>(그러면 대섹터로 좁히지 말고 세부산업·종목으로 내려가세요).</div></div>
+   <div class="step"><div class="num">2</div><div class="txt">그 안에서 <b>같은 배지</b>로 세부산업을 고른다 — 대섹터와 눈금이 같아 그대로 읽으면 됩니다. 펼치면 구성 종목과 <b>📋 산업 스냅샷 복사</b>가 나옵니다.</div></div>
+   <div class="step"><div class="num">3</div><div class="txt">종목 줄 아래 <b>국면 배지</b>를 본다 — 화면이 대신 판정합니다.<br>
+    <b>가속</b>(분기가 연간보다 강함) · <b>둔화</b>(둘 다 양수지만 분기가 약함) · <b>피크아웃</b>(연간은 좋은데 분기가 음수로 꺾임) · <b>회복</b>(연간은 음수인데 분기가 양수로 돌아섬) · <b>부진</b>(둘 다 음수) · <b>유지</b>(방향이 뚜렷하지 않음) · <b>기저효과</b>(비율만 폭발 — 믿지 말 것) · <b>분기 미확인</b>.<br>
+    실측으로 '가속도 피크아웃도 아닌' 종목이 절반을 넘습니다. 그래서 전부 이름을 붙였습니다.</div></div>
+   <div class="step"><div class="num">4</div><div class="txt">그 옆 <b>타이밍 배지</b>를 본다 — 6개월(시장이 깨웠나)과 3개월(지금 방향)을 함께 읽습니다.<br>
+    <b>선취매 권역</b>(저반영·여력) · <b>진행 중</b>(부분 반영) · <b>점화 직후</b>(이미 절반 반영) · <b>이미 반영</b>(고점권) · <b>정점 통과·냉각</b>(뒷북 위험). 뒤에 붙는 <b>3M 하락멈춤 / 횡보 / 하락중</b>이 핵심입니다 — <b>6개월 약세가 같아도 3개월이 멈췄으면 바닥 다지는 중, 계속 빠지면 떨어지는 칼날</b>입니다. 마우스를 올리면 실제 수치가 나옵니다.</div></div>
    <div class="step"><div class="num">5</div><div class="txt"><b>DART 공시</b>로 점프해 가이던스·톤을 직접 확인하고 최종 판단</div></div>
 
    <h3>📖 숫자 읽는 법 (가장 중요)</h3>
@@ -1132,6 +1160,74 @@ function trdvalLvl(m){
   if(v<30e8) return {c:'p', t:trdvalText(v)};        // 30억 미만
   return {c:'g', t:trdvalText(v)};
 }
+// ── 강도 밴드와 국면 판정 ─────────────────────────────────────────
+//
+// 사용설명서의 추천 워크플로는 "강한 대섹터를 펼친다 → 스프레드 높은
+// 세부산업을 펼친다 → 분기가 꺾였으면 피크아웃, 더 강하면 가속" 이라고
+// 적어두고, 정작 화면은 숫자만 보여줬다. 어디부터가 '강함'인지, 이 종목이
+// 어느 국면인지 사용자가 매번 머릿속으로 판정해야 했다.
+//
+// 경계 +20p 는 지어낸 것이 아니라 사용설명서의 "+20p 이상이면 강한
+// 헤게모니" 를 그대로 쓴 것이다.
+//
+// ⚠ 주의: 이 밴드는 두 시장에서 뜻이 같지 않다. 실측으로 한국 대섹터는
+// 20p 이상이 3개인데 미국은 0개다(최고 +16.8p). 그래서 트리 머리에
+// '이번 회차 강함 N개' 를 같이 적는다 — 0 이면 "이번 주엔 강한 대섹터가
+// 없다" 가 답이고, 그게 숨기면 안 되는 사실이다.
+const BANDS=[[20,'강함','b-hi'],[5,'양호','b-ok'],[0,'미미','b-lo']];
+function band(v){
+ if(v==null) return {t:'—',c:'b-na'};
+ for(const b of BANDS) if(v>=b[0]) return {t:b[1],c:b[2]};
+ return {t:'마진압박',c:'b-neg'};
+}
+function bandChip(v){const b=band(v);return `<span class="bnd ${b.c}">${b.t}</span>`;}
+
+// 국면 — 사용설명서 3단계를 화면이 대신 판정한다.
+//
+// "연간만 좋고 분기가 꺾였으면 피크아웃, 분기가 더 강하면 가속" 인데,
+// 그 둘 어디에도 안 들어가는 종목이 실측으로 절반이 넘는다(한국 234종목 중
+// 부진 55·회복 41·유지 11·미확인 11). 그래서 빠짐없이 나누고 이름을 붙인다.
+const PHASE={
+ base:  ['기저효과','ph-na','전년 이익이 바닥이라 비율만 폭발했을 수 있다 — 숫자를 그대로 믿지 마라'],
+ na:    ['분기 미확인','ph-na','분기 손익을 못 받아 국면을 판정할 수 없다'],
+ down:  ['부진','ph-bad','연간도 분기도 음수 — 이익 레버리지가 없다'],
+ turn:  ['회복','ph-turn','연간은 음수인데 분기가 양수로 돌아섰다 — 변곡일 수 있다'],
+ peak:  ['피크아웃','ph-bad','연간은 좋은데 분기가 음수로 꺾였다 — 정점을 지나는 중'],
+ accel: ['가속','ph-good','분기가 연간보다 강하다 — 레버리지가 막 붙는 국면'],
+ slow:  ['둔화','ph-warn','둘 다 양수지만 분기가 연간보다 약하다 — 힘이 빠지는 중'],
+ hold:  ['유지','ph-ok','분기와 연간이 비슷하다 — 방향이 뚜렷하지 않다'],
+};
+function phaseOf(m){
+ const sp=m.spread, q=m.q_spread, a=m.accel;
+ if(a!=null&&Math.abs(a)>150) return 'base';
+ if(sp==null||q==null)        return 'na';
+ if(sp<=0&&q<=0)              return 'down';
+ if(sp<=0)                    return 'turn';
+ if(q<=0)                     return 'peak';
+ if(a==null)                  return 'na';
+ // ±3p 는 '사실상 같다' 로 본다. 0 으로 가르면 +0.2p 가 '가속'이 된다.
+ if(a>3)  return 'accel';
+ if(a<-3) return 'slow';
+ return 'hold';
+}
+function phaseChip(m){const p=PHASE[phaseOf(m)];
+ return `<span class="ph ${p[1]}" title="${p[2]}">${p[0]}</span>`;}
+
+// 타이밍 — 사용설명서 4단계. 새로 만들지 않고 화면이 이미 쓰는 판정을
+// 그대로 쓴다(priceIn: 레이더·TOP5 와 같은 함수). 3개월 방향(falling)을
+// 함께 붙여야 "6개월 약세"가 바닥 다지는 중인지 떨어지는 칼날인지 갈린다.
+// A/B/C 등급은 이 배지 옆에 범례가 없으면 아무 뜻도 아니다. 그래서 글자로
+// 쓴다 — 6개월 약세가 같아도 3개월이 멈췄는지 아직 떨어지는지가 갈린다는
+// 것이 이 줄의 요점이기 때문이다.
+const FALL3={A:'3M 하락멈춤', B:'3M 횡보', C:'3M 하락중'};
+function timingChip(m){
+ if(m.rs6==null&&m.rs3==null) return '';
+ const p=priceIn(m), f=falling(m);
+ // 괄호 안 설명은 길어서 모바일 한 줄을 다 먹는다 — 마우스 올리면 나온다
+ const short=p.t.replace(/^[^ ]+ /,'').replace(/\(.*\)/,'').trim();
+ return `<span class="tm t-${p.c}" title="${p.t} · ${f.t}">${short} · ${FALL3[f.g]}</span>`;
+}
+
 // 유동성 경고 — 목록에서 바로 보이게.
 //
 // 거래대금은 트레이드 카드에만 있었다. 그런데 하루 5억 원도 안 도는 종목은
@@ -1224,13 +1320,13 @@ function memberRows(mem){
    <span class="g2 rs ${rsC(m.rs3)}">${rsT(m.rs3)}</span>
    <span class="g2 rs ${rsC(m.rs6)}">${rsT(m.rs6)}</span>
    <span class="rs ${m.gaplvl=='H'?'neg':m.gaplvl=='L'?'pos':''}">${m.gap!=null?m.gap+'%':'—'}</span></div>
-   <div class="ir-row">${irBtns(m)}</div>`).join('');
+   <div class="ir-row">${phaseChip(m)}${timingChip(m)}${irBtns(m)}</div>`).join('');
 }
 function subBar(s,i){const f=fb(s.med,MXB),nm=s.ko||s.desc;
  return `<div class="bar sub" data-sub="${s.sic}"><div class="rk">${i!=null?'#'+(i+1):''}</div>
   <div class="nm">${nm} <span class="x">${s.desc} · ${s.n}개</span></div>
   <div class="track"><div class="center"></div><div class="fill ${f.p?'p':'n'}" data-w="${f.w}"></div></div>
-  <div><div class="val ${f.p?'p':'n'}">${s.med>0?'+':''}${s.med}p</div><div class="cnt">${s.n}개</div></div>
+  <div><div class="val ${f.p?'p':'n'}">${s.med>0?'+':''}${s.med}p</div><div class="cnt">${bandChip(s.med)}</div></div>
  </div><div class="drill sub-d" id="sd_${s.sic}"><div class="sd-act"><button class="ri-copy" title="이 산업의 집계·구성 종목·산업별 점검표를 한 번에 복사합니다" onclick="event.stopPropagation();copyIndSnapSub(${D.subs.indexOf(s)},this)">${SUB_COPY_LABEL}</button></div>${memberRows(s.members)}</div>`;}
 function renderTree(){const sl=document.getElementById('secList');sl.innerHTML='';
  D.sectors.forEach((sec,i)=>{const f=fb(sec.med,MXS);const subs=D.subs.filter(x=>x.gics===sec.gics);
@@ -1238,9 +1334,24 @@ function renderTree(){const sl=document.getElementById('secList');sl.innerHTML='
   row.innerHTML=`<div class="bar" data-sec="${slugId(sec.gics)}"><div class="rk">#${i+1}</div>
    <div class="nm">${sec.gics} <span class="x">세부 ${sec.n_sub} · 종목 ${sec.n_co}</span></div>
    <div class="track"><div class="center"></div><div class="fill ${f.p?'p':'n'}" data-w="${f.w}"></div></div>
-   <div><div class="val ${f.p?'p':'n'}">${sec.med>0?'+':''}${sec.med}p</div></div></div>
+   <div><div class="val ${f.p?'p':'n'}">${sec.med>0?'+':''}${sec.med}p</div>
+    <div class="cnt">${bandChip(sec.med)}</div></div></div>
    <div class="drill" id="sec_${slugId(sec.gics)}">${subs.map(s=>subBar(s,null)).join('')}</div>`;
-  sl.appendChild(row);});animate();bindTree();}
+  sl.appendChild(row);});animate();bindTree();renderBandSum();}
+// 이번 회차에 '강함'이 몇 개인가. 사용설명서는 "강한 대섹터를 펼친다"고
+// 적어두는데, 실측으로 미국은 20p 이상 대섹터가 0개인 회차가 있다
+// (최고 +16.8p). 그때 답은 "이번 주엔 강한 대섹터가 없다" 이고, 그건
+// 숨기면 안 되는 사실이라 여기서 그대로 말한다.
+function renderBandSum(){
+ const el=document.getElementById('bandSum'); if(!el) return;
+ const c={강함:0,양호:0,미미:0,마진압박:0};
+ D.sectors.forEach(s=>{const b=band(s.med); if(b.t in c) c[b.t]++;});
+ const hi=c['강함'];
+ el.innerHTML=`강도 눈금 — ${bandChip(25)} +20p↑ · ${bandChip(10)} +5~20p · ${bandChip(2)} 0~+5p · ${bandChip(-5)} 음수
+  <br>이번 회차 대섹터 <b>${D.sectors.length}개</b> 중 강함 ${hi?`<b>${hi}개</b>`:`<span class="none">0개</span>`}
+  · 양호 <b>${c['양호']}개</b> · 미미 <b>${c['미미']}개</b> · 마진압박 <b>${c['마진압박']}개</b>
+  ${hi?'':'— <b>이번 주에는 +20p 이상인 대섹터가 없습니다.</b> 순위 위쪽이라도 절대 강도는 낮으니, 대섹터로 좁히는 대신 세부산업·종목 단위로 보세요.'}`;
+}
 // 한글 섹터명을 DOM id 로 안전하게 (encodeURIComponent 후 비영숫자 제거)
 function slugId(s){return 'g'+Array.from(String(s)).map(c=>c.charCodeAt(0).toString(36)).join('');}
 function renderFlat(){let arr=D.subs.filter(s=>!q||(s.desc+s.ko+s.sic+s.gics+s.members.map(m=>m.tk+m.nm).join('')).toLowerCase().includes(q.toLowerCase()));

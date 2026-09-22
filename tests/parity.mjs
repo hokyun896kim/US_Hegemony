@@ -53,6 +53,20 @@ const SHARED = ['priceIn', 'cooling', 'realAccel', 'accelCheck', 'turnaround',
                 'computeAlerts', 'renderAlerts', 'alertStore', 'ackAlert',
                 'coverageNote', 'staleness', 'srcCaveat',
                 'blindSpot', 'renderBlind'];
+// 같은 함수를 두 번 정의하면 뒤엣것이 이기므로 화면은 멀쩡히 돈다. 그래서
+// 안 잡힌다 — 실제로 us.html 에 liqWarn 이 두 벌 들어갔고(한 페이지의 코드를
+// 다른 페이지로 복사할 때 이미 삽입된 블록까지 딸려갔다) 파리티도 통과했다.
+// 죽은 복사본은 다음 사람이 고칠 때 한쪽만 고치게 만든다.
+console.log('\n━━ 같은 함수를 두 번 정의하지 않는다 ━━');
+for (const [label, s0] of [['index.html', KR], ['us.html', US]]) {
+  const seen = {}, dup = [];
+  for (const m of strip(s0).matchAll(/\bfunction\s+([A-Za-z_$][\w$]*)\s*\(/g)) {
+    seen[m[1]] = (seen[m[1]] || 0) + 1;
+    if (seen[m[1]] === 2) dup.push(m[1]);
+  }
+  t(dup.length === 0, `${label} 중복 정의 없음${dup.length ? ' — ' + dup.join(', ') : ''}`);
+}
+
 console.log('\n━━ 시장 무관 판정 로직은 두 페이지가 같아야 한다 ━━');
 for (const name of SHARED) {
   const a = fnBody(KR, name), b = fnBody(US, name);
