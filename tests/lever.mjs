@@ -85,6 +85,34 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
   t(JSON.stringify(L.wake.map(m => m.tk).sort()) === JSON.stringify(wantW), `① = 상위 40% × 반응 상위⅓ (${L.wake.length}종목)`);
   t(JSON.stringify(L.doubt.map(m => m.tk).sort()) === JSON.stringify(wantD), `② = 상위 40% × 반응 하위⅓ (${L.doubt.length}종목)`);
   t(L.wake.every((m, i, a) => i === 0 || a[i - 1].q_spread >= m.q_spread), '목록은 스프레드 높은 순');
+
+  console.log('── 1b. 동종 대비 순위 ──');
+  // ①·② 는 벤치마크 대비 절대값이 아니라 종목끼리의 순위로 가른다. 2026-09-23 한국은
+  // 중앙값이 코스피 대비 +22%p 라 ② 에 +13%p 종목이 찍혔고, 숫자만 보면 "시장이
+  // 반응하지 않았다" 가 거짓말처럼 읽혔다. 순위를 같이 보여주는지 잰다.
+  E('window.__D0=D');
+  const ids = [...Array(N).keys()];
+  t(L.med === 9.5, `비교 종목 중앙값 — 반응 −20~39 가 한 번씩이면 9.5 (${L.med})`);
+  const iMax = ids.find(i => earOfI(i) === 39), iMin = ids.find(i => earOfI(i) === -20);
+  const rMax = E(`earRankTxt(leverAll().find(m=>m.tk==='M${String(iMax).padStart(2,"0")}'))`), rMin = E(`earRankTxt(leverAll().find(m=>m.tk==='M${String(iMin).padStart(2,"0")}'))`);
+  t(rMax === `비교 ${N}종목 중 상위 2%` && rMin === `비교 ${N}종목 중 하위 2%`, `양 끝의 순위 (${rMax} / ${rMin})`);
+  // 수준만 옮기면(모든 종목 +30%p) 목록은 그대로여야 한다 — 순위 판정이니까
+  E(`D=${JSON.stringify(synth(REAL, ms => ms.map(m => ({ ...m, ear: m.ear + 30 }))))}`);
+  const Ls = E('leverLists()');
+  const key = x => JSON.stringify([x.wake.map(m => m.tk).sort(), x.doubt.map(m => m.tk).sort()]);
+  t(key(Ls) === key(L) && Ls.med === 39.5, `모든 반응이 +30%p 옮겨가도 ①·② 는 같다 (중앙값 ${Ls.med})`);
+  t(Ls.doubt.length > 0 && Ls.doubt.every(m => m.ear > 0), `이때 ② 는 전부 ${bench} 대비 + 다 — 혼란이 생기는 바로 그 상황`);
+  E('renderRadar()');
+  const pan = () => w.document.getElementById('radarPanel');
+  t(/종목끼리의 순위/.test(pan().textContent), '중앙값이 멀리 가 있으면 "순위로 가른다" 는 안내를 띄운다');
+  t(/대비로는 앞섰지만 다른 종목들보다 반응이 약했다/.test(pan().textContent), `② 근거에 "${bench} 대비로는 앞섰지만 … 약했다" 라고 적는다`);
+  t(!/시장이 반응하지 않았다/.test(pan().textContent), '"시장이 반응하지 않았다" 는 더 이상 쓰지 않는다');
+  const subs = [...pan().querySelectorAll('.rc-m sub')].map(x => x.textContent).filter(x => /위 \d+%$/.test(x));
+  t(subs.some(x => x.startsWith('하위')) && subs.some(x => x.startsWith('상위')), `카드마다 순위 꼬리표 (${subs.slice(0, 3).join(', ')} …)`);
+  // 중앙값이 벤치마크 근처면 안내는 잡음이다
+  E(`D=${JSON.stringify(synth(REAL, ms => ms.map(m => ({ ...m, ear: m.ear - 9.5 }))))}; renderRadar()`);
+  t(E('leverLists().med') === 0 && !/종목끼리의 순위/.test(pan().textContent), '중앙값이 0 근처면 안내를 띄우지 않는다');
+  E('D=window.__D0; renderRadar()');
   // 약세장 — 60분위가 음수여도 음수 스프레드는 레버리지가 아니다
   E(`window.__D=D; D=${JSON.stringify(synth(REAL, ms => ms.map(m => ({ ...m, q_spread: m.q_spread - 45 }))))}`);
   const Lneg = E('leverLists()');
@@ -95,8 +123,9 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
   t(Lthin.wake.length === 0 && Lthin.doubt.length === 0 && Lthin.tSp === null, `판정 가능 ${Lthin.n}종목(<30)이면 목록을 내지 않는다`);
   E('renderRadar()');
   t(/분위를 나눌 수 없습니다/.test(w.document.getElementById('radarPanel').textContent), '표본 부족을 화면에 밝힌다');
-  // 실적 반응이 전혀 없으면(커밋된 데이터 = 첫 갱신 전)
-  E(`D=${JSON.stringify(REAL)}; renderRadar()`);
+  // 실적 반응이 전혀 없으면(빌더가 ear 를 내기 전의 데이터). 커밋된 데이터는
+  // 2026-09-23 빌드부터 ear 를 갖고 있으므로 직접 지워서 그 상태를 만든다.
+  E(`D=${JSON.stringify(synth(REAL, ms => ms.map(m => ({ ...m, ear: null, ear_to: null }))))}; renderRadar()`);
   t(/실적 반응 데이터가 아직 없습니다/.test(w.document.getElementById('radarPanel').textContent), '실적 반응이 없으면 첫 갱신부터 찬다고 안내');
   E('D=window.__D; renderRadar()');
   // 숫자를 못 믿는 종목은 뺀다(백테스트에는 이런 종목이 없었다)

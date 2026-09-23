@@ -44,6 +44,39 @@ from buildlib import (          # noqa: F401  (자체검증이 직접 부른다)
 from buildlib import load_prev as _load_prev
 
 
+# ── 어디서 시간이 드는가 ─────────────────────────────────────────────
+# 전체 빌드가 4시간 20분 걸리고 그중 258분이 '재무 + 분류' 한 단계였다
+# (종목당 약 70초). 그런데 그 70초가 야후·DART·네이버 중 어디서 드는지는
+# 로그에 없어 짐작으로만 말할 수 있었다. 고치기 전에 잰다 — 출처별로
+# 걸린 시간과 호출 횟수를 모아 진행 줄마다 찍는다.
+import contextlib
+
+SPENT: dict[str, list] = {}          # 이름 → [초, 호출 수]
+
+
+@contextlib.contextmanager
+def _spent(name: str):
+    t0 = time.monotonic()
+    try:
+        yield
+    finally:
+        s = SPENT.setdefault(name, [0.0, 0])
+        s[0] += time.monotonic() - t0
+        s[1] += 1
+
+
+def spent_line(n: int) -> str:
+    """'야후 재무 12.3초/종목 · DART 분기 30.1초/종목(9.8건) …' 큰 순서로."""
+    if not SPENT or n <= 0:
+        return ""
+    parts = []
+    for k, (sec, cnt) in sorted(SPENT.items(), key=lambda kv: -kv[1][0]):
+        parts.append(f"{k} {sec / n:.1f}초")
+    calls = sum(dart.STATUS.values())
+    tail = f" · DART 요청 {calls / n:.1f}건/종목" if calls else ""
+    return "종목당 소요 — " + " · ".join(parts) + tail
+
+
 def load_prev(path) -> dict:
     """직전 결과 복원. 한국판은 gics 가 한글이라 역매핑표를 넘긴다."""
     return _load_prev(path, {v: k for k, v in SECTOR_KO.items()})
@@ -542,20 +575,23 @@ def fetch_stock(tk, log=print):
 
     try:
         t = yf.Ticker(tk)
-        inc = t.income_stmt
-        qinc = t.quarterly_income_stmt
+        with _spent("야후 재무"):
+            inc = t.income_stmt
+            qinc = t.quarterly_income_stmt
     except Exception as exc:  # noqa: BLE001
         log(f"  {tk} 재무 실패: {exc}")
         return None
 
     # 컨센서스 추정치 방향. 실측하니 한국도 85%(190/223)가 채워진다.
-    est = est_trend.fetch(t)
+    with _spent("야후 추정치"):
+        est = est_trend.fetch(t)
 
     # 실적 발표일. 지금까지 한국판은 이걸 아예 물어보지도 않고 None 을
     # 박아뒀는데, 그 탓에 '발표된 실적이 아직 안 들어갔는지' 판정이 한국에서만
     # 정밀 경로를 못 탔다(미국은 8-K 날짜가 있다). 야후가 한국 종목에 얼마나
     # 주는지는 미지수라 전부 best-effort — 실패하면 지금과 똑같이 None 이다.
-    earn = earnings_dates(t)
+    with _spent("야후 발표일"):
+        earn = earnings_dates(t)
 
     rev, op = annual_yoy(inc)
     if rev is None or op is None:
@@ -571,7 +607,8 @@ def fetch_stock(tk, log=print):
         corp = DART_CORP.get(code)
         if corp:
             try:
-                qs = dart.quarters(code, corp, log=lambda *a: None)
+                with _spent("DART 분기"):
+                    qs = dart.quarters(code, corp, log=lambda *a: None)
                 if len(qs) >= 4:
                     qseries = qs
             except Exception as exc:  # noqa: BLE001 — 실패는 폴백으로 흡수
@@ -580,7 +617,8 @@ def fetch_stock(tk, log=print):
             # 분기 데이터와 독립이라 실패해도 조용히 넘긴다 — 화면은 ir 이
             # 없으면 폴백 문구를 띄운다.
             try:
-                ir = dart.latest_report(corp)
+                with _spent("DART 공시"):
+                    ir = dart.latest_report(corp)
             except Exception as exc:  # noqa: BLE001
                 log(f"  {tk} 공시검색 실패({exc}) — ir 을 비웁니다")
 
@@ -590,7 +628,8 @@ def fetch_stock(tk, log=print):
     # splice() 가 겹치는 분기로 배수를 대조하고 못 맞추면 붙이지 않는다.
     if qseries and USE_NAVER:
         try:
-            nq = naver.quarters(code, log=lambda *a: None)
+            with _spent("네이버"):
+                nq = naver.quarters(code, log=lambda *a: None)
             qseries, prelim = naver.splice(qseries, nq, log=lambda *a: None)
         except Exception as exc:  # noqa: BLE001 — 잠정은 없어도 되는 값이다
             log(f"  {tk} 네이버 실패({exc}) — 확정(DART)만 씁니다")
@@ -604,7 +643,8 @@ def fetch_stock(tk, log=print):
 
     info = {}
     try:
-        info = t.get_info() or {}
+        with _spent("야후 info"):
+            info = t.get_info() or {}
     except Exception as exc:  # noqa: BLE001
         log(f"  {tk} info 실패(분류 없이 진행): {exc}")
 
@@ -964,7 +1004,7 @@ def build(limit, min_cap, sleep, log=print, budget=None, stall=0, prev=None):
                 f"건너뜁니다. 받은 {len(members)}종목으로 만듭니다.")
             break
         try:
-            with _stall_guard(stall):
+            with _stall_guard(stall), _spent("= 종목 전체"):
                 fin = fetch_stock(r["tk"], log)
         except Stall as exc:
             log(f"  {r['tk']} 매달림({exc}) — 건너뜁니다")
@@ -994,8 +1034,11 @@ def build(limit, min_cap, sleep, log=print, budget=None, stall=0, prev=None):
             eta = pace * (len(rows) - i) / 60
             log(f"  {i}/{len(rows)} (확보 {len(members)}) "
                 f"· {budget.spent()/60:.0f}분 경과 · 남은 예상 {eta:.0f}분")
-        time.sleep(sleep)
+            log(f"    {spent_line(i)}")
+        with _spent("대기(예의상)"):
+            time.sleep(sleep)
     log(f"  재무 확보 {len(members)}/{len(rows)}")
+    log(f"  {spent_line(i if rows else 0)}")
     fresh_n = len(members)
 
     # 이번 회차에 못 받은 종목은 지난 회차 실적을 그대로 들고 간다. 실적은
@@ -1564,6 +1607,29 @@ def selftest():
         check(got.get("BBB.KS", {}).get("ear") is None,
               "발표일이 없으면 None — 지어내지 않는다")
         check("ear" in a and "ear_to" in a, "산출 키 이름이 화면이 읽는 이름(ear·ear_to)이다")
+
+    print("\n── 소요시간 분해 ──")
+    saved = dict(SPENT)
+    SPENT.clear()
+    try:
+        for _ in range(2):
+            with _spent("느림"):
+                time.sleep(0.02)
+        with _spent("빠름"):
+            pass
+        try:
+            with _spent("예외"):
+                raise ValueError
+        except ValueError:
+            pass
+        line = spent_line(2)
+        check(SPENT["느림"][1] == 2 and SPENT["느림"][0] >= 0.04, "호출 수와 시간을 모두 센다")
+        check(SPENT.get("예외", [0, 0])[1] == 1, "예외가 나도 잰다 — 실패한 호출도 시간을 먹는다")
+        check(line.index("느림") < line.index("빠름"), f"오래 걸린 순서로 찍는다 ({line})")
+        check(spent_line(0) == "", "종목이 0이면 빈 줄 — 0으로 나누지 않는다")
+    finally:
+        SPENT.clear()
+        SPENT.update(saved)
 
     print("\n" + ("전부 통과" if ok else "실패 있음"))
     return 0 if ok else 1
