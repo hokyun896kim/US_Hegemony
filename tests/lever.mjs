@@ -144,6 +144,43 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
   t(E(`flipOf(${JSON.stringify({ qs: q([5, 5, 5, null, -2, -2, -2, -2]) })})`) === null, '결측 분기가 있으면 판정하지 않는다');
   t(E(`flipOf({qs:null})`) === null, '분기 원값이 없으면 null');
 
+  // 트리 밖 흑자전환(D.flips). 전년 영업이익이 0 이하면 YoY 가 정의되지 않아
+  // 빌더가 트리에서 뺀다 — 2026-06 분기 실측 흑자전환 54종목 중 46종목이 그랬다.
+  // 빌더가 그 종목을 따로 싣고, 화면은 흑자전환 목록·색인에서만 읽는다.
+  {
+    const FL = { tk: 'FL01', nm: '전환건설', sec: '건설', sector: 'Industrials', industry: 'Engineering & Construction',
+      rev: null, op: null, spread: null, q_rev: null, q_op: null, q_spread: null, accel: null, q_note: '정상',
+      q_end: '2026-06-30', f_as_of: '2026-09-22', ir: { date: '2026-08-14', docs: [] }, ear: 12.3, ear_to: '2026-08-18',
+      rs3: 5, rs6: 10, from_high: -20, pe: 15, qs: q([30, 20, 10, 5, -10, -20, -30, -40]) };
+    const dupe = { ...FL, tk: 'M40', nm: '트리에도 있는 종목' };     // 합성 트리 종목과 같은 티커
+    const { w: w2, errs: e2 } = await load(page, { ...synth(REAL), flips: [FL, dupe] });
+    const E2 = s => w2.eval(s);
+    t(e2.length === 0, `D.flips 가 있어도 스크립트 오류 없음${e2.length ? ' — ' + e2[0] : ''}`);
+    const fl = E2('flipList()').map(m => m.tk);
+    t(fl.includes('FL01'), `트리 밖 흑자전환 종목이 흑자전환 목록에 나온다 (${fl.join(',')})`);
+    t(fl.filter(x => x === 'M40').length <= 1, '트리에도 있는 티커는 한 번만 — 트리 쪽이 이긴다');
+    t(E2("!!TKINDEX['FL01'] && TKINDEX['FL01'].flipOnly === true"),
+      '색인(TKINDEX)에 들어간다 — 트레이드 카드·관심종목·프롬프트가 이걸로 찾는다');
+    t(E2("TKINDEX['FL01'] ? leverKind(TKINDEX['FL01']) : null") === 'flip', '판정 = 흑자전환');
+    t(!E2('leverAll()').some(m => m.tk === 'FL01') && !E2('D.subs.some(s=>s.members.some(m=>m.tk==="FL01"))'),
+      '트리·①② 판정 대상에는 들어가지 않는다 — 스프레드가 없다');
+    E2('renderRadar()');
+    t(/전환건설/.test(w2.document.getElementById('radarPanel').textContent), '레이더 흑자전환 칸에 카드가 그려진다');
+    let tcErr = null;
+    try { E2("openTrade('FL01')"); } catch (e) { tcErr = e.message; }
+    const tc = w2.document.getElementById('tcBody')?.innerHTML || '';
+    const ttl = w2.document.getElementById('tcTitle')?.textContent || '';
+    t(!tcErr && ttl.includes('전환건설') && tc.includes('흑자전환'),
+      `스프레드가 없는 종목도 트레이드 카드가 열린다${tcErr ? ' — ' + tcErr : ''} (제목 "${ttl}")`);
+    t(/영업이익률 [-\d.]+% → [-\d.]+%/.test(tc) && !/마진 압박/.test(tc),
+      '카드 논거가 "흑자전환(이익률 변화)" 이지 "음수 스프레드·마진 압박" 이 아니다 — null<=0 은 JS 에서 참');
+    t(!/NaN|undefined|nullp/.test(tc.replace(/<[^>]+>/g, ' ')), '카드에 NaN·undefined·"nullp" 가 새지 않는다');
+    const pr = E2("buildPrompt('FL01')") || '';
+    t(/흑자전환\(관찰\)/.test(pr), '프롬프트에 "흑자전환(관찰)" 판정이 실린다');
+    t(E2("TKINDEX['FL01'] ? peakStatus(TKINDEX['FL01']).label : null") === '흑자전환', '관심종목 신호등은 "데이터 부족" 이 아니라 "흑자전환"');
+    w2.close();
+  }
+
   console.log('── 3. 화면 ──');
   const P = w.document.getElementById('radarPanel');
   const secs = [...P.querySelectorAll('.radar-sec')].map(e => e.textContent);
@@ -153,7 +190,8 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
   const old = P.querySelector('details.radar-old');
   t(!!old && !old.open, '구 레이더는 접힌 채로 남는다(지우지 않는다)');
   t(!!old && old.querySelector('.radar-sec')?.textContent.includes('선취매 권역'), '구 레이더 안에 예전 목록이 그대로 있다');
-  t(P.querySelectorAll(':scope > .rc').length <= 8 * 2 + 5, '각 목록은 8개까지 펼치고 나머지는 접는다');
+  // ①·②·흑자전환 세 목록 모두 8개까지(흑자전환은 트리 밖 종목이 들어오면서 5 → 8)
+  t(P.querySelectorAll(':scope > .rc').length <= 8 * 3, '각 목록은 8개까지 펼치고 나머지는 접는다');
   t(L.wake.length <= 8 || !!P.querySelector('.radar-more'), '넘치면 "더 보기" 로 접는다');
   t(P.textContent.includes(`${bench} 대비`), `기준 지수 이름이 시장에 맞다 (${bench})`);
   const wk = L.wake[0].tk;

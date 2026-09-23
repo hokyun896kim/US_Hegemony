@@ -1101,6 +1101,9 @@ async function loadData(){
   // 인덱스 재구축
   Object.keys(TKINDEX).forEach(k=>delete TKINDEX[k]);
   D.subs.forEach(s=>s.members.forEach(m=>{TKINDEX[m.tk]={...m,sec:s.ko||s.desc,secKo:s.ko,secEn:s.desc};}));
+  // 전년 적자라 트리에 못 들어온 흑자전환 종목(빌더가 D.flips 로 따로 싣는다).
+  // 트레이드 카드·관심종목·프롬프트가 찾을 수 있게 색인에만 넣는다.
+  (D.flips||[]).forEach(m=>{if(!TKINDEX[m.tk])TKINDEX[m.tk]={...m,sec:m.sec||'미분류',secKo:m.sec,secEn:m.industry||'',flipOnly:true};});
   // 갱신일 표시. SEC 가 막힌 회차에는 가격층만 새로 받으므로 펀더멘털이 더
   // 오래됐을 수 있다 — 한 날짜만 보여주면 스프레드까지 오늘 것으로 읽힌다.
   // 리포트 머리의 기준일·수록 종목수
@@ -1427,7 +1430,11 @@ function bullBear(m){
  if(m.pe!=null&&m.pe>0&&m.pe<18&&m.spread>0)bull.push(`밸류 부담 적음(PER <b>${m.pe.toFixed(1)}</b>) — 헤게모니 대비 저평가`);
  // Bear 논거
  if(base)bear.push(`<b>⚠흑자전환·기저효과 추정</b>(영익YoY ${m.op}%) — 스프레드 +${m.spread}p의 상당분이 산수 착시일 수 있음. 다음 분기 정상화 후 잔존 스프레드로 진짜 체력 재확인 필요`);
- if(m.spread<=0)bear.push(`연간 헤게모니 음수(<b>${m.spread}p</b>) — 이익이 매출을 못 따라감(마진 압박)`);
+ // null<=0 은 JS 에서 참이다 — 스프레드가 '없는' 흑자전환 종목을 '음수(마진 압박)' 로 적으면 거짓말이다
+ if(m.spread!=null&&m.spread<=0)bear.push(`연간 헤게모니 음수(<b>${m.spread}p</b>) — 이익이 매출을 못 따라감(마진 압박)`);
+ if(m.spread==null&&flipOf(m)){const f=flipOf(m);
+   bull.push(`<b>흑자전환</b> — 영업이익률 ${f.prev}% → ${f.now}% (최근 4분기 vs 그 전 4분기)`);
+   bear.push(`<b>전년 적자라 스프레드가 정의되지 않는 종목</b> — 흑자가 일회성(자산매각·충당금 환입·환율)인지 반복 가능한 영업이익인지 DART 분기보고서로 먼저 확인. 수익률 효과는 검증되지 않았다`);}
  if(q==='low')bear.push(`<b>저품질</b> — 매출 역성장(${m.rev}%) 위 비용절감형 스프레드. 비용절감은 유한, 1~2년 내 소멸 위험`);
  if(!base&&m.q_op!=null&&m.q_op>=35&&m.q_op<50)bear.push(`🟡 <b>일회성 점검</b> — 분기TTM 영익 +${m.q_op}%. 매각차익 등 비영업 항목이 섞였는지 8-K로 확인`);
  if(m.q_spread!=null&&m.spread>0&&m.q_spread<m.spread)bear.push(`분기TTM(<b>${m.q_spread}p</b>)이 연간보다 낮음 — <b>피크아웃 의심</b>`);
@@ -1727,7 +1734,7 @@ function openTrade(tk){
  document.getElementById('tcBody').innerHTML=`
   <div class="tc-badges">
    <div class="tc-badge"><div class="bl">세부산업</div><div class="bv m" style="font-size:12px">${m.sec}</div></div>
-   <div class="tc-badge"><div class="bl">연간</div><div class="bv ${sg(m.spread)}">${m.spread>0?'+':''}${m.spread}p</div></div>
+   <div class="tc-badge"><div class="bl">연간</div><div class="bv ${sg(m.spread)}">${m.spread==null?'—':(m.spread>0?'+':'')+m.spread+'p'}</div></div>
    <div class="tc-badge"><div class="bl">분기TTM</div><div class="bv ${sg(m.q_spread)}">${m.q_spread==null?'—':(m.q_spread>0?'+':'')+m.q_spread+'p'}</div></div>
    <div class="tc-badge"><div class="bl">가속</div><div class="bv ${sg(m.accel)}">${m.accel==null?'—':(m.accel>0?'+':'')+m.accel+'p'}</div></div>
    <div class="tc-badge"><div class="bl">RS 6M</div><div class="bv ${sg(m.rs6)}">${m.rs6==null?'—':(m.rs6>0?'+':'')+m.rs6+'%'}</div></div>
@@ -2474,7 +2481,12 @@ function flipOf(m){
  return {now:+now.toFixed(1), prev:+prev.toFixed(1), d:+(now-prev).toFixed(1)};
 }
 function flipList(){
- return leverAll().filter(m=>staleness(m).s!=='stale' && flipOf(m))
+ // 트리 종목 + 트리 밖 흑자전환 종목(D.flips). 전년 영업이익이 0 이하면 YoY 가
+ // 정의되지 않아 트리에서 빠지는데, 흑자전환은 정의상 거의 전부 그 경우다
+ // (2026-06 분기 실측 54종목 중 46종목). 빌더가 그 종목을 따로 싣는다.
+ const all=leverAll(), seen=new Set(all.map(m=>m.tk));
+ (D.flips||[]).forEach(m=>{if(!seen.has(m.tk)){seen.add(m.tk); all.push({...m, sec:m.sec||'미분류', flipOnly:true});}});
+ return all.filter(m=>staleness(m).s!=='stale' && flipOf(m))
    .sort((a,b)=>flipOf(b).d-flipOf(a).d);
 }
 // 이 종목이 어느 목록에 있는가 — 트레이드 카드·프롬프트가 쓴다
@@ -2646,8 +2658,8 @@ function renderRadar(){
  }
  leverHtml+=`
   <div class="radar-sec">${LEVER_KIND.flip.t} — 전년 적자 → 최근 흑자</div>
-  <div class="radar-note">전년 이익이 적자라 <b>스프레드가 계산되지 않아</b> 위 목록에 절대 나오지 않는 종목입니다. 조선 4사가 흑자전환 뒤 12개월씩 화면에서 사라졌던 이유가 이것입니다. <b>수익률 효과는 검증되지 않았습니다</b> — 과거 데이터가 오늘 살아 있는 종목뿐이라 적자 기업일수록 생존 편향이 큽니다. 연간 실적이 흑자인 종목만 트리에 들어와 <b>일부만 보입니다.</b></div>
-  ${flips.length ? flips.slice(0,5).map(m=>leverCard(m,'flip')).join('')
+  <div class="radar-note">전년 이익이 적자라 <b>스프레드가 계산되지 않아</b> 위 목록에 절대 나오지 않는 종목입니다. 트리에도 들어가지 못하는 종목까지 빌더가 따로 실어 <b>여기서만</b> 보여줍니다 — TOP5·점수에는 들어가지 않습니다. 조선 4사가 흑자전환 뒤 12개월씩 화면에서 사라졌던 이유가 이것입니다. <b>수익률 효과는 검증되지 않았습니다</b> — 과거 데이터가 오늘 살아 있는 종목뿐이라 적자 기업일수록 생존 편향이 큽니다. 연간 실적이 흑자인 종목만 트리에 들어와 <b>일부만 보입니다.</b></div>
+  ${flips.length ? flips.slice(0,LEVER.CAP).map(m=>leverCard(m,'flip')).join('')+more(flips,'flip')
     : `<div class="radar-empty">분기 원값으로 확인되는 흑자전환 종목이 없습니다.</div>`}`;
 
  panel.innerHTML=`
@@ -2794,6 +2806,7 @@ async function delSnapshot(key){try{await window.storage.delete(key,false);toggl
 function peakStatus(m){
  // 신호등: 헤게모니 가속/유지/둔화
  const sp=m.spread,qsp=m.q_spread,acc=m.accel;
+ if(sp==null&&m.flipOnly)return{c:'gray',label:'흑자전환',msg:'전년 적자라 스프레드가 정의되지 않는 종목 — 분기 영업이익 추이로 판단하세요'};
  if(sp==null)return{c:'gray',label:'데이터 부족',msg:'펀더 데이터 없음 — 1차 자료 직접 확인'};
  if(qsp==null){
    return sp>0?{c:'yellow',label:'유지(분기N/A)',msg:'연간은 양수지만 분기 데이터 없어 추세 확인 불가'}
@@ -2856,7 +2869,7 @@ function renderWatch(){
     <div class="wl-r1"><span class="wl-light"></span><span><span class="wl-tk">${tk}</span> <span class="wl-nm">${m.nm}</span></span>
      <span class="wl-status ${st.c}">${st.label}</span></div>
     <div class="wl-metrics">
-     <span class="wl-m">연간 <b>${m.spread>0?'+':''}${m.spread}p</b></span>
+     <span class="wl-m">연간 <b>${m.spread==null?'—':(m.spread>0?'+':'')+m.spread+'p'}</b></span>
      <span class="wl-m">분기 <b>${m.q_spread==null?'—':(m.q_spread>0?'+':'')+m.q_spread+'p'}</b></span>
      <span class="wl-m ${m.accel!=null&&m.accel<0?'r':'g'}">가속 <b>${m.accel==null?'—':(m.accel>0?'+':'')+m.accel+'p'}</b></span>
      <span class="wl-m">PER <b>${m.pe!=null?m.pe.toFixed(1):'—'}</b></span>
