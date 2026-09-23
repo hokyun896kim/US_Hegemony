@@ -329,6 +329,87 @@ def latest_q_yoy_days(series, lo=340, hi=390, cap=500.0):
     return None
 
 
+# ── 실적 반응 ────────────────────────────────────────────────────────
+# 스프레드는 '이익이 좋아졌다' 는 사실을 말하고, 이 값은 '그게 시장에 뉴스였나'
+# 를 말한다. 백테스트(docs/backtest-earnings-reaction.md)에서 둘은 서로가
+# 있어야 작동했다 — 스프레드 상위 40% 안에서 이 값의 상위⅓ 이 하위⅓ 보다
+# 6개월 초과수익이 한국 약 +3p · 미국 약 +2p 높았고(앞뒤 반쪽 모두), 스프레드
+# 하위에서는 미국 기준 효과가 없었다.
+#
+# 창은 백테스트와 **같아야** 한다. 다르면 화면이 검증되지 않은 값을 쓴다.
+#   시작  분기말 이하의 마지막 종가
+#   끝    발표일 이후 첫 거래일에서 +2거래일
+# 발표일은 한국은 정기보고서 제출일, 미국은 실적 보도자료(8-K) 날짜다. 잠정
+# 실적·보도자료가 이 창 안에 반드시 들어간다. 대신 창이 길어(한국 약 6주)
+# 발표와 무관한 등락도 섞인다 — 백테스트가 그 창으로 잰 것이다.
+EAR_AFTER = 2          # 발표일 뒤 거래일
+EAR_MAX_LAG = 120      # 분기말→발표일(일). 넘으면 '처음 공개된 날' 이 아니다
+EAR_CAP = 100.0        # |초과수익| 상한(%p). 넘으면 시세 오류로 본다
+
+
+def earn_reaction(series, bench, q_end, rel, after=EAR_AFTER, max_lag=EAR_MAX_LAG):
+    """(값 %p | None, 창 끝 날짜 | None, 못 낸 이유 | None).
+
+    series·bench 는 [(YYYY-MM-DD, 종가)] 날짜 오름차순. 벤치마크는 창 양 끝
+    날짜 이하의 마지막 종가를 쓴다(두 시계열의 휴장일이 달라도 된다).
+
+    못 낸 이유는 화면이 아니라 빌드 로그용이다 — 몇 종목이 왜 비었는지 알아야
+    '발표일 미확인' 이 데이터 사정인지 버그인지 가를 수 있다.
+    """
+    import bisect
+    from datetime import date as _d
+    if not q_end or not rel:
+        return None, None, "no_date"
+    q_end, rel = str(q_end)[:10], str(rel)[:10]
+    if rel <= q_end:
+        # 발표일이 분기말보다 앞서면 그 발표는 이전 분기 것이다. 새 분기 숫자는
+        # 다른 경로(야후·잠정)로 들어왔는데 발표일만 옛것인 경우 — 실측 미국 54종목.
+        return None, None, "before_q"
+    try:
+        if (_d.fromisoformat(rel) - _d.fromisoformat(q_end)).days > max_lag:
+            return None, None, "lag"
+    except ValueError:
+        return None, None, "no_date"
+    if not series or not bench:
+        return None, None, "price"
+    ds = [d for d, _ in series]
+    i0 = bisect.bisect_right(ds, q_end) - 1
+    if i0 < 0:
+        return None, None, "short"            # 시세가 분기말까지 거슬러 가지 않는다
+    i1 = bisect.bisect_left(ds, rel) + after
+    if i1 >= len(ds):
+        return None, None, "fresh"            # 창이 아직 안 끝났다 — 다음 회차에 찬다
+    bd = [d for d, _ in bench]
+
+    def bat(day):
+        j = bisect.bisect_right(bd, day) - 1
+        return bench[j][1] if j >= 0 else None
+    c0, c1 = series[i0][1], series[i1][1]
+    b0, b1 = bat(ds[i0]), bat(ds[i1])
+    if not c0 or not c1 or not b0 or not b1 or c0 <= 0 or b0 <= 0:
+        return None, None, "price"
+    v = ((c1 / c0 - 1.0) - (b1 / b0 - 1.0)) * 100.0
+    if not math.isfinite(v) or abs(v) > EAR_CAP:
+        return None, None, "outlier"
+    return round(v, 1), ds[i1], None
+
+
+def quarter_rows(qrev, qop, n=8):
+    """[[분기말, 매출, 영업이익], ...] 최신이 앞. 4분기 미만이면 None.
+
+    화면의 분기 추이 그래프와 흑자전환 판정이 읽는 모양이다(한국판
+    build_tree_kr.quarter_series 와 같다). 같은 분기 집합으로 맞춰야 한다 —
+    align_quarters 주석 참고.
+    """
+    R, O = align_quarters(qrev, qop)
+    if len(R) < 4:
+        return None
+
+    def sig(v):
+        return float(f"{v:.4g}") if v else v
+    return [[e, sig(r), sig(o)] for (e, r), (_, o) in zip(R[:n], O[:n])]
+
+
 # ── 자체 검증 (네트워크 없이) ────────────────────────────────────────
 def selftest() -> int:
     """공용 부품만 검증한다. 각 빌더의 --selftest 가 나머지를 본다."""
@@ -394,6 +475,57 @@ def selftest() -> int:
             check(True, f"계산 방식·출처는 q_note 에 못 적는다 ({bad})")
     ms = [{"q_note": "정상"}, {"q_note": "영익불가"}, {"q_note": ""}, {}]
     check(qnote_share(ms) == (1, 4), f"비'정상' 집계 ({qnote_share(ms)})")
+
+    print("\n── 실적 반응 ──")
+    # 거래일 10개. 6/30(화)이 분기말, 발표는 8/14(금).
+    days = ["2026-06-29", "2026-06-30", "2026-07-01", "2026-08-13", "2026-08-14",
+            "2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21"]
+    st_ = list(zip(days, [99, 100, 101, 110, 112, 115, 120, 125, 130, 131]))
+    bn = list(zip(days, [100, 100, 100, 102, 103, 104, 105, 106, 107, 108]))
+    v, to, why = earn_reaction(st_, bn, "2026-06-30", "2026-08-14")
+    # 시작 6/30 (100·100) → 끝 8/14 +2거래일 = 8/18 (120·105): +20 − +5 = +15
+    check((v, to, why) == (15.0, "2026-08-18", None),
+          f"분기말 종가 → 발표일+2거래일, 벤치 차감 ({v}, {to}, {why})")
+    v, to, _ = earn_reaction(st_, bn, "2026-07-04", "2026-08-14")
+    check(to == "2026-08-18" and v == round(((120 / 101 - 1) - (105 / 100 - 1)) * 100, 1),
+          f"분기말이 휴장일이면 그 이하의 마지막 종가에서 시작 ({v})")
+    v, to, _ = earn_reaction(st_, bn, "2026-06-30", "2026-08-15")
+    check(to == "2026-08-19", f"발표일이 휴장일이면 다음 거래일부터 센다 ({to})")
+    # 벤치마크 휴장일이 달라도 창 끝 날짜 이하의 마지막 값을 쓴다
+    bn2 = [x for x in bn if x[0] != "2026-08-18"]
+    v, to, _ = earn_reaction(st_, bn2, "2026-06-30", "2026-08-14")
+    check(v == round((0.20 - (104 / 100 - 1)) * 100, 1),
+          f"벤치마크에 없는 날은 그 이전 값 ({v})")
+    for args, want, msg in [
+        (("2026-06-30", "2026-06-30"), "before_q", "발표일이 분기말과 같거나 앞서면 이전 분기 발표"),
+        (("2026-06-30", "2026-05-15"), "before_q", "발표일이 분기말보다 앞서면 None — 미국 54종목 사례"),
+        (("2026-03-31", "2026-08-14"), "lag", "분기말→발표 120일 초과는 첫 공개일이 아니다"),
+        (("2026-06-30", "2026-08-20"), "fresh", "창이 아직 안 끝났으면 None — 다음 회차에 찬다"),
+        (("2026-06-01", "2026-07-01"), "short", "시세가 분기말까지 거슬러 가지 않으면 None"),
+        ((None, "2026-08-14"), "no_date", "분기말이 없으면 None"),
+        (("2026-06-30", None), "no_date", "발표일이 없으면 None — 지어내지 않는다"),
+    ]:
+        v, to, why = earn_reaction(st_, bn, *args)
+        check(v is None and to is None and why == want, f"{msg} ({why})")
+    big = [(d, c * (3 if d >= "2026-08-18" else 1)) for d, c in st_]
+    check(earn_reaction(big, bn, "2026-06-30", "2026-08-14")[2] == "outlier",
+          "±100%p 초과는 시세 오류로 보고 버린다(백테스트와 같은 기준)")
+    check(earn_reaction([], bn, "2026-06-30", "2026-08-14")[2] == "price",
+          "시세가 없으면 None")
+    check(earn_reaction(st_, bn, "2026-06-30T00:00:00", "2026-08-14 09:00")[0] == 15.0,
+          "날짜에 시각이 붙어 와도 날짜만 본다")
+
+    print("\n── 분기 원값 행 ──")
+    qr = [(f"2026-{m:02d}-30", 100.0 + m) for m in (6, 3)] + \
+         [(f"2025-{m:02d}-30", 90.0 + m) for m in (12, 9, 6)]
+    qo = [(e, v / 10) for e, v in qr if e != "2025-09-30"]
+    rows = quarter_rows(qr, qo)
+    check([r[0] for r in rows] == ["2026-06-30", "2026-03-30", "2025-12-30", "2025-06-30"],
+          f"매출·영익이 모두 있는 분기만, 최신이 앞 ({[r[0] for r in rows]})")
+    check(rows[0][1:] == [106.0, 10.6], f"원값 그대로 ({rows[0]})")
+    check(quarter_rows(qr[:3], qo[:3]) is None, "4분기 미만이면 None")
+    check(quarter_rows(qr, [(e, -v) for e, v in qo])[0][2] == -10.6,
+          "적자 분기도 버리지 않는다 — 흑자전환 판정이 그걸 본다")
 
     print("\n" + ("✅ 전부 통과" if ok else "❌ 실패"))
     return 0 if ok else 1
