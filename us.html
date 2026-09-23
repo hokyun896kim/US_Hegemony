@@ -1103,7 +1103,9 @@ async function loadData(){
   D.subs.forEach(s=>s.members.forEach(m=>{TKINDEX[m.tk]={...m,sec:s.ko||s.desc,secKo:s.ko,secEn:s.desc};}));
   // 전년 적자라 트리에 못 들어온 흑자전환 종목(빌더가 D.flips 로 따로 싣는다).
   // 트레이드 카드·관심종목·프롬프트가 찾을 수 있게 색인에만 넣는다.
-  (D.flips||[]).forEach(m=>{if(!TKINDEX[m.tk])TKINDEX[m.tk]={...m,sec:m.sec||'미분류',secKo:m.sec,secEn:m.industry||'',flipOnly:true};});
+  // 분류를 못 받은 종목은 트리와 같게 '미분류' — 'Unknown' 을 그대로 보이지 않는다
+  const secOf=m=>(!m.sec||m.sec==='Unknown')?'미분류':m.sec;
+  (D.flips||[]).forEach(m=>{if(!TKINDEX[m.tk])TKINDEX[m.tk]={...m,sec:secOf(m),secKo:secOf(m),secEn:m.industry||'',flipOnly:true};});
   // 갱신일 표시. SEC 가 막힌 회차에는 가격층만 새로 받으므로 펀더멘털이 더
   // 오래됐을 수 있다 — 한 날짜만 보여주면 스프레드까지 오늘 것으로 읽힌다.
   // 리포트 머리의 기준일·수록 종목수
@@ -2485,7 +2487,7 @@ function flipList(){
  // 정의되지 않아 트리에서 빠지는데, 흑자전환은 정의상 거의 전부 그 경우다
  // (2026-06 분기 실측 54종목 중 46종목). 빌더가 그 종목을 따로 싣는다.
  const all=leverAll(), seen=new Set(all.map(m=>m.tk));
- (D.flips||[]).forEach(m=>{if(!seen.has(m.tk)){seen.add(m.tk); all.push({...m, sec:m.sec||'미분류', flipOnly:true});}});
+ (D.flips||[]).forEach(m=>{if(!seen.has(m.tk)){seen.add(m.tk); all.push({...m, sec:(!m.sec||m.sec==='Unknown')?'미분류':m.sec, flipOnly:true});}});
  return all.filter(m=>staleness(m).s!=='stale' && flipOf(m))
    .sort((a,b)=>flipOf(b).d-flipOf(a).d);
 }
