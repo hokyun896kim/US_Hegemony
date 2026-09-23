@@ -6,6 +6,7 @@
    SEC_UA 를 넣으면 된다(아래 UA_SEC 참고)."""
 import urllib.request, urllib.error, json, time, os, sys, statistics, re
 import est_trend
+import buildlib
 from datetime import date
 
 # SEC 는 UA 에 '이름 + 연락 이메일' 형태를 요구하고, 이메일이 없으면 403 을 준다
@@ -317,7 +318,7 @@ def _sig(v,digits=4):
     return round(v,k) if k>0 else int(round(v,k))
 # --- 상대강도 (Yahoo) ---
 def yseries(sym):
-    # (종가, 시가, 수정종가). 수익률·고점比는 수정종가로 계산한다 — 원종가는
+    # (종가, 시가, 수정종가, 날짜). 수익률·고점比는 수정종가로 계산한다 — 원종가는
     # 배당·분할이 반영되지 않아 배당주가 하락한 것처럼 보인다(실측: 고점比
     # -67% 인데 6개월 상대강도 +201% 인 모순 사례). 갭은 실제 시가/종가 괴리를
     # 보는 값이라 원종가를 그대로 쓴다.
@@ -330,7 +331,9 @@ def yseries(sym):
         for i in range(len(ts)):
             if not q["close"][i]: continue
             a=adj[i] if (i<len(adj) and adj[i]) else q["close"][i]
-            out.append((q["close"][i],q["open"][i],a))
+            # 날짜는 맨 뒤에 붙인다 — 앞 세 칸을 읽는 기존 코드를 그대로 두려고.
+            # 실적 반응(buildlib.earn_reaction)이 분기말·발표일로 창을 자를 때 쓴다.
+            out.append((q["close"][i],q["open"][i],a,date.fromtimestamp(ts[i]).isoformat()))
         return out
     except: return None
 def ret(cl,n): return (cl[-1]/cl[-1-n]-1)*100 if len(cl)>n else None
@@ -346,6 +349,7 @@ vix=yseries("^VIX"); vix_now=round(vix[-1][0],1)
 vix_state="저변동(위험선호)" if vix_now<16 else("중립" if vix_now<22 else("경계" if vix_now<30 else "공포"))
 
 allt=sorted({m["tk"] for r in rows for m in r["members"]})
+spy_pairs=[(r[3],r[2]) for r in spy]; ear_why={}
 for i,t in enumerate(allt):
     cik=tkmap.get(t)
     # 분기TTM
@@ -356,7 +360,7 @@ for i,t in enumerate(allt):
     # 그 처리를 대신해주는 yfinance 로만 이 값을 받는다. 실패는 조용히 None.
     est=est_trend.fetch(_yf.Ticker(t)) if _yf else {"est30":None,"est90":None}
     # 상대강도
-    s=yseries(t); rs3=rs6=gap=gaplvl=from_high=pe=eps=None
+    s=yseries(t); rs3=rs6=gap=gaplvl=from_high=pe=eps=None; ear=ear_to=None
     if s:
         cl=[r[2] for r in s]; r3=ret(cl,63); r6=ret(cl,126)
         rs3=round(r3-spy3,1) if r3 is not None else None
@@ -367,6 +371,11 @@ for i,t in enumerate(allt):
         # 52주 고점 대비 — 가격이 얼마나 반영됐는지 판정하는 재료
         _hi=max(cl)
         if _hi>0: from_high=round((cl[-1]/_hi-1)*100,1)
+        # 실적 반응 — 분기말 종가 → 실적 보도자료일+2거래일, S&P500 대비.
+        # 발표일은 SEC 8-K(ir) 날짜다. 없거나 분기말보다 앞서면 None.
+        ear,ear_to,_w=buildlib.earn_reaction([(r[3],r[2]) for r in s],spy_pairs,
+                                             qend,(ir_map.get(t) or {}).get("date"))
+        ear_why[_w or "ok"]=ear_why.get(_w or "ok",0)+1
         # 후행 PER = 현재가 ÷ 직전 회계연도 EPS.
         # 상식선(1~300)을 벗어나면 계산이 어긋난 것으로 보고 버린다.
         # eps 를 같이 남긴다 — SEC 가 막힌 회차에 refresh_prices.py 가
@@ -389,6 +398,7 @@ for i,t in enumerate(allt):
                 m["accel"]=round(qspread-m["spread"],1) if qspread is not None else None
                 m["rs3"]=rs3;m["rs6"]=rs6;m["gap"]=gap;m["gaplvl"]=gaplvl
                 m["from_high"]=from_high
+                m["ear"]=ear; m["ear_to"]=ear_to
                 m["pe"]=pe; m["eps"]=eps; m["fpe"]=None; m["peg"]=None
                 m["est30"]=est.get("est30"); m["est90"]=est.get("est90")
                 m["q_approx"]=False   # 미국은 8분기 정식 TTM 이라 근사가 아니다
@@ -401,6 +411,8 @@ for i,t in enumerate(allt):
     if (i+1)%50==0: print(f"   {i+1}/{len(allt)}")
     time.sleep(0.04)
 
+
+print("   실적 반응 "+" · ".join(f"{k} {v}" for k,v in sorted(ear_why.items())))
 
 # 다음 실적일 추정 (IR date + 91일 주기)
 from datetime import timedelta as _td

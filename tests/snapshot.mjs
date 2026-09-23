@@ -102,6 +102,19 @@ const radar = window.eval(`(()=>{
               rs3:m.rs3,rs6:m.rs6,from_high:m.from_high,pe:m.pe,q_end:m.q_end}));
 })()`);
 
+// 선취매 레이더 새 목록(2026-09-23 재설계). 구 레이더(radar)도 계속 남긴다 —
+// 두 기준을 몇 달 나란히 박제해 어느 쪽이 맞았는지 표본 밖으로 판정하려는 것이다.
+// 문턱값(tSp·tLo·tHi)도 적는다. 상대 기준이라 매주 움직이고, 그걸 모르면 나중에
+// '왜 이 종목이 들어왔나' 를 되짚을 수 없다.
+const lever = window.eval(`(()=>{
+  const L=leverLists();
+  const pick=m=>({tk:m.tk,nm:m.nm,sec:m.sec,q_spread:m.q_spread,ear:earOf(m),ear_to:m.ear_to??null,
+                  spread:m.spread,rs3:m.rs3,rs6:m.rs6,from_high:m.from_high,pe:m.pe,q_end:m.q_end});
+  return {n:L.n,noEar:L.noEar,dropped:L.dropped,tSp:L.tSp,tLo:L.tLo,tHi:L.tHi,top:L.top,
+          wake:L.wake.map(pick),doubt:L.doubt.map(pick),
+          flip:flipList().map(m=>({...pick(m),flip:flipOf(m)}))};
+})()`);
+
 // coverage 를 함께 남긴다. 그 주 데이터가 얼마나 온전했는지 모르면 나중에
 // 적중률을 어디까지 믿을지 판단할 수 없다 — 123/233 인 주와 221/233 인 주는
 // 같은 무게로 셀 수 없다.
@@ -116,7 +129,7 @@ const rec = {
   // 화면 기본이 아닌 배점으로 돌렸는가 — 백테스트 산출물을 주간 박제와
   // 섞어 세지 않기 위해서다
   weights_overridden: !!WEIGHTS,
-  top5, radar,
+  top5, radar, lever,
 };
 
 const dir = path.isAbsolute(OUTDIR) ? OUTDIR : path.join(root, OUTDIR);
@@ -126,6 +139,8 @@ fs.writeFileSync(out, JSON.stringify(rec, null, 1) + '\n', 'utf8');
 
 console.log(`박제 ${path.relative(root, out)}`);
 if (flag('data')) console.log(`  입력 ${DATA}`);
-console.log(`  기준일 ${D.updated} · ${rec.n_members}종목 · TOP5 ${top5.length} · 선취매 ${radar.length}`);
+console.log(`  기준일 ${D.updated} · ${rec.n_members}종목 · TOP5 ${top5.length} · 구 레이더 ${radar.length}`
+  + ` · ① 깨어남 ${lever.wake.length} · ② 안 믿음 ${lever.doubt.length} · 흑자전환 ${lever.flip.length}`
+  + (lever.n < 30 ? ` (실적 반응 판정 가능 ${lever.n}종목 — 목록을 내지 않음)` : ''));
 if (rec.coverage) console.log(`  그 주 실적층: 새로 ${rec.coverage.fresh}/${rec.coverage.total} (이월 ${rec.coverage.carried})`);
 dom.window.close();

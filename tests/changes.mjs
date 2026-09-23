@@ -45,14 +45,21 @@ const WHY = {
   base:   '기저효과로 걸러졌다 — 전년 이익이 바닥이라 비율만 폭발한 것으로 본다',
   na:     '가속·분기 데이터가 비어 판정할 수 없다',
   priced: '주가가 움직여 저반영이 아니게 됐다',
+  // ① 깨어나는 레버리지(2026-09-23 재설계)의 탈락 사유
+  noear:  '실적 반응을 낼 수 없다 — 발표일이 없거나 새 분기 발표 직후라 창이 아직 안 끝났다',
+  thin:   '판정 가능한 종목이 너무 적어 이번 회차는 목록을 내지 않았다',
+  spread_own: '새 분기 스프레드가 약해져 상위 40% 밖으로 나갔다',
+  spread_bar: '스프레드는 그대로인데 다른 종목이 올라와 상위 40% 문턱이 올라갔다',
+  react_own:  '새 분기 발표 때 시장 반응이 약했다',
+  react_bar:  '반응은 그대로인데 다른 종목 반응이 더 커져 상위⅓ 문턱이 올라갔다',
   noscore: '점수가 0 이하로 내려갔다',
   rank:   '조건은 그대로인데 순위가 밀렸다',
   unknown: '조건은 그대로인데 목록에 없다 — 이 스크립트가 설명하지 못한다',
 };
 // 뜻이 정반대인 것들을 가른다. 뭉뚱그리면 화면이 쓸모없어진다.
 const GOODNEWS = new Set(['priced']);       // 시장이 깨어났다 — 늦었을 수 있다
-const TEMPORARY = new Set(['stale', 'na']); // 데이터 사정 — 돌아올 수 있다
-const NEUTRAL = new Set(['rank']);          // 남이 오른 것이지 이 종목이 나빠진 게 아니다
+const TEMPORARY = new Set(['stale', 'na', 'noear', 'thin']); // 데이터 사정 — 돌아올 수 있다
+const NEUTRAL = new Set(['rank', 'spread_bar', 'react_bar']); // 남이 오른 것이지 이 종목이 나빠진 게 아니다
 
 // ISO 주. 같은 주에 손으로 한 번 더 돌린 회차와 비교하면 '변화 없음'만 나온다.
 function isoWeek(s) {
@@ -80,7 +87,10 @@ const prev = [...snaps].reverse().find(s => isoWeek(s.date) !== isoWeek(cur.date
   && JSON.stringify(s.weights ?? null) === JSON.stringify(cur.weights ?? null));
 
 const rec = { kind: KIND, to: cur.date, from: prev ? prev.date : null,
-              weights: cur.weights ?? null, top5: { in: [], out: [] }, radar: { in: [], out: [] } };
+              weights: cur.weights ?? null, top5: { in: [], out: [] }, radar: { in: [], out: [] },
+              // 재설계 전 회차와 비교하면 이번 목록 전체가 '새로 들어옴' 으로 보인다 —
+              // 지난 회차에 이 목록이 없었으면 null 로 두고 화면이 '비교 불가' 를 띄운다.
+              wake: prev && prev.lever && cur.lever ? { in: [], out: [] } : null };
 
 if (!prev) {
   fs.writeFileSync(OUTP, JSON.stringify(rec) + '\n', 'utf8');
@@ -150,8 +160,42 @@ for (const key of ['top5', 'radar']) {
       pi: (k === 'priced' && m) ? priceIn(m).t : null });
   }
 }
+// ── ① 깨어나는 레버리지 ─────────────────────────────────────────
+// 이 목록의 문턱은 '상대' 기준이다(스프레드 상위 40%, 반응 상위⅓). 그래서 빠진
+// 이유가 둘로 갈린다 — 종목 자신이 약해졌는가, 남이 올라와 문턱이 올랐는가.
+// 지난 회차에 박제한 값과 이번 값을 대조해 가른다.
+if (rec.wake) {
+  const L = w.eval('leverLists()'), earOf = w.eval('earOf');
+  const a = byTk(prev.lever.wake), b = byTk(cur.lever.wake);
+  for (const [tk, x] of b) if (!a.has(tk))
+    rec.wake.in.push({ tk, nm: x.nm, sec: x.sec, ear: x.ear, q_spread: x.q_spread });
+  for (const [tk, x] of a) if (!b.has(tk)) {
+    const m = TK[tk];
+    let k;
+    if (!m) k = 'gone';
+    else if (L.n < w.eval('LEVER.MIN')) k = 'thin';
+    else if (staleness(m).s === 'stale') k = 'stale';
+    else if (ttmConflict(m)) k = 'ttmconflict';
+    else if (earOf(m) == null) k = 'noear';
+    else if (!(m.q_spread >= L.tSp && m.q_spread > 0))
+      k = (x.q_spread != null && m.q_spread < x.q_spread) ? 'spread_own' : 'spread_bar';
+    else if (earOf(m) < L.tHi)
+      k = (x.ear != null && earOf(m) !== x.ear) ? 'react_own' : 'react_bar';
+    else k = 'unknown';
+    let t = WHY[k];
+    if (k === 'react_own') t += ` (${x.ear} → ${earOf(m)}%p)`;
+    if (k === 'react_bar') t += ` (문턱 ${L.tHi}%p)`;
+    if (k === 'spread_own') t += ` (${x.q_spread} → ${m.q_spread}p)`;
+    if (k === 'spread_bar') t += ` (문턱 ${L.tSp}p)`;
+    rec.wake.out.push({ tk, nm: x.nm, sec: x.sec, was: x.ear, now: m ? earOf(m) : null, u: '%p',
+      why: k, t,
+      kind: TEMPORARY.has(k) ? 'data' : NEUTRAL.has(k) ? 'rank' : 'broken' });
+  }
+}
+
 fs.writeFileSync(OUTP, JSON.stringify(rec) + '\n', 'utf8');
-const n = (o) => `+${o.in.length}/-${o.out.length}`;
-console.log(`변화 ${OUT} · ${prev.date} → ${cur.date} · TOP5 ${n(rec.top5)} · 선취매 ${n(rec.radar)}`);
-for (const o of rec.radar.out) console.log(`  − ${o.tk} ${o.nm} … ${o.t}`);
+const n = (o) => o ? `+${o.in.length}/-${o.out.length}` : '비교 불가';
+console.log(`변화 ${OUT} · ${prev.date} → ${cur.date} · TOP5 ${n(rec.top5)} · ① 깨어남 ${n(rec.wake)} · 구 레이더 ${n(rec.radar)}`);
+for (const o of (rec.wake ? rec.wake.out : [])) console.log(`  − ① ${o.tk} ${o.nm} … ${o.t}`);
+for (const o of rec.radar.out) console.log(`  − 구 ${o.tk} ${o.nm} … ${o.t}`);
 dom.window.close();

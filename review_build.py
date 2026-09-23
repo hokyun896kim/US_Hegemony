@@ -23,6 +23,7 @@
 """
 import argparse
 import json
+import statistics
 import sys
 import time
 import urllib.request
@@ -37,6 +38,14 @@ SPANS = (1, 3, 6)
 # 벤치마크. 초과수익의 기준이라 시장마다 다르다.
 BENCH = {"kr": "^KS11", "us": "^GSPC"}
 UA = {"User-Agent": "Mozilla/5.0"}
+
+# 목록별 성적 — 선취매 레이더를 2026-09-23 에 재설계하면서 구 기준(주가가 아직
+# 안 움직인 것)을 지우지 않고 새 목록과 나란히 박제하기로 했다. 몇 달 뒤 어느
+# 쪽이 맞았는지 가르는 것이 이 표의 일이다(docs/backtest-earnings-reaction.md).
+LISTS = (("old", "구 레이더"), ("wake", "① 깨어나는 레버리지"),
+         ("doubt", "② 안 믿는 레버리지"), ("flip", "흑자전환(관찰)"))
+# 합산에 넣을 회차 수. 6개월 칸이 차려면 반년이 걸리니 1년치를 본다.
+AGG_LIMIT = 52
 
 
 def yseries(sym, tries=3):
@@ -67,12 +76,37 @@ def yseries(sym, tries=3):
             time.sleep(1.5 * (i + 1))
 
 
-def tickers_of(snaps, limit):
-    """복기에 실을 회차들이 쓰는 종목만. 회차당 5개라 매주 수십 건이다."""
+def members_of(s, key):
+    """그 회차 박제에서 한 목록의 종목들. 목록이 없던 회차면 None.
+
+    old(구 레이더)는 재설계 전에도 있었지만, 새 목록(lever)이 없는 회차의 구
+    레이더를 합산에 넣으면 두 목록이 다른 기간을 재게 된다 — 비교가 사과와
+    오렌지가 된다. 그래서 lever 가 없는 회차는 old 도 None 이다.
+    """
+    lv = s.get("lever")
+    if not lv:
+        return None
+    if key == "old":
+        return [p["tk"] for p in s.get("radar") or []]
+    return [p["tk"] for p in lv.get(key) or []]
+
+
+def agg_rounds(snaps, agg=AGG_LIMIT):
+    """목록 비교에 쓸 회차 — 새 목록이 박제된 회차만, 최신부터 agg 개."""
+    return [s for s in sorted(snaps, key=lambda x: x["date"], reverse=True)[:agg]
+            if s.get("lever")]
+
+
+def tickers_of(snaps, limit, agg=AGG_LIMIT):
+    """복기에 실을 회차들이 쓰는 종목만. TOP5 는 최근 limit 회차, 목록 비교는
+    agg 회차. 안 실을 회차의 종목까지 받으면 야후를 쓸데없이 때린다."""
     out = set()
     for s in sorted(snaps, key=lambda x: x["date"], reverse=True)[:limit]:
         for p in s["top5"]:
             out.add(p["tk"])
+    for s in agg_rounds(snaps, agg):
+        for key, _ in LISTS:
+            out.update(members_of(s, key) or [])
     return out
 
 
@@ -145,7 +179,36 @@ def outcome(tk, t, prices, bench, today: str):
     return out
 
 
-def build(kind, prices, bench, snaps, today: str, limit=8):
+def list_summary(snaps, prices, bench, today: str, agg=AGG_LIMIT):
+    """목록별로 (회차, 종목) 관측을 모두 모아 구간별 초과수익 중앙값·적중률.
+
+    같은 종목이 여러 회차에 겹쳐 세지므로 관측이 독립이 아니다 — 통계가 아니라
+    기록이다. 화면에도 그렇게 적는다. 가격이 없는 종목은 관측에서 빠지는데,
+    그 수(members − 관측)를 함께 남겨 상장폐지가 숨지 않게 한다.
+    """
+    rounds = agg_rounds(snaps, agg)
+    out = {"rounds": len(rounds),
+           "since": min((s["date"] for s in rounds), default=None), "lists": []}
+    for key, label in LISTS:
+        vals = {n: [] for n in SPANS}
+        members = 0
+        for s in rounds:
+            for tk in members_of(s, key) or []:
+                members += 1
+                for o in outcome(tk, s["date"], prices, bench, today):
+                    vals[o["span"]].append(o["excess"])
+        spans = {}
+        for n in SPANS:
+            v = vals[n]
+            spans[str(n)] = {
+                "n": len(v),
+                "med": round(statistics.median(v), 1) if v else None,
+                "win": round(sum(1 for x in v if x > 0) / len(v) * 100) if v else None}
+        out["lists"].append({"key": key, "label": label, "members": members, "spans": spans})
+    return out
+
+
+def build(kind, prices, bench, snaps, today: str, limit=8, agg=AGG_LIMIT):
     """최근 회차부터 limit 개. 화면이 그대로 그릴 수 있는 모양."""
     rows = []
     for s in sorted(snaps, key=lambda x: x["date"], reverse=True)[:limit]:
@@ -156,7 +219,8 @@ def build(kind, prices, bench, snaps, today: str, limit=8):
                           "pts": p.get("pts"), "sec": p.get("sec"),
                           "out": outcome(p["tk"], t, prices, bench, today)})
         rows.append({"date": t, "weights": s.get("weights"), "picks": picks})
-    return {"kind": kind, "built": today, "spans": list(SPANS), "rows": rows}
+    return {"kind": kind, "built": today, "spans": list(SPANS), "rows": rows,
+            "lists": list_summary(snaps, prices, bench, today, agg)}
 
 
 def selftest() -> int:
@@ -233,6 +297,33 @@ def selftest() -> int:
     # 같은 주 중복·대안 배점 제외를 두 군데서 따로 구현하면 갈라진다.
     t(V.load_snapshots.__module__ == "verify_live", "load_snapshots 를 빌려 쓴다")
 
+    print("\n━━ 목록별 성적 — 같은 회차들로만 비교한다 ━━")
+    pA = {"2026-09-18": 100.0, "2026-10-20": 120.0}      # +20%
+    pB = {"2026-09-18": 100.0, "2026-10-20": 95.0}       # −5%
+    pC = {"2026-09-11": 100.0, "2026-09-18": 100.0, "2026-10-20": 200.0}
+    sn = [
+        # 재설계 전 회차 — 구 레이더(radar)만 있다. 합산에 넣으면 안 된다.
+        {"date": "2026-09-11", "top5": [], "radar": [{"tk": "C"}]},
+        {"date": "2026-09-18", "top5": [], "radar": [{"tk": "B"}],
+         "lever": {"wake": [{"tk": "A"}], "doubt": [{"tk": "B"}], "flip": []}},
+    ]
+    L = list_summary(sn, {"A": pA, "B": pB, "C": pC}, bn, "2026-10-25")
+    by = {x["key"]: x for x in L["lists"]}
+    t(L["rounds"] == 1 and L["since"] == "2026-09-18",
+      f"새 목록이 없던 회차는 합산에서 뺀다 ({L['rounds']}회차 · {L['since']}~)")
+    t(by["old"]["members"] == 1 and by["old"]["spans"]["1"]["med"] == -6.0,
+      f"구 레이더도 같은 회차만 — C(+100%)가 섞이지 않는다 ({by['old']['spans']['1']})")
+    t(by["wake"]["spans"]["1"]["med"] == 19.0 and by["wake"]["spans"]["1"]["win"] == 100,
+      f"① 초과수익 중앙·적중률 ({by['wake']['spans']['1']})")
+    t(by["wake"]["spans"]["3"]["n"] == 0 and by["wake"]["spans"]["3"]["med"] is None,
+      "아직 안 온 구간은 None — 0 으로 채우지 않는다")
+    t(by["flip"]["members"] == 0 and by["flip"]["spans"]["1"]["med"] is None,
+      "빈 목록은 None")
+    t([x["key"] for x in L["lists"]] == ["old", "wake", "doubt", "flip"], "순서 고정 — 화면이 그대로 그린다")
+    t(tickers_of(sn, 0) == {"A", "B"},
+      f"받을 종목에 목록 종목이 들어가고, 합산 밖 회차(C)는 안 받는다 ({tickers_of(sn, 0)})")
+    t("lists" in build("kr", {"A": pA}, bn, sn, "2026-10-25"), "build 산출물에 목록 비교가 실린다")
+
     print("\n✅ 전부 통과" if ok[0] else "\n실패 있음")
     return 0 if ok[0] else 1
 
@@ -284,6 +375,16 @@ def main(argv=None):
     note = f" · 가격 못 받음 {len(missed)}종목" if missed else ""
     print(f"복기 {p} · {len(out['rows'])}회차 · 채워진 경과 {done}칸 "
           f"(가격 {today} 까지){note}")
+    L = out["lists"]
+    if L["rounds"]:
+        cells = " · ".join(
+            f"{x['label']} {x['members']}건"
+            + "".join(f" {n}M {x['spans'][str(n)]['med']}" for n in SPANS
+                      if x["spans"][str(n)]["med"] is not None)
+            for x in L["lists"])
+        print(f"  목록 비교 {L['rounds']}회차({L['since']}~) · {cells}")
+    else:
+        print("  목록 비교 — 새 목록이 박제된 회차가 아직 없다")
     return 0
 
 

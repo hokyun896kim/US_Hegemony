@@ -29,6 +29,8 @@ on:
       - 'backtest_fetch_us.py'
       - 'dart.py'
       - 'naver.py'
+      - 'review_build.py'
+      - 'backtest_reaction.py'
       - '.github/workflows/*.yml'
       # 주간 자동 갱신이 커밋하는 데이터도 검사 대상이다. 코드가 멀쩡해도
       # 데이터가 잘못 채워지면 화면이 조용히 빈다 — 실제로 미국판 선취매
@@ -67,6 +69,12 @@ jobs:
         working-directory: tests
         run: npm test
 
+      # 한국 빌더 자가진단이 실적 반응 연결부(판다스 날짜 인덱스 → 창 자르기)를
+      # 가짜 야후 다운로드로 실제로 거쳐 본다. 빌드와 같은 라이브러리가 있어야 한다.
+      # 설치만 네트워크를 쓰고, 자가진단 자체는 네트워크 없이 돈다.
+      - name: 빌더 자가진단용 라이브러리
+        run: pip install --quiet yfinance
+
       # 부분 갱신은 SEC 가 막힌 회차에만 도는 코드라 평소엔 아무도 안 밟는다.
       # 정작 필요한 순간에 처음 실행되는 코드는 믿을 수 없으므로 매번 돌린다.
       - name: 빌더 자가진단 (네트워크 불필요)
@@ -89,10 +97,11 @@ jobs:
           python naver.py --selftest
           python verify_live.py --selftest
           python review_build.py --selftest
+          python backtest_reaction.py --selftest
           # build_data.py 는 첫 줄부터 네트워크를 타서 자가진단을 못 붙인다.
           # 최소한 문법은 본다 — 이게 없어서 파이썬만 고친 커밋에 CI 가
           # 아예 안 돌던 적이 있다.
-          python -m py_compile build_data.py refresh_prices.py build_tree_kr.py est_trend.py dart.py naver.py backtest_fetch.py backtest_replay.py backtest_report.py backtest_prices.py backtest_run.py backtest_factors.py backtest_universe.py krx.py sec.py backtest_fetch_us.py verify_live.py review_build.py
+          python -m py_compile build_data.py refresh_prices.py build_tree_kr.py est_trend.py dart.py naver.py backtest_fetch.py backtest_replay.py backtest_report.py backtest_prices.py backtest_run.py backtest_factors.py backtest_universe.py krx.py sec.py backtest_fetch_us.py verify_live.py review_build.py backtest_reaction.py
 
       # 데이터 파이프라인은 워크플로의 셸 한 줄이 틀려도 조용히 결과를 버린다.
       # 실제로 그런 일이 두 번 있었다(push 경합, git add pathspec) — 다만 그
@@ -154,7 +163,8 @@ jobs:
                   # 박제가 하나도 없으면 안 만드는 게 맞다 — 그건 고장이 아니다.
                   print(f"  ok   {kind}: 복기할 박제 없음 ({r.stderr.strip()})"); continue
               d = json.loads(out.read_text(encoding="utf-8"))
-              need = {"kind", "built", "spans", "rows"}
+              # lists = 목록별 성적(구 레이더 vs 재설계 목록) — 빠지면 표본 밖 판정이 불가능하다
+              need = {"kind", "built", "spans", "rows", "lists"}
               miss = need - set(d)
               if miss:
                   print(f"  FAIL {kind}: 키 누락 {miss}"); bad += 1; continue

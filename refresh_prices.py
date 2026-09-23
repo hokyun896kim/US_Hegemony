@@ -123,6 +123,10 @@ def yf_fund(tk, statements=None):
 
     qrev = buildlib.series_values(buildlib.pick_row(qinc, buildlib.REV_ROWS))
     qop = buildlib.series_values(buildlib.pick_row(qinc, buildlib.OP_ROWS))
+    # 분기 원값 — 트레이드 카드의 분기 추이와 흑자전환 판정이 읽는다. 지금까지
+    # SEC 경로(build_data.quarter_series)만 이 값을 냈는데 그 경로가 몇 주째
+    # 막혀 있어 미국판은 한 종목도 이 값을 가진 적이 없다(실측 0/383).
+    out["qs"] = buildlib.quarter_rows(qrev, qop)
     qr, qo, qend, approx = buildlib.ttm_pair(qrev, qop)
     if qr is not None and qo is not None:
         if abs(qr) > MAX_REV_YOY or abs(qo) > MAX_OP_YOY:
@@ -231,6 +235,7 @@ def main(fetch=None, path=None, statements=None, deadline=0, stall=90, fund=True
     print(f"[1/3] 가격층 갱신 — {len(members)}종목 (펀더멘털 기준일 {fund_day})")
 
     ok = miss = cut = 0
+    series = {}                   # 실적 반응용 — 실적층 갱신 뒤에 창을 자른다
     for i, m in enumerate(members):
         # 예산이 마무리 몫만 남으면 시세 수집을 끊는다. 남은 종목은 아래
         # '못 받은 종목'과 똑같이 가격 지표를 비운다 — 지난주 상대강도를
@@ -253,6 +258,7 @@ def main(fetch=None, path=None, statements=None, deadline=0, stall=90, fund=True
                 m[k] = None
             continue
         m["miss_streak"] = 0
+        series[m["tk"]] = s
         cl = [r[3] for r in s]
         r3, r6 = ret(cl, 63), ret(cl, 126)
         m["rs3"] = round(r3 - spy3, 1) if (r3 is not None and spy3 is not None) else None
@@ -314,6 +320,25 @@ def main(fetch=None, path=None, statements=None, deadline=0, stall=90, fund=True
             m.setdefault("f_as_of", fund_day)
             if not m.get("f_as_of"):
                 m["f_as_of"] = fund_day
+
+    # ── 실적 반응 ─────────────────────────────────────────────────────
+    # 분기말 종가 → 실적 보도자료일+2거래일, SPY 대비(buildlib.earn_reaction).
+    # 실적층을 갱신한 뒤에 낸다 — 분기말이 새 분기로 바뀌었을 수 있다. 그런데
+    # 발표일(ir)은 SEC 에서만 오므로, SEC 가 막힌 회차에 분기만 새로 받은
+    # 종목은 발표일이 옛 분기 것이라 None 이 된다(before_q). 지어내지 않는다.
+    spy_pairs = [(r[0], r[3]) for r in spy]
+    ear_why = {}
+    for m in members:
+        s = series.get(m["tk"])
+        if s:
+            ear, to, why = buildlib.earn_reaction(
+                [(r[0], r[3]) for r in s], spy_pairs,
+                m.get("q_end"), (m.get("ir") or {}).get("date"))
+        else:
+            ear, to, why = None, None, "price"
+        m["ear"], m["ear_to"] = ear, to
+        ear_why[why or "ok"] = ear_why.get(why or "ok", 0) + 1
+    print("   실적 반응 " + " · ".join(f"{k} {v}" for k, v in sorted(ear_why.items())))
 
     # ── 죽은 종목 정리 ───────────────────────────────────────────────
     # 유니버스는 SEC 전체 빌드에서만 새로 짜이는데 그게 계속 막혀 있다.
@@ -455,7 +480,13 @@ def selftest():
         json.dump(fixture, f, ensure_ascii=False)
         tmp = f.name
 
-    rc = main(fetch=fetch, path=tmp)
+    # 이 절은 '야후 실적도 못 받은 회차' 다. statements 를 비우면 진짜 야후를
+    # 부른다 — 네트워크가 막힌 곳에서는 조용히 실패해 통과하고, 열린 CI 에서는
+    # 실제 종목 CCC 의 실적이 픽스처를 덮어 실패했다. 실패를 직접 흉내 낸다.
+    def no_fund(tk):
+        raise RuntimeError("오프라인 자가진단 — 야후 실적 없음")
+
+    rc = main(fetch=fetch, path=tmp, statements=no_fund)
     t(rc == 0, "부분 갱신이 정상 종료")
     D = json.load(open(tmp, encoding="utf-8"))
     M = {m["tk"]: m for r in D["subs"] for m in r["members"]}
@@ -470,7 +501,7 @@ def selftest():
     t(D["fund_updated"] == FUND_DAY, "fund_updated = 펀더멘털 기준일 유지")
     t(D["partial"] == "prices", "partial 표시")
     # 두 번 연속 부분 갱신해도 기준일이 오늘로 밀리면 안 된다
-    main(fetch=fetch, path=tmp)
+    main(fetch=fetch, path=tmp, statements=no_fund)
     t(json.load(open(tmp, encoding="utf-8"))["fund_updated"] == FUND_DAY,
       "두 번 돌려도 fund_updated 가 안 밀림")
 
@@ -675,6 +706,39 @@ def selftest():
     t(sum(len(r["members"]) for r in D9["subs"]) == 10,
       "한 회차에 20% 넘게 사라질 상황이면 제거하지 않는다(야후 장애로 본다)")
     os.unlink(tmp5)
+
+    print("\n── 실적 반응 ──")
+    # 시세는 2025-08-08 부터 매일 한 칸. 분기말 12/31, 보도자료 2/10.
+    D10 = {"subs": [{"n": 3, "members": [
+        {"tk": "BBB", "spread": 1.0, "f_as_of": "2026-08-08", "q_end": "2025-12-31",
+         "ir": {"date": "2026-02-10"}, "ear": -99.0},
+        # 분기는 새로 받았는데 발표일은 옛 분기 것 — SEC 가 막힌 회차의 전형
+        {"tk": "AAA", "spread": 1.0, "f_as_of": "2026-08-08", "q_end": "2026-03-31",
+         "ir": {"date": "2026-02-10"}, "ear": -99.0},
+        # 시세를 못 받은 종목 — 옛 반응이 남으면 안 된다
+        {"tk": "DDD", "spread": 1.0, "f_as_of": "2026-08-08", "q_end": "2025-12-31",
+         "ir": {"date": "2026-02-10"}, "ear": -99.0, "ear_to": "2026-02-12"}]}],
+        "updated": "2026-08-30", "fund_updated": "2026-08-08"}
+    fd, tmp6 = tempfile.mkstemp(suffix=".json"); os.close(fd)
+    json.dump(D10, open(tmp6, "w", encoding="utf-8"))
+    main(fetch=lambda s: SERIES.get(s), path=tmp6, statements=_st, fund=False)
+    M10 = {m["tk"]: m for r in json.load(open(tmp6, encoding="utf-8"))["subs"]
+           for m in r["members"]}
+    B, S = dict((r[0], r[3]) for r in SERIES["BBB"]), dict((r[0], r[3]) for r in SERIES["SPY"])
+    want = round(((B["2026-02-12"] / B["2025-12-31"] - 1)
+                  - (S["2026-02-12"] / S["2025-12-31"] - 1)) * 100, 1)
+    t(M10["BBB"]["ear"] == want and M10["BBB"]["ear_to"] == "2026-02-12",
+      f"분기말 → 보도자료일+2거래일, SPY 대비 ({M10['BBB']['ear']} = {want})")
+    t(M10["AAA"]["ear"] is None,
+      "발표일이 분기말보다 앞서면(이전 분기 발표) None — 지어내지 않는다")
+    t(M10["DDD"]["ear"] is None and M10["DDD"]["ear_to"] is None,
+      "시세를 못 받으면 옛 반응을 남기지 않는다")
+    os.unlink(tmp6)
+
+    print("\n── 분기 원값(qs) ──")
+    f = yf_fund("XXX", lambda tk: (A, Q))
+    t(f and f.get("qs") and len(f["qs"]) == 8 and f["qs"][0] == ["2026-12-30", 320e6, 60e6],
+      f"야후 분기 원값을 최신순으로 낸다 ({(f or {}).get('qs', [None])[0]})")
 
     print("\n✅ 전부 통과" if ok[0] else "\n❌ 실패")
     return 0 if ok[0] else 1

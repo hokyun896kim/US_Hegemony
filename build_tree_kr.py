@@ -39,7 +39,7 @@ BENCH = "^KS11"  # 코스피 종합
 # 두 시장이 다르게 도는 드리프트를 막으려고 buildlib 한 곳에 둔다.
 from buildlib import (          # noqa: F401  (자체검증이 직접 부른다)
     CARRY, OP_ROWS, REV_ROWS, Budget, Stall, _stall_guard, align_quarters,
-    coverage_line, pick_row, qnote_share, series_values, too_thin,
+    coverage_line, earn_reaction, pick_row, qnote_share, series_values, too_thin,
 )
 from buildlib import load_prev as _load_prev
 
@@ -669,8 +669,12 @@ def fetch_stock(tk, log=print):
 
 
 # ── 가격 ─────────────────────────────────────────────────────────────
-def fetch_prices(tickers, log=print, budget=None):
-    """RS3/RS6(코스피 대비), 갭위험, 52주 고점 대비를 한 번에."""
+def fetch_prices(tickers, log=print, budget=None, events=None):
+    """RS3/RS6(코스피 대비), 갭위험, 52주 고점 대비, 실적 반응을 한 번에.
+
+    events 는 {티커: (분기말, 발표일)}. 실적 반응(buildlib.earn_reaction)은
+    그 창의 종가가 필요해 여기서 낸다 — 시세를 두 번 받지 않으려고.
+    """
     import pandas as pd   # yfinance 의존성이라 항상 존재
     import yfinance as yf
 
@@ -770,6 +774,15 @@ def fetch_prices(tickers, log=print, budget=None):
 
     bench3, bench6 = ret(BENCH, 63), ret(BENCH, 126)
 
+    def pairs(sym):
+        s = closes(sym)
+        if s is None:
+            return []
+        return [(ix.strftime("%Y-%m-%d"), float(v)) for ix, v in s.items()]
+
+    bench_pairs = pairs(BENCH) if events else []
+    ear_why = {}
+
     out = {}
     for sym in tickers:
         d = frames.get(sym)
@@ -801,8 +814,19 @@ def fetch_prices(tickers, log=print, budget=None):
         except Exception:  # noqa: BLE001, S110
             pass
 
+        ear = ear_to = None
+        if events and sym in events:
+            q_end, rel = events[sym]
+            ear, ear_to, why = earn_reaction(pairs(sym), bench_pairs, q_end, rel)
+            ear_why[why or "ok"] = ear_why.get(why or "ok", 0) + 1
+
         out[sym] = {"rs3": rs3, "rs6": rs6, "gap": gap, "gaplvl": gaplvl,
-                    "from_high": from_high}
+                    "from_high": from_high, "ear": ear, "ear_to": ear_to}
+
+    if ear_why:
+        # 비어 있는 이유를 남긴다. '발표일 미확인' 이 많으면 데이터 사정인지
+        # 버그인지 이 줄로 가른다(fresh 는 발표 직후라 다음 회차에 찬다).
+        log("  실적 반응 " + " · ".join(f"{k} {v}" for k, v in sorted(ear_why.items())))
 
     # 시장 지표
     market = {"spy3": round(bench3, 1) if bench3 is not None else None,
@@ -1026,7 +1050,10 @@ def build(limit, min_cap, sleep, log=print, budget=None, stall=0, prev=None):
         )
 
     log("[3/4] 시세")
-    price, market = fetch_prices([m["tk"] for m in members], log, budget)
+    # 실적 반응 창 — 분기말과 발표일(DART 정기공시일). ir 은 이월분도 들고 있다.
+    events = {m["tk"]: (m.get("q_end"), (m.get("ir") or {}).get("date"))
+              for m in members}
+    price, market = fetch_prices([m["tk"] for m in members], log, budget, events)
 
     # 거래대금·시총 — KRX OpenAPI. 하루 2호출(유가증권+코스닥)에 전종목이
     # 들어오므로 20영업일이면 약 60호출이다. 종목당 호출이 아니라 싸다.
@@ -1052,6 +1079,8 @@ def build(limit, min_cap, sleep, log=print, budget=None, stall=0, prev=None):
             "rs3": p.get("rs3"), "rs6": p.get("rs6"),
             "gap": p.get("gap"), "gaplvl": p.get("gaplvl"),
             "from_high": p.get("from_high"),
+            # 실적 반응 — 시세층이다. 이월하지 않는다(시세를 못 받으면 None).
+            "ear": p.get("ear"), "ear_to": p.get("ear_to"),
             # 투자자별 수급: KRX OpenAPI 카탈로그에 그 API 가 없다(2026-09-18
             # 구독 목록으로 확인). 이름을 여덟 번 찍어 전부 404 였고 원인이
             # 작명이 아니었다. 필요하면 네이버 등 다른 경로여야 한다.
@@ -1497,6 +1526,44 @@ def selftest():
     check(not too_thin(260, 223, 0.7), "늘어난 회차를 막지 않는다")
     check(not too_thin(40, 0, 0.7), "직전 파일이 없으면(첫 빌드) 막지 않는다")
     check(not too_thin(1, 223, 0), "문턱 0 이면 검사를 끈다 — 강제 덮어쓰기용")
+
+    print("\n── 실적 반응이 시세 경로를 실제로 거쳐 나오는가 ──")
+    # 계산식은 buildlib 자가진단이 본다. 여기서는 연결부 — 판다스 날짜 인덱스를
+    # 문자열로 바꾸고, 이벤트를 티커에 붙이고, 결과를 out 에 싣는 것 — 를 본다.
+    # 야후 다운로드만 가짜로 바꾸고 fetch_prices 는 진짜를 부른다.
+    try:
+        import pandas as pd
+        import yfinance as yf
+    except ImportError:
+        check(False, "pandas·yfinance 가 없어 연결부를 못 본다")
+    else:
+        idx = pd.bdate_range("2026-01-02", periods=180)
+        def frame(p0, step):
+            c = [p0 + step * i for i in range(len(idx))]
+            return pd.DataFrame({"Open": c, "Close": c, "Adj Close": c}, index=idx)
+        fake = {"AAA.KS": frame(100, 0.5), "BBB.KS": frame(100, 0.0), BENCH: frame(100, 0.1)}
+
+        def fake_download(part, **kw):
+            if isinstance(part, str):
+                return fake.get(part)
+            return pd.concat({s: fake[s] for s in part if s in fake}, axis=1)
+        real = yf.download
+        yf.download = fake_download
+        try:
+            q_end = idx[40].strftime("%Y-%m-%d")
+            rel = idx[70].strftime("%Y-%m-%d")
+            ev = {"AAA.KS": (q_end, rel), "BBB.KS": (q_end, None)}
+            got, _ = fetch_prices(["AAA.KS", "BBB.KS"], log=lambda *a: None, events=ev)
+        finally:
+            yf.download = real
+        want = round(((fake["AAA.KS"]["Close"].iloc[72] / fake["AAA.KS"]["Close"].iloc[40] - 1)
+                      - (fake[BENCH]["Close"].iloc[72] / fake[BENCH]["Close"].iloc[40] - 1)) * 100, 1)
+        a = got.get("AAA.KS", {})
+        check(a.get("ear") == want and a.get("ear_to") == idx[72].strftime("%Y-%m-%d"),
+              f"분기말 → 발표일+2거래일 초과수익이 시세 경로로 나온다 ({a.get('ear')} = {want})")
+        check(got.get("BBB.KS", {}).get("ear") is None,
+              "발표일이 없으면 None — 지어내지 않는다")
+        check("ear" in a and "ear_to" in a, "산출 키 이름이 화면이 읽는 이름(ear·ear_to)이다")
 
     print("\n" + ("전부 통과" if ok else "실패 있음"))
     return 0 if ok else 1

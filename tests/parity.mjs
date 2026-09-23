@@ -52,7 +52,11 @@ const SHARED = ['priceIn', 'cooling', 'realAccel', 'accelCheck', 'turnaround',
                 'peShow', 'valColor', 'verdict', 'radarWhy',
                 'computeAlerts', 'renderAlerts', 'alertStore', 'ackAlert',
                 'coverageNote', 'staleness', 'srcCaveat',
-                'blindSpot', 'renderBlind'];
+                'blindSpot', 'renderBlind',
+                // 선취매 레이더(2026-09-23 재설계) — 문턱·판정이 갈라지면 두 시장이
+                // 같은 백테스트 정의를 쓴다는 말이 거짓이 된다
+                'earOf', 'leverAll', 'leverLists', 'flipOf', 'flipList',
+                'leverKind', 'leverWhy', 'leverCard'];
 // 같은 함수를 두 번 정의하면 뒤엣것이 이기므로 화면은 멀쩡히 돈다. 그래서
 // 안 잡힌다 — 실제로 us.html 에 liqWarn 이 두 벌 들어갔고(한 페이지의 코드를
 // 다른 페이지로 복사할 때 이미 삽입된 블록까지 딸려갔다) 파리티도 통과했다.
@@ -120,6 +124,20 @@ console.log('\n━━ 문턱값 상수(GATE)는 두 시장이 같아야 한다 �
   const same = a === b;
   t(same, 'GATE 값 동일');
   if (!same) { console.log('    KR ▸ ' + a); console.log('    US ▸ ' + b); }
+}
+
+console.log('\n━━ 선취매 레이더 상수(LEVER·LEVER_KIND)는 두 시장이 같아야 한다 ━━');
+{
+  // 문턱(스프레드 상위 40%, 최소 표본)과 목록 이름이 한쪽만 바뀌면 박제가 두 시장에서
+  // 다른 것을 센다. 벤치마크 이름(BENCH_NM)만 시장마다 다르다.
+  for (const name of ['LEVER', 'LEVER_KIND']) {
+    const g = s => { const m = s.match(new RegExp(`const ${name}=\\{([\\s\\S]*?)\\};`)); return m ? strip(m[1]) : null; };
+    const a = g(KR), b = g(US);
+    t(!!a && !!b && a === b, `${name} 양쪽에 있고 같다`);
+    if (a !== b) { console.log('    KR ▸ ' + a); console.log('    US ▸ ' + b); }
+  }
+  const bn = s => (s.match(/const BENCH_NM='([^']+)'/) || [])[1];
+  t(bn(KR) === '코스피' && bn(US) === 'S&P500', `벤치마크 이름은 시장별 (${bn(KR)} · ${bn(US)})`);
 }
 
 console.log('\n━━ 두 화면의 CSS 는 같아야 한다 ━━');
