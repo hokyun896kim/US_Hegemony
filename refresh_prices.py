@@ -480,7 +480,13 @@ def selftest():
         json.dump(fixture, f, ensure_ascii=False)
         tmp = f.name
 
-    rc = main(fetch=fetch, path=tmp)
+    # 이 절은 '야후 실적도 못 받은 회차' 다. statements 를 비우면 진짜 야후를
+    # 부른다 — 네트워크가 막힌 곳에서는 조용히 실패해 통과하고, 열린 CI 에서는
+    # 실제 종목 CCC 의 실적이 픽스처를 덮어 실패했다. 실패를 직접 흉내 낸다.
+    def no_fund(tk):
+        raise RuntimeError("오프라인 자가진단 — 야후 실적 없음")
+
+    rc = main(fetch=fetch, path=tmp, statements=no_fund)
     t(rc == 0, "부분 갱신이 정상 종료")
     D = json.load(open(tmp, encoding="utf-8"))
     M = {m["tk"]: m for r in D["subs"] for m in r["members"]}
@@ -495,7 +501,7 @@ def selftest():
     t(D["fund_updated"] == FUND_DAY, "fund_updated = 펀더멘털 기준일 유지")
     t(D["partial"] == "prices", "partial 표시")
     # 두 번 연속 부분 갱신해도 기준일이 오늘로 밀리면 안 된다
-    main(fetch=fetch, path=tmp)
+    main(fetch=fetch, path=tmp, statements=no_fund)
     t(json.load(open(tmp, encoding="utf-8"))["fund_updated"] == FUND_DAY,
       "두 번 돌려도 fund_updated 가 안 밀림")
 
