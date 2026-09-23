@@ -53,6 +53,11 @@ import contextlib
 
 SPENT: dict[str, list] = {}          # 이름 → [초, 호출 수]
 
+# DART 분기 재사용분(dart.quarters_memo). build() 가 파일에서 읽고, 재무 단계가
+# 끝나면 다시 쓴다. 워크플로가 커밋해 다음 회차로 넘긴다.
+DART_MEMO: dict = {}
+MEMO_STATS: dict[str, int] = {}
+
 
 @contextlib.contextmanager
 def _spent(name: str):
@@ -606,21 +611,28 @@ def fetch_stock(tk, log=print):
     if DART_CORP:
         corp = DART_CORP.get(code)
         if corp:
+            # 공시 목록을 먼저 받는다(1건). 공시일·원문 링크(ir)를 만들고, 같은
+            # 목록으로 '지난번 이후 새 공시가 있었나' 를 판정해 분기 재무를
+            # 다시 받을지 정한다(dart.quarters_memo). 분기 재무가 빌드 시간의
+            # 97% 였다 — 종목당 요청 8건 × 건당 7.7초.
+            # 목록을 못 받으면 rows 는 None 이고, 그러면 재사용하지 않고 예전처럼
+            # 전부 받는다. ir 은 분기 데이터와 독립이라 실패해도 조용히 넘긴다.
+            rows = None
+            try:
+                with _spent("DART 공시"):
+                    rows = dart._list_reports(corp, 400)
+                ir = dart.latest_report(corp, rows=rows)
+            except Exception as exc:  # noqa: BLE001
+                log(f"  {tk} 공시검색 실패({exc}) — ir 을 비웁니다")
             try:
                 with _spent("DART 분기"):
-                    qs = dart.quarters(code, corp, log=lambda *a: None)
+                    qs, how = dart.quarters_memo(code, corp, rows, DART_MEMO,
+                                                 log=lambda *a: None)
+                MEMO_STATS[how] = MEMO_STATS.get(how, 0) + 1
                 if len(qs) >= 4:
                     qseries = qs
             except Exception as exc:  # noqa: BLE001 — 실패는 폴백으로 흡수
                 log(f"  {tk} DART 실패({exc}) — yfinance 로 대체")
-            # 공시일·원문 링크. corp 이 이미 손에 있는 이 자리가 제일 싸다.
-            # 분기 데이터와 독립이라 실패해도 조용히 넘긴다 — 화면은 ir 이
-            # 없으면 폴백 문구를 띄운다.
-            try:
-                with _spent("DART 공시"):
-                    ir = dart.latest_report(corp)
-            except Exception as exc:  # noqa: BLE001
-                log(f"  {tk} 공시검색 실패({exc}) — ir 을 비웁니다")
 
     # DART 가 확정만 주는 사이, 시장은 이미 잠정으로 다음 분기를 보고 있다.
     # 그 한 분기를 네이버에서 받아 얹는다 — 선취매 도구에서 정작 중요한 구간이다.
@@ -971,13 +983,17 @@ def build(limit, min_cap, sleep, log=print, budget=None, stall=0, prev=None):
 
     # DART 고유번호 맵을 먼저 받는다(키 있을 때만). 실패해도 빌드는 계속되고
     # 분기 데이터는 yfinance 로 떨어진다.
-    global DART_CORP
+    global DART_CORP, DART_MEMO
     if dart.enabled():
         try:
             DART_CORP = dart.corp_map(log=log)
         except Exception as exc:  # noqa: BLE001
             log(f"  DART 고유번호 실패({exc}) — 분기는 yfinance 로 받습니다")
             DART_CORP = {}
+        DART_MEMO = dart.load_memo()
+        MEMO_STATS.clear()
+        log(f"  DART 분기 재사용분 {len(DART_MEMO)}종목"
+            + ("" if DART_MEMO else " — 처음이라 전부 받습니다(다음 회차부터 새 공시가 있는 종목만)"))
     else:
         log("  DART_KEY 없음 — 분기는 yfinance 로 받습니다"
             "(저장소 Secret 에 넣으면 1~3주 빠른 분기 데이터를 씁니다)")
@@ -1079,7 +1095,12 @@ def build(limit, min_cap, sleep, log=print, budget=None, stall=0, prev=None):
         log(f"  DART 로 분기를 받은 종목 {n_dart}/{len(members)}"
             f" (그중 네이버 잠정으로 최근 분기를 메운 종목 {n_prelim})"
             f" · {dart.status_report()}")
-        if not dart.healthy():
+        hit, miss, nom = (MEMO_STATS.get(k, 0) for k in ("hit", "miss", "nomemo"))
+        log(f"  DART 분기 재사용 {hit}종목 · 새 공시로 다시 받음 {miss} · 받았지만 저장 안 함 {nom}"
+            f" (저장 {dart.save_memo(DART_MEMO)}종목)")
+        # 재사용만 한 회차에는 재무 요청이 0건이라 000 이 없을 수 있다. 재사용도
+        # 공시 목록을 정상으로 받았다는 증거라 그때는 경고하지 않는다.
+        if not dart.healthy() and not hit:
             log("  ⚠️ DART 응답이 한 건도 정상(000)이 아닙니다 — 전부 yfinance 로 떨어졌습니다.")
             log("     python dart.py --probe 005930 (또는 Actions 의 probe 입력)으로 원인을 보세요.")
 
@@ -1607,6 +1628,81 @@ def selftest():
         check(got.get("BBB.KS", {}).get("ear") is None,
               "발표일이 없으면 None — 지어내지 않는다")
         check("ear" in a and "ear_to" in a, "산출 키 이름이 화면이 읽는 이름(ear·ear_to)이다")
+
+    print("\n── DART 분기 재사용이 fetch_stock 을 실제로 거치는가 ──")
+    # 판정식은 dart 자가진단이 본다. 여기서는 연결부 — 공시 목록을 한 번 받아
+    # ir 과 재사용 판정에 같이 쓰는가, 재사용하면 DART 재무를 안 부르는가,
+    # 그리고 **재사용해도 결과가 새로 받은 것과 똑같은가** — 를 본다.
+    try:
+        import pandas as pd
+        import yfinance as yf
+    except ImportError:
+        check(False, "pandas·yfinance 가 없어 연결부를 못 본다")
+    else:
+        global DART_CORP, DART_MEMO
+
+        class _T:
+            def __init__(self, tk):
+                ys = [pd.Timestamp(f"{y}-12-31") for y in (2025, 2024)]
+                lab = ["Total Revenue", "Operating Income", "Net Income"]
+                self.income_stmt = pd.DataFrame(
+                    {ys[0]: [1250e9, 200e9, 150e9], ys[1]: [1000e9, 100e9, 80e9]}, index=lab)
+                qd = [pd.Timestamp(d) for d in ("2026-06-30", "2026-03-31", "2025-12-31",
+                                                "2025-09-30", "2025-06-30")]
+                self.quarterly_income_stmt = pd.DataFrame(
+                    {d: [320e9, 50e9, 40e9] for d in qd}, index=lab)
+                self.calendar = {}
+                self.eps_trend = None
+
+            def get_info(self):
+                return {"sector": "Technology", "industry": "Semiconductors",
+                        "longName": "합성전자", "marketCap": 3e12}
+        rows = [{"rcept_no": "R2", "report_nm": "반기보고서 (2026.06)", "rcept_dt": "2026-08-14"},
+                {"rcept_no": "R1", "report_nm": "분기보고서 (2026.03)", "rcept_dt": "2026-05-15"}]
+        ends = ["2024-09-30", "2024-12-31", "2025-03-31", "2025-06-30",
+                "2025-09-30", "2025-12-31", "2026-03-31", "2026-06-30"]
+        dq = []
+
+        def fake_q(code, corp, today=None, log=print, years=3):
+            dq.append(corp)
+            dart.STATUS["000"] = dart.STATUS.get("000", 0) + 1
+            return [(e, 100e9 + 5e9 * i, 10e9 + 2e9 * i) for i, e in enumerate(ends)]
+
+        def no_naver(*a, **k):
+            raise RuntimeError("네이버 없음")
+        saved = (yf.Ticker, dart._list_reports, dart.quarters, naver.quarters,
+                 DART_CORP, DART_MEMO, dict(dart.STATUS), dict(MEMO_STATS))
+        try:
+            yf.Ticker = _T
+            dart._list_reports = lambda corp, days, today=None: list(rows)
+            dart.quarters = fake_q
+            naver.quarters = no_naver
+            DART_CORP, DART_MEMO = {"005930": "C"}, {}
+            MEMO_STATS.clear()
+            quiet = lambda *a, **k: None
+            a1 = fetch_stock("005930.KS", quiet)
+            a2 = fetch_stock("005930.KS", quiet)
+            check(len(dq) == 1 and MEMO_STATS == {"miss": 1, "hit": 1},
+                  f"두 번째는 DART 재무를 안 부른다 (재무 요청 {len(dq)}회 · {MEMO_STATS})")
+            check(a1 is not None and a1 == a2,
+                  "재사용한 결과가 새로 받은 결과와 한 글자도 다르지 않다(분기·TTM·ir 전부)")
+            check(a1 and is_dart(a1.get("q_src")) and a1.get("q_end") == "2026-06-30",
+                  f"분기는 DART 것이다 ({a1 and a1.get('q_src')} · {a1 and a1.get('q_end')})")
+            check(a1 and a1["ir"] and a1["ir"]["date"] == "2026-08-14",
+                  "ir 은 같은 공시 목록에서 나온다 — 목록을 두 번 받지 않는다")
+            rows.insert(0, {"rcept_no": "R2b", "report_nm": "[기재정정]반기보고서 (2026.06)",
+                            "rcept_dt": "2026-09-01"})
+            fetch_stock("005930.KS", quiet)
+            check(len(dq) == 2, "정정 공시가 나오면 fetch_stock 도 다시 받는다")
+            dart._list_reports = lambda corp, days, today=None: (_ for _ in ()).throw(OSError("망"))
+            a4 = fetch_stock("005930.KS", quiet)
+            check(len(dq) == 3 and a4 and a4["ir"] is None,
+                  "공시 목록이 실패하면 재사용하지 않고 예전처럼 전부 받는다(ir 만 빈다)")
+        finally:
+            (yf.Ticker, dart._list_reports, dart.quarters, naver.quarters,
+             DART_CORP, DART_MEMO) = saved[:6]
+            dart.STATUS.clear(); dart.STATUS.update(saved[6])
+            MEMO_STATS.clear(); MEMO_STATS.update(saved[7])
 
     print("\n── 소요시간 분해 ──")
     saved = dict(SPENT)

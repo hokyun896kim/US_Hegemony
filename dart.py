@@ -657,6 +657,111 @@ def selftest() -> int:
         mod.statement = real_stmt
         mod._get, mod._key, mod.enabled = real_get, real_key, real_enabled
 
+    print("\n━━ 분기 재사용 (새 공시가 없으면 다시 받지 않는다) ━━")
+    import tempfile
+    rep = lambda no, nm: {"rcept_no": no, "report_nm": nm, "rcept_dt": "2026-08-14"}
+    rows = [rep("R3", "반기보고서 (2026.06)"), rep("R2", "분기보고서 (2026.03)"),
+            rep("R1", "사업보고서 (2025.12)")]
+    QS = [("2025-12-31", 90.0, 9.0), ("2026-03-31", 100.0, 10.0), ("2026-06-30", 110.0, 12.0)]
+    calls = []
+
+    def fake(code, corp, today=None, log=print, qs=QS, status=None):
+        calls.append(corp)
+        for k in (status or ["000"]):
+            STATUS[k] = STATUS.get(k, 0) + 1
+        return list(qs)
+    D0 = date(2026, 9, 23)
+    saved_status = dict(STATUS)
+    try:
+        memo = {}
+        qs, how = quarters_memo("005930", "C", rows, memo, today=D0, fetch=fake)
+        t(how == "miss" and qs == QS and len(calls) == 1, f"처음엔 받아서 저장한다 ({how})")
+        qs, how = quarters_memo("005930", "C", rows, memo, today=D0 + timedelta(days=7), fetch=fake)
+        t(how == "hit" and qs == QS and len(calls) == 1,
+          f"다음 주에 새 공시가 없으면 DART 재무를 안 부르고 같은 값 ({how}, 요청 {len(calls)})")
+        # 오래된 공시가 목록 창(400일)에서 빠지는 건 변화가 아니다
+        qs, how = quarters_memo("005930", "C", rows[:2], memo, today=D0 + timedelta(days=14), fetch=fake)
+        t(how == "hit", "오래된 공시가 목록에서 빠져도 다시 받지 않는다")
+        # 정정 공시 — 같은 분기라도 새 접수번호
+        fix = [rep("R3b", "[기재정정]반기보고서 (2026.06)")] + rows
+        qs, how = quarters_memo("005930", "C", fix, memo, today=D0 + timedelta(days=21), fetch=fake)
+        t(how == "miss" and len(calls) == 2, f"정정 공시(새 접수번호)가 나오면 다시 받는다 ({how})")
+        qs, how = quarters_memo("005930", "C", fix, memo, today=D0 + timedelta(days=28), fetch=fake)
+        t(how == "hit" and len(calls) == 2, "정정분을 받은 뒤에는 다시 재사용한다")
+        # 새 분기 보고서
+        new = [rep("R4", "분기보고서 (2026.09)")] + fix
+        q4 = QS + [("2026-09-30", 120.0, 15.0)]
+        qs, how = quarters_memo("005930", "C", new, memo, today=D0 + timedelta(days=56),
+                                fetch=lambda *a, **k: fake(*a, **k, qs=q4))
+        t(how == "miss" and qs[-1][0] == "2026-09-30", f"새 보고서가 나오면 다시 받는다 ({how})")
+        # 90일 — 공시가 없어도 다시 받는다
+        n = len(calls)
+        qs, how = quarters_memo("005930", "C", new, memo, today=D0 + timedelta(days=56 + _ttl("C")),
+                                fetch=lambda *a, **k: fake(*a, **k, qs=q4))
+        t(how == "miss" and len(calls) == n + 1, f"만료일({_ttl('C')}일)이 지나면 공시가 없어도 다시 받는다 ({how})")
+        qs, how = quarters_memo("005930", "C", new, memo, today=D0 + timedelta(days=56 + _ttl("C") + _ttl("C") - 1),
+                                fetch=lambda *a, **k: fake(*a, **k, qs=q4))
+        t(how == "hit", "만료 하루 전까지는 재사용한다")
+        tt = [_ttl(f"{i:08d}") for i in range(300)]
+        t(min(tt) >= MEMO_TTL - MEMO_JITTER and max(tt) <= MEMO_TTL + MEMO_JITTER and len(set(tt)) >= 20,
+          f"만료일이 종목마다 흩어진다 ({min(tt)}~{max(tt)}일, {len(set(tt))}가지) — 석 달 뒤 한꺼번에 만료되지 않게")
+        t(_ttl("00126380") == _ttl("00126380"), "같은 종목은 늘 같은 만료일 — 재현된다")
+        # 연도가 바뀌면 quarters 가 훑는 연도 창이 바뀐다
+        memo2 = {"C": {**memo["C"], "year": 2025}}
+        qs, how = quarters_memo("005930", "C", new, memo2, today=D0 + timedelta(days=60),
+                                fetch=lambda *a, **k: fake(*a, **k, qs=q4))
+        t(how == "miss", "저장한 해와 올해가 다르면 다시 받는다")
+
+        print("  — 저장하면 안 되는 경우")
+        m3 = {}
+        _, how = quarters_memo("005930", "C", None, m3, today=D0, fetch=fake)
+        t(how == "nomemo" and not m3, "공시 목록을 못 받았으면(None) 저장하지 않는다 — 판정 근거가 없다")
+        _, how = quarters_memo("005930", "C", [], m3, today=D0, fetch=fake)
+        t(how == "nomemo" and not m3, "공시 목록이 비었으면 저장하지 않는다")
+        _, how = quarters_memo("005930", "C", rows, m3, today=D0,
+                               fetch=lambda *a, **k: fake(*a, **k, status=["000", "net"]))
+        t(how == "nomemo" and not m3, "받는 중 네트워크 오류가 있었으면 저장하지 않는다 — 분기가 빠졌을 수 있다")
+        _, how = quarters_memo("005930", "C", rows, m3, today=D0,
+                               fetch=lambda *a, **k: fake(*a, **k, status=["000", "020"]))
+        t(how == "nomemo" and not m3, "요청 제한(020) 같은 실패 응답도 마찬가지")
+        _, how = quarters_memo("005930", "C", rows, m3, today=D0,
+                               fetch=lambda *a, **k: fake(*a, **k, status=["000", "013"]))
+        t(how == "miss" and "C" in m3, "013(아직 공시 전)은 실패가 아니다 — 저장한다")
+        m4 = {}
+        _, how = quarters_memo("005930", "C", new, m4, today=D0, fetch=fake)
+        t(how == "nomemo" and not m4,
+          "가장 최근 공시(2026.09)의 분기가 결과에 없으면 저장하지 않는다 — 재무 API 가 아직 안 준 것")
+        # 옛 버전 캐시가 섞였을 때 — 형식이 다르면 처음부터
+        m5 = {"C": {"at": "깨짐", "year": 2026, "seen": ["R1", "R2", "R3"], "qs": QS}}
+        _, how = quarters_memo("005930", "C", rows, m5, today=D0, fetch=fake)
+        t(how == "miss", "저장된 날짜가 깨졌으면 다시 받는다")
+        m7 = {"C": {"at": "2026-12-01", "year": 2026, "seen": ["R1", "R2", "R3"], "qs": QS}}
+        _, how = quarters_memo("005930", "C", rows, m7, today=D0, fetch=fake)
+        t(how == "miss", "저장일이 오늘보다 뒤면(시계 착오) 믿지 않는다")
+
+        print("  — 파일로 남기고 되읽기")
+        with tempfile.TemporaryDirectory() as td:
+            pth = os.path.join(td, "m.json")
+            t(load_memo(pth) == {}, "파일이 없으면 빈 재사용분 — 첫 빌드는 전부 받는다")
+            m6 = {}
+            quarters_memo("005930", "C", new, m6, today=D0, fetch=lambda *a, **k: fake(*a, **k, qs=q4))
+            keep = {"C": m6["C"], "OLD": {**m6["C"], "at": "2025-01-01"}}
+            n = save_memo(keep, pth, today=D0 + timedelta(days=10))
+            back = load_memo(pth)
+            t(n == 1 and set(back) == {"C"}, f"만료일 지난 것은 저장할 때 버린다 ({sorted(back)})")
+            qs, how = quarters_memo("005930", "C", new, back, today=D0 + timedelta(days=10), fetch=fake)
+            t(how == "hit" and qs == q4 and all(isinstance(x, tuple) for x in qs),
+              "되읽은 값으로도 재사용된다 — JSON 을 거쳐도 (분기말, 매출, 영익) 튜플")
+            with open(pth, "w", encoding="utf-8") as f:
+                f.write("{깨진")
+            t(load_memo(pth) == {}, "깨진 파일은 빈 재사용분 — 빌드가 죽지 않는다")
+            with open(pth, "w", encoding="utf-8") as f:
+                json.dump({"ver": MEMO_VER + 1, "items": {"C": memo["C"]}}, f)
+            t(load_memo(pth) == {}, "버전이 다르면 버린다 — 저장 형식을 바꾸면 한 번 전부 다시 받는다")
+    finally:
+        STATUS.clear()
+        STATUS.update(saved_status)
+
     print("\n✅ 전부 통과" if ok[0] else "\n❌ 실패")
     return 0 if ok[0] else 1
 
@@ -743,7 +848,7 @@ def report_calendar(corp: str, days: int = 1200, today=None):
     return [cal[k] for k in sorted(cal)]
 
 
-def latest_report(corp: str, days: int = 400):
+def latest_report(corp: str, days: int = 400, rows=None):
     """이 회사의 가장 최근 정기공시 한 건 → 화면의 ir 필드 모양으로.
 
     실측 (2026-09-17 · Actions 프로브 · 005930):
@@ -765,12 +870,114 @@ def latest_report(corp: str, days: int = 400):
 
     실패·미발견은 None. 화면은 ir 이 없으면 폴백 문구를 띄우므로 안전하다.
     """
-    rows = _list_reports(corp, days)
+    # rows 를 넘기면 다시 부르지 않는다 — 빌더가 같은 목록으로 분기 재사용
+    # 여부(quarters_memo)도 판정하므로 한 번만 받는다.
+    if rows is None:
+        rows = _list_reports(corp, days)
     if not rows:
         return None
     r = rows[0]          # API 기본 정렬이 최신순(실측) — 첫 행이 최근 공시다
     return {"date": r["rcept_dt"],
             "docs": [{"label": r["report_nm"], "url": DOC_URL + r["rcept_no"]}]}
+
+
+# ── 분기 재사용 ───────────────────────────────────────────────────────
+# 한국 빌드 4시간의 97% 가 여기였다(2026-09-23 실측: 종목당 65초 중 DART 분기
+# 63초, 요청 8.2건 → 건당 약 7.7초). 그런데 그 요청 대부분은 **이미 공시가 끝나
+# 바뀌지 않는 과거 분기**를 매주 다시 받는 것이었다. 새 숫자는 새 공시로만
+# 생긴다 — 새 보고서든 정정(기재정정)이든 새 접수번호(rcept_no)가 붙는다.
+# 그래서 지난번에 본 접수번호 밖의 공시가 하나도 없으면 지난번 결과를 그대로
+# 쓴다. 공시 목록은 빌더가 ir 을 만들려고 어차피 한 번 받는다(건당 1초 미만).
+#
+# 이걸로 틀려질 수 있는 길을 하나씩 막는다.
+#   · 목록 창(400일)에서 오래된 공시가 빠지는 건 변화가 아니다 → '새 번호가
+#     생겼나' 로 본다(목록 전체를 서명으로 쓰면 공시가 창 밖으로 나갈 때마다
+#     헛되이 다시 받는다)
+#   · 받는 중에 네트워크 오류·요청 제한이 있었으면 분기가 빠졌을 수 있다
+#     → 저장하지 않는다(다음 회차에 다시 받는다)
+#   · 공시 직후 재무 API 가 아직 그 분기를 안 줄 수 있다 → 가장 최근 공시의
+#     분기가 결과에 없으면 저장하지 않는다
+#   · 그래도 모르는 사정(DART 쪽 사후 수정 등)에 대비해 석 달(종목마다
+#     75~105일로 흩음)이 지나면 공시가 없어도 다시 받는다
+#   · 연도가 바뀌면 quarters 가 훑는 연도 창이 바뀐다 → 다시 받는다
+MEMO_VER = 1
+MEMO_TTL = 90
+MEMO_PATH = "data/dart_memo_kr.json"
+MEMO_OK = ("000", "013")        # 정상 · 조회된 데이터 없음(아직 공시 전) — 그 밖은 실패
+MEMO_JITTER = 15                # 만료를 종목마다 ±15일 흩는다
+
+
+def _ttl(corp: str) -> int:
+    """종목별 만료일수(75~105일). 첫 빌드가 모든 종목을 같은 날 저장하므로 똑같이
+    90일로 두면 석 달 뒤 한 회차에 전부 만료돼 그 회차만 다시 4시간이 된다.
+    해시로 흩어 두면 매번 같은 값이 나와 재현된다."""
+    import zlib
+    return MEMO_TTL - MEMO_JITTER + zlib.crc32(str(corp).encode()) % (2 * MEMO_JITTER + 1)
+
+
+def load_memo(path: str = MEMO_PATH) -> dict:
+    """저장된 재사용분. 없거나 깨졌거나 버전이 다르면 빈 dict — 처음부터 받는다."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            d = json.load(f)
+        if isinstance(d, dict) and d.get("ver") == MEMO_VER and isinstance(d.get("items"), dict):
+            return d["items"]
+    except (OSError, ValueError):
+        pass
+    return {}
+
+
+def save_memo(memo: dict, path: str = MEMO_PATH, today=None) -> int:
+    """TTL 이 지난 것을 걸러 저장한다. 저장한 건수를 돌려준다."""
+    today = today or date.today()
+    keep = {}
+    for k, e in memo.items():
+        try:
+            if (today - date.fromisoformat(e["at"])).days < _ttl(k):
+                keep[k] = e
+        except (KeyError, TypeError, ValueError):
+            continue
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump({"ver": MEMO_VER, "items": keep}, f, ensure_ascii=False,
+                  separators=(",", ":"), sort_keys=True)
+    return len(keep)
+
+
+def quarters_memo(stock_code: str, corp: str, rows, memo: dict, today=None,
+                  log=print, fetch=None):
+    """quarters() 와 같은 값을, 새 공시가 없으면 지난번 것으로.
+
+    반환: (분기 목록, 'hit'|'miss'|'nomemo')
+      hit    지난번 결과를 썼다(DART 재무 요청 0건)
+      miss   새로 받았고 다음에 쓰려고 저장했다
+      nomemo 새로 받았지만 저장하지 않았다(목록 없음·요청 실패·최근 분기 누락)
+    rows 는 _list_reports 결과. None 이나 빈 목록이면 판정 근거가 없으므로
+    재사용하지 않는다.
+    """
+    today = today or date.today()
+    fetch = fetch or quarters
+    now = {r["rcept_no"] for r in (rows or [])}
+    e = memo.get(corp)
+    if rows and e:
+        try:
+            # 0 이상 — 저장일이 오늘보다 뒤면(시계 착오) 믿지 않는다
+            fresh = 0 <= (today - date.fromisoformat(e["at"])).days < _ttl(corp)
+        except (KeyError, TypeError, ValueError):
+            fresh = False
+        if fresh and e.get("year") == today.year and now <= set(e.get("seen") or ()):
+            return [tuple(x) for x in e["qs"]], "hit"
+    before = dict(STATUS)
+    qs = fetch(stock_code, corp, today=today, log=log)
+    bad = any(STATUS.get(k, 0) > before.get(k, 0) for k in STATUS if k not in MEMO_OK)
+    newest = max((q for q in (report_qend(r["report_nm"]) for r in (rows or [])) if q),
+                 default=None)
+    covered = newest is not None and any(q[0] == newest for q in qs)
+    if rows and not bad and covered:
+        memo[corp] = {"year": today.year, "at": today.isoformat(), "seen": sorted(now),
+                      "qs": [list(q) for q in qs]}
+        return qs, "miss"
+    return qs, "nomemo"
 
 
 def probe_ir(corp: str) -> None:
