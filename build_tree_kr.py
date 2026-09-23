@@ -359,6 +359,51 @@ def annual_yoy(inc):
     return sane(pct(rev[0][1], rev[1][1]), pct(op[0][1], op[1][1]))
 
 
+def loss_base(inc):
+    """전년 연간 영업이익이 0 이하인가 — 그래서 YoY 가 정의되지 않는 종목.
+
+    pct() 는 분모가 0 이하면 None 을 준다(비율이 무의미하다). annual_yoy 가
+    None 인 이유가 '이것' 인지, 데이터가 없어서인지를 가른다. 매출 분모는 양수여야
+    한다 — 매출까지 비어 있으면 흑자전환을 논할 재료가 없다.
+    """
+    rev = series_values(pick_row(inc, REV_ROWS))
+    op = series_values(pick_row(inc, OP_ROWS))
+    if len(rev) < 2 or len(op) < 2:
+        return False
+    try:
+        return float(rev[1][1]) > 0 and float(op[1][1]) <= 0
+    except (TypeError, ValueError):
+        return False
+
+
+def ttm_flip(qs):
+    """최근 4분기 영업이익 합이 흑자이고 그 전 4분기 합이 0 이하인가.
+
+    화면의 flipOf 와 **같은 판정**이다(index.html · us.html). 빌더는 이걸로
+    '버릴지 별도 목록에 실을지' 만 정하고, 화면은 qs 로 다시 판정한다 — 두 식이
+    갈라지면 빌더가 실은 종목을 화면이 안 보여주거나 그 반대가 된다.
+    qs 는 [[분기말, 매출, 영업이익], ...] 최신이 앞(quarter_series 모양).
+    """
+    if not qs or len(qs) < 8:
+        return None
+    r = qs[:8]
+    if any(x is None or x[1] is None or x[2] is None for x in r):
+        return None
+
+    def mo(d):
+        return int(str(d)[:4]) * 12 + int(str(d)[5:7])
+    # 여덟 분기가 이어져 있어야 한다. 중간이 빠지면 '1년 전' 이 1년 전이 아니다.
+    for i in range(7):
+        g = mo(r[i][0]) - mo(r[i + 1][0])
+        if g < 2 or g > 4:
+            return None
+    rv, op = sum(x[1] for x in r[:4]), sum(x[2] for x in r[:4])
+    rv0, op0 = sum(x[1] for x in r[4:]), sum(x[2] for x in r[4:])
+    if not (rv > 0 and rv0 > 0) or not (op0 <= 0 < op):
+        return None
+    return {"now": round(op / rv * 100, 1), "prev": round(op0 / rv0 * 100, 1)}
+
+
 def days_until(iso):
     """오늘부터 그 날짜까지 남은 일수. 없거나 이상하면 None."""
     if not iso:
@@ -599,8 +644,18 @@ def fetch_stock(tk, log=print):
         earn = earnings_dates(t)
 
     rev, op = annual_yoy(inc)
+    # 전년 영업이익이 0 이하면 YoY 가 정의되지 않는다(pct 가 None). 예전엔 여기서
+    # 버렸고, 그래서 흑자전환 종목이 트리에서 통째로 사라졌다 — 2026-06 분기 기준
+    # 최근 4분기 흑자전환 54종목 중 46종목(현대건설·LG디스플레이·에코프로·
+    # 엔씨소프트 …, 백테스트 분기 데이터로 실측). '턴어라운드의 시작' 을 찾는
+    # 도구가 정확히 그 종목을 못 보고 있었다. 이런 종목은 분기를 마저 받아
+    # 최근 4분기가 흑자로 돌아섰으면 트리 밖 별도 목록(flips)으로 낸다.
+    # 스프레드가 없으므로 트리·TOP5·점수에는 넣지 않는다.
+    flip_only = False
     if rev is None or op is None:
-        return None
+        if not loss_base(inc):
+            return None
+        flip_only = True
 
     # 분기는 DART 를 먼저 본다. yfinance 는 보고서가 나온 뒤 자기들이 처리한
     # 다음에야 주기 때문에 매 분기 1~3주가 더 밀린다(실측: 8/8 에 223종목 중
@@ -652,6 +707,9 @@ def fetch_stock(tk, log=print):
     # 화면에 그릴 분기 추이. 스프레드·가속과 같은 소스를 쓴다 — 따로 읽으면
     # 숫자와 그래프가 다른 분기를 가리킨다.
     qs_chart = quarter_series(qinc, inc, qseries)
+    flip = ttm_flip(qs_chart) if flip_only else None
+    if flip_only and not flip:
+        return None          # 전년 적자이고 아직 흑자로 못 돌아섰다 — 예전처럼 버린다
 
     info = {}
     try:
@@ -679,6 +737,32 @@ def fetch_stock(tk, log=print):
     if pe is not None and not (1.0 <= pe <= 300.0):
         pe = None
 
+    _info = {
+        "sector": info.get("sector"),
+        "industry": info.get("industry"),
+        "nm": info.get("longName") or info.get("shortName"),
+        "pe": pe,
+        "fpe": num(info.get("forwardPE")),
+        "peg": num(info.get("trailingPegRatio") or info.get("pegRatio")),
+        "est30": est.get("est30"),
+        "est90": est.get("est90"),
+        "last_earn": earn[0].isoformat() if earn[0] else None,
+        "next_earn": earn[1].isoformat() if earn[1] else None,
+    }
+    if flip_only:
+        # 스프레드 계열은 정의되지 않으므로 비운다(0 으로 채우면 거짓말이다).
+        # 화면은 flipOf(qs) 로 다시 판정하고, 이 값들이 null 인 것을 견딘다.
+        return {
+            "flip": flip,
+            "rev": None, "op": None, "spread": None,
+            "q_rev": None, "q_op": None, "q_spread": None, "accel": None,
+            "q_note": q_note, "q_approx": q_approx,
+            "q_end": q_end or (qs_chart[0][0] if qs_chart else None),
+            "lq_rev": None if lq_rev is None else round(lq_rev, 1),
+            "lq_op": None if lq_op is None else round(lq_op, 1),
+            "q_src": q_src, "qs": qs_chart, "ir": ir, "_info": _info,
+        }
+
     spread = op - rev
     q_spread = (q_op - q_rev) if (q_op is not None and q_rev is not None) else None
     accel = (q_spread - spread) if q_spread is not None else None
@@ -705,18 +789,7 @@ def fetch_stock(tk, log=print):
         # DART 정기공시에서 받은 공시일·원문 링크. 화면의 공시 버튼과
         # staleness 의 공시일 기반 정밀 판정이 이 값을 쓴다.
         "ir": ir,
-        "_info": {
-            "sector": info.get("sector"),
-            "industry": info.get("industry"),
-            "nm": info.get("longName") or info.get("shortName"),
-            "pe": pe,
-            "fpe": num(info.get("forwardPE")),
-            "peg": num(info.get("trailingPegRatio") or info.get("pegRatio")),
-            "est30": est.get("est30"),
-            "est90": est.get("est90"),
-            "last_earn": earn[0].isoformat() if earn[0] else None,
-            "next_earn": earn[1].isoformat() if earn[1] else None,
-        },
+        "_info": _info,
     }
 
 
@@ -1053,14 +1126,20 @@ def build(limit, min_cap, sleep, log=print, budget=None, stall=0, prev=None):
             log(f"    {spent_line(i)}")
         with _spent("대기(예의상)"):
             time.sleep(sleep)
-    log(f"  재무 확보 {len(members)}/{len(rows)}")
+    # 흑자전환(전년 적자) 종목은 트리에 넣지 않는다 — 스프레드가 없어 트리·
+    # TOP5·점수가 다룰 수 없다. 별도 목록으로 싣고 시세만 같이 받는다.
+    flips = [m for m in members if m.get("flip")]
+    members = [m for m in members if not m.get("flip")]
+    log(f"  재무 확보 {len(members)}/{len(rows)} · 흑자전환(전년 적자, 트리 밖) {len(flips)}종목")
     log(f"  {spent_line(i if rows else 0)}")
     fresh_n = len(members)
 
     # 이번 회차에 못 받은 종목은 지난 회차 실적을 그대로 들고 간다. 실적은
     # 분기당 한 번 바뀌므로 한 주 묵은 실적은 '없는 것'보다 훨씬 낫다.
     # 시세는 아래에서 이월분까지 전부 새로 받으므로 상대강도·갭은 최신이다.
-    got = {m["tk"] for m in members}
+    # 흑자전환으로 옮겨 간 종목은 지난 회차 트리 값을 이월하면 안 된다 —
+    # 두 곳에 동시에 나타난다.
+    got = {m["tk"] for m in members} | {m["tk"] for m in flips}
     carried = 0
     for tk, old in prev.items():
         if tk in got:
@@ -1116,8 +1195,8 @@ def build(limit, min_cap, sleep, log=print, budget=None, stall=0, prev=None):
     log("[3/4] 시세")
     # 실적 반응 창 — 분기말과 발표일(DART 정기공시일). ir 은 이월분도 들고 있다.
     events = {m["tk"]: (m.get("q_end"), (m.get("ir") or {}).get("date"))
-              for m in members}
-    price, market = fetch_prices([m["tk"] for m in members], log, budget, events)
+              for m in members + flips}
+    price, market = fetch_prices([m["tk"] for m in members + flips], log, budget, events)
 
     # 거래대금·시총 — KRX OpenAPI. 하루 2호출(유가증권+코스닥)에 전종목이
     # 들어오므로 20영업일이면 약 60호출이다. 종목당 호출이 아니라 싸다.
@@ -1135,7 +1214,7 @@ def build(limit, min_cap, sleep, log=print, budget=None, stall=0, prev=None):
     else:
         log("  KRX_KEY 없음 — 거래대금·시총 건너뜁니다")
 
-    for m in members:
+    for m in members + flips:
         p = price.get(m["tk"], {})
         # 티커는 '005930.KS' 이고 KRX 는 '005930' 이다
         lq = liq.get(m["tk"].split(".")[0], {})
@@ -1171,6 +1250,11 @@ def build(limit, min_cap, sleep, log=print, budget=None, stall=0, prev=None):
     # today 는 수집 시작 시각에 잡혔고 f_as_of 도 그 값이다. 같은 값을 넘겨
     # 한 회차가 하나의 날짜를 갖게 한다(몇 시간이 걸리든).
     data = assemble(members, market, log, as_of=today)
+    # 트리 밖 흑자전환 목록. 화면이 세부산업 이름으로 묶어 보여주므로 트리와
+    # 같은 한글 이름표(sec·gics)를 붙인다. 없으면 빈 목록 — 화면은 그대로 돈다.
+    data["flips"] = [{**m, "sec": INDUSTRY_KO.get(m["industry"], m["industry"]),
+                      "gics": SECTOR_KO.get(m["sector"], m["sector"])}
+                     for m in sorted(flips, key=lambda m: m["tk"])]
     if carried or skipped:
         # 무엇이 이번 것이고 무엇이 지난 것인지 데이터에 적어 둔다. 화면이
         # 이 값으로 배너를 띄운다 — 두 날짜를 한 날짜인 척 보여주면 안 된다.
@@ -1698,11 +1782,68 @@ def selftest():
             a4 = fetch_stock("005930.KS", quiet)
             check(len(dq) == 3 and a4 and a4["ir"] is None,
                   "공시 목록이 실패하면 재사용하지 않고 예전처럼 전부 받는다(ir 만 빈다)")
+
+            # 흑자전환 경로 — 전년 연간 영업적자라 YoY 가 정의되지 않는 종목
+            class _L(_T):
+                def __init__(self, tk):
+                    super().__init__(tk)
+                    self.income_stmt.iloc[1, 1] = -30e9      # 2024 연간 영업적자
+            yf.Ticker = _L
+            dart._list_reports = lambda corp, days, today=None: list(rows)
+            DART_MEMO = {}
+            flip_ops = [-5e9, -4e9, -3e9, -2e9, 3e9, 4e9, 5e9, 6e9]    # 오래된 → 최신
+            dart.quarters = lambda code, corp, today=None, log=print, years=3: [
+                (e, 100e9, o) for e, o in zip(ends, flip_ops)]
+            f1 = fetch_stock("005930.KS", quiet)
+            check(f1 is not None and f1.get("flip") and f1["spread"] is None and f1["q_spread"] is None,
+                  f"전년 적자 → 최근 4분기 흑자면 버리지 않고 흑자전환으로 낸다 ({f1 and f1.get('flip')})")
+            check(f1 and len(f1["qs"]) == 8 and f1["qs"][0][0] == "2026-06-30" and f1["ir"],
+                  "화면이 다시 판정할 8분기(최신이 앞)와 공시 링크를 싣는다")
+            check(f1 and f1["_info"]["sector"] == "Technology", "분류도 받는다 — 화면이 세부산업으로 묶는다")
+            dart.quarters = lambda code, corp, today=None, log=print, years=3: [
+                (e, 100e9, -1e9) for e in ends]
+            DART_MEMO = {}
+            check(fetch_stock("005930.KS", quiet) is None, "전년 적자이고 아직 적자면 예전처럼 버린다")
+            yf.Ticker = _T
+            DART_MEMO = {}
+            dart.quarters = fake_q
+            f3 = fetch_stock("005930.KS", quiet)
+            check(f3 and not f3.get("flip") and f3["spread"] is not None,
+                  "전년 흑자 종목은 예전 경로 그대로 — 트리에 들어간다")
         finally:
             (yf.Ticker, dart._list_reports, dart.quarters, naver.quarters,
              DART_CORP, DART_MEMO) = saved[:6]
             dart.STATUS.clear(); dart.STATUS.update(saved[6])
             MEMO_STATS.clear(); MEMO_STATS.update(saved[7])
+
+    print("\n── 흑자전환(전년 적자) 종목을 버리지 않는가 ──")
+    # 예전엔 전년 영업이익 ≤ 0 이면 YoY 가 None 이라 종목을 통째로 버렸다.
+    # 2026-06 기준 최근 4분기 흑자전환 54종목 중 46종목이 그렇게 사라졌다.
+    qd = lambda ops, rv=100.0: [[f"{2026 - (i + 2) // 4}-{[6, 3, 12, 9][i % 4]:02d}-30", rv, o]
+                                for i, o in enumerate(ops)]
+    check(ttm_flip(qd([5, 5, 5, 5, -2, -2, -2, 1])) == {"now": 5.0, "prev": -1.2},
+          f"전년 4분기 적자 → 최근 4분기 흑자 = 흑자전환 ({ttm_flip(qd([5, 5, 5, 5, -2, -2, -2, 1]))})")
+    check(ttm_flip(qd([5, 5, 5, 5, 1, 1, 1, 1])) is None, "전년도 흑자면 흑자전환이 아니다")
+    check(ttm_flip(qd([5, 5, 5, 5, -1, 1, -1, 1])) is not None,
+          "전년 4분기 합이 정확히 0 이어도 흑자전환 — 화면 flipOf 의 op0<=0 과 같게")
+    check(ttm_flip(qd([-1, -1, 1, 0, -2, -2, -2, 1])) is None, "최근도 적자면 아직 아니다")
+    check(ttm_flip(qd([5, 5, 5, 5, -2, -2, -2])) is None, "8분기 미만이면 판정하지 않는다")
+    gap = qd([5, 5, 5, 5, -2, -2, -2, 1])
+    gap[4][0] = "2024-12-30"
+    check(ttm_flip(gap) is None, "중간 분기가 빠지면 '1년 전' 이 1년 전이 아니다")
+    check(ttm_flip(qd([5, 5, 5, 5, -2, -2, -2, 1], rv=0.0)) is None, "매출이 0 이면 이익률을 못 낸다")
+    try:
+        import pandas as pd
+    except ImportError:
+        check(False, "pandas 가 없어 loss_base 를 못 본다")
+    else:
+        ys = [pd.Timestamp("2025-12-31"), pd.Timestamp("2024-12-31")]
+        lab = ["Total Revenue", "Operating Income"]
+        mk = lambda o0: pd.DataFrame({ys[0]: [1200e9, 50e9], ys[1]: [1000e9, o0]}, index=lab)
+        check(loss_base(mk(-30e9)) and loss_base(mk(0.0)), "전년 영업이익 0 이하 = 흑자전환 후보")
+        check(not loss_base(mk(20e9)), "전년 흑자는 후보가 아니다(평소 경로)")
+        check(not loss_base(pd.DataFrame({ys[0]: [1200e9, 50e9]}, index=lab)),
+              "1년치뿐이면 후보가 아니다 — 비교할 전년이 없다")
 
     print("\n── 소요시간 분해 ──")
     saved = dict(SPENT)
