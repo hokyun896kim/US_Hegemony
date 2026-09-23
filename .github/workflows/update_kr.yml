@@ -315,6 +315,9 @@ jobs:
           [ -f data/changes-kr.json ] && git add data/changes-kr.json || true
           # DART 고유번호 캐시도 남긴다 — 매 회차 다시 받을 이유가 없다.
           [ -f data/dart_corp.json ] && git add data/dart_corp.json || true
+          # DART 분기 재사용분 — 이게 커밋돼야 다음 회차가 새 공시 있는 종목만
+          # 받는다(빌드 4시간의 97% 가 분기 재무 재수집이었다). 없으면 전부 받는다.
+          [ -f data/dart_memo_kr.json ] && git add data/dart_memo_kr.json || true
           git diff --staged --quiet && echo "변경 없음" && exit 0
           git commit -m "auto(kr): update $(date +%Y-%m-%d)"
           # 두 빌더가 같은 브랜치에 민다. 동시에 돌면 뒤늦은 쪽이 거부당하는데,
