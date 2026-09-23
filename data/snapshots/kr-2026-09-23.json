@@ -4,8 +4,8 @@
  "n_members": 234,
  "n_subs": 68,
  "coverage": {
-  "fresh": 221,
-  "carried": 13,
+  "fresh": 222,
+  "carried": 12,
   "total": 234,
   "asked": 300,
   "skipped": 0,
@@ -163,11 +163,11 @@
   }
  ],
  "lever": {
-  "n": 192,
-  "noEar": 16,
-  "dropped": 15,
-  "tSp": 16.2,
-  "tLo": 13.2,
+  "n": 195,
+  "noEar": 12,
+  "dropped": 16,
+  "tSp": 16.8,
+  "tLo": 13.3,
   "tHi": 28.2,
   "med": 21.4,
   "top": 78,
@@ -285,6 +285,20 @@
     "q_end": "2026-06-30"
    },
    {
+    "tk": "008930.KS",
+    "nm": "Hanmi Science Co., Ltd.",
+    "sec": "의료 유통",
+    "q_spread": 69.1,
+    "ear": 73.4,
+    "ear_to": "2026-08-19",
+    "spread": 44.3,
+    "rs3": 95,
+    "rs6": 21.5,
+    "from_high": -12.1,
+    "pe": 29.82,
+    "q_end": "2026-06-30"
+   },
+   {
     "tk": "068270.KS",
     "nm": "Celltrion, Inc.",
     "sec": "바이오",
@@ -313,20 +327,6 @@
     "q_end": "2026-06-30"
    },
    {
-    "tk": "000100.KS",
-    "nm": "Yuhan Corporation",
-    "sec": "제약(제네릭·특수)",
-    "q_spread": 52.5,
-    "ear": 37,
-    "ear_to": "2026-08-19",
-    "spread": 84.4,
-    "rs3": 18.5,
-    "rs6": -40.9,
-    "from_high": -39.6,
-    "pe": 28.11,
-    "q_end": "2026-06-30"
-   },
-   {
     "tk": "207940.KS",
     "nm": "Samsung Biologics Co.,Ltd.",
     "sec": "바이오",
@@ -352,20 +352,6 @@
     "rs6": -42.8,
     "from_high": -32.3,
     "pe": 5.16,
-    "q_end": "2026-06-30"
-   },
-   {
-    "tk": "008930.KS",
-    "nm": "Hanmi Science Co., Ltd.",
-    "sec": "의료 유통",
-    "q_spread": 45.3,
-    "ear": 73.4,
-    "ear_to": "2026-08-19",
-    "spread": 44.3,
-    "rs3": 95,
-    "rs6": 21.5,
-    "from_high": -12.1,
-    "pe": 29.82,
     "q_end": "2026-06-30"
    },
    {
@@ -467,6 +453,34 @@
     "q_end": "2026-06-30"
    },
    {
+    "tk": "000100.KS",
+    "nm": "Yuhan Corporation",
+    "sec": "제약(제네릭·특수)",
+    "q_spread": 29.1,
+    "ear": 37,
+    "ear_to": "2026-08-19",
+    "spread": 84.4,
+    "rs3": 18.5,
+    "rs6": -40.9,
+    "from_high": -39.6,
+    "pe": 28.11,
+    "q_end": "2026-06-30"
+   },
+   {
+    "tk": "047050.KS",
+    "nm": "Posco International Corporat",
+    "sec": "복합기업",
+    "q_spread": 21.4,
+    "ear": 29.7,
+    "ear_to": "2026-08-19",
+    "spread": -0.1,
+    "rs3": 30,
+    "rs6": -44.4,
+    "from_high": -33.2,
+    "pe": 15.35,
+    "q_end": "2026-06-30"
+   },
+   {
     "tk": "161890.KS",
     "nm": "Kolmar Korea Co., Ltd.",
     "sec": "생활용품·화장품",
@@ -492,34 +506,6 @@
     "rs6": -33.1,
     "from_high": -39.2,
     "pe": 14.24,
-    "q_end": "2026-06-30"
-   },
-   {
-    "tk": "282330.KS",
-    "nm": "BGF Retail Co., Ltd.",
-    "sec": "식료품 소매",
-    "q_spread": 16.2,
-    "ear": 47,
-    "ear_to": "2026-08-19",
-    "spread": -3.5,
-    "rs3": 29.2,
-    "rs6": -9.5,
-    "from_high": -12.5,
-    "pe": 11.76,
-    "q_end": "2026-06-30"
-   },
-   {
-    "tk": "000210.KS",
-    "nm": "DL Holdings CO., LTD.",
-    "sec": "정밀화학",
-    "q_spread": 16.2,
-    "ear": 39.5,
-    "ear_to": "2026-08-19",
-    "spread": -23.3,
-    "rs3": 29.6,
-    "rs6": -41.5,
-    "from_high": -32.8,
-    "pe": null,
     "q_end": "2026-06-30"
    }
   ],
@@ -651,6 +637,20 @@
     "q_end": "2026-06-30"
    },
    {
+    "tk": "067310.KQ",
+    "nm": "HANA Micron Inc.",
+    "sec": "미분류",
+    "q_spread": 92.7,
+    "ear": -2.9,
+    "ear_to": "2026-08-19",
+    "spread": -3.1,
+    "rs3": 9.2,
+    "rs6": 18.6,
+    "from_high": -19.6,
+    "pe": 80.57,
+    "q_end": "2026-06-30"
+   },
+   {
     "tk": "232140.KQ",
     "nm": "YC Corporation",
     "sec": "반도체 장비·소재",
@@ -662,6 +662,20 @@
     "rs6": -48.4,
     "from_high": -39.6,
     "pe": 60.54,
+    "q_end": "2026-06-30"
+   },
+   {
+    "tk": "042660.KS",
+    "nm": "Hanwha Ocean Co., Ltd.",
+    "sec": "항공우주·방산",
+    "q_spread": 86.8,
+    "ear": 13.2,
+    "ear_to": "2026-08-14",
+    "spread": 376,
+    "rs3": -8.4,
+    "rs6": -52.6,
+    "from_high": -45.6,
+    "pe": 19.57,
     "q_end": "2026-06-30"
    },
    {
@@ -704,34 +718,6 @@
     "rs6": -29.4,
     "from_high": -38.1,
     "pe": 32.69,
-    "q_end": "2026-06-30"
-   },
-   {
-    "tk": "067310.KQ",
-    "nm": "HANA Micron Inc.",
-    "sec": "미분류",
-    "q_spread": 80.6,
-    "ear": -2.9,
-    "ear_to": "2026-08-19",
-    "spread": -3.1,
-    "rs3": 9.2,
-    "rs6": 18.6,
-    "from_high": -19.6,
-    "pe": 80.57,
-    "q_end": "2026-06-30"
-   },
-   {
-    "tk": "023530.KS",
-    "nm": "Lotte Shopping Co., Ltd.",
-    "sec": "백화점",
-    "q_spread": 73.9,
-    "ear": -19.1,
-    "ear_to": "2026-08-19",
-    "spread": 17.4,
-    "rs3": -21.4,
-    "rs6": -7.6,
-    "from_high": -45.2,
-    "pe": 56.97,
     "q_end": "2026-06-30"
    },
    {
@@ -847,6 +833,34 @@
     "q_end": "2026-06-30"
    },
    {
+    "tk": "023530.KS",
+    "nm": "Lotte Shopping Co., Ltd.",
+    "sec": "백화점",
+    "q_spread": 41.7,
+    "ear": -19.1,
+    "ear_to": "2026-08-19",
+    "spread": 17.4,
+    "rs3": -21.4,
+    "rs6": -7.6,
+    "from_high": -45.2,
+    "pe": 56.97,
+    "q_end": "2026-06-30"
+   },
+   {
+    "tk": "000150.KS",
+    "nm": "Doosan Corporation",
+    "sec": "복합기업",
+    "q_spread": 41.6,
+    "ear": 3.9,
+    "ear_to": "2026-08-19",
+    "spread": -3.2,
+    "rs3": 10,
+    "rs6": 17.7,
+    "from_high": -33.1,
+    "pe": null,
+    "q_end": "2026-06-30"
+   },
+   {
     "tk": "319660.KQ",
     "nm": "PSK Inc.",
     "sec": "반도체 장비·소재",
@@ -957,23 +971,28 @@
     "from_high": -31.4,
     "pe": 24.62,
     "q_end": "2026-06-30"
-   },
-   {
-    "tk": "001820.KS",
-    "nm": "SAMWHA CAPACITOR Co.,LTD",
-    "sec": "전자부품",
-    "q_spread": 16.7,
-    "ear": -14.1,
-    "ear_to": "2026-08-19",
-    "spread": -27.6,
-    "rs3": 23,
-    "rs6": 154.3,
-    "from_high": -22.5,
-    "pe": 121.84,
-    "q_end": "2026-06-30"
    }
   ],
   "flip": [
+   {
+    "tk": "036570.KS",
+    "nm": "NC Corporation",
+    "sec": "게임·멀티미디어",
+    "q_spread": null,
+    "ear": 8.9,
+    "ear_to": "2026-08-19",
+    "spread": null,
+    "rs3": 6.2,
+    "rs6": -16.5,
+    "from_high": -34,
+    "pe": 11.91,
+    "q_end": "2026-06-30",
+    "flip": {
+     "now": 13.5,
+     "prev": -7.9,
+     "d": 21.5
+    }
+   },
    {
     "tk": "290650.KQ",
     "nm": "L&C BIO Co.,LTD",
@@ -991,6 +1010,44 @@
      "now": 16.7,
      "prev": -1.5,
      "d": 18.2
+    }
+   },
+   {
+    "tk": "086520.KQ",
+    "nm": "Ecopro Co., Ltd.",
+    "sec": "Unknown",
+    "q_spread": null,
+    "ear": -7.7,
+    "ear_to": "2026-09-21",
+    "spread": null,
+    "rs3": -11,
+    "rs6": -63.8,
+    "from_high": -56.7,
+    "pe": null,
+    "q_end": "2026-06-30",
+    "flip": {
+     "now": 8.6,
+     "prev": -6.4,
+     "d": 15
+    }
+   },
+   {
+    "tk": "377300.KS",
+    "nm": "Kakao Pay Corp.",
+    "sec": "인프라 소프트웨어",
+    "q_spread": null,
+    "ear": 24.1,
+    "ear_to": "2026-08-19",
+    "spread": null,
+    "rs3": 18.3,
+    "rs6": -52.4,
+    "from_high": -42.2,
+    "pe": 121.55,
+    "q_end": "2026-06-30",
+    "flip": {
+     "now": 11.1,
+     "prev": -3.1,
+     "d": 14.3
     }
    },
    {
@@ -1051,6 +1108,25 @@
     }
    },
    {
+    "tk": "222800.KQ",
+    "nm": "SIMMTECH Co., Ltd.",
+    "sec": "반도체 장비·소재",
+    "q_spread": null,
+    "ear": -6.5,
+    "ear_to": "2026-08-18",
+    "spread": null,
+    "rs3": 40.4,
+    "rs6": 139.5,
+    "from_high": -5.8,
+    "pe": null,
+    "q_end": "2026-06-30",
+    "flip": {
+     "now": 5.8,
+     "prev": -3.7,
+     "d": 9.5
+    }
+   },
+   {
     "tk": "010950.KS",
     "nm": "S-Oil Corporation",
     "sec": "정유",
@@ -1086,6 +1162,25 @@
      "now": 7,
      "prev": -0.9,
      "d": 8
+    }
+   },
+   {
+    "tk": "181710.KS",
+    "nm": "NHN Corporation",
+    "sec": "게임·멀티미디어",
+    "q_spread": null,
+    "ear": null,
+    "ear_to": null,
+    "spread": null,
+    "rs3": 76.4,
+    "rs6": 35.5,
+    "from_high": -23.9,
+    "pe": 53.05,
+    "q_end": "2026-06-30",
+    "flip": {
+     "now": 6.1,
+     "prev": -1.6,
+     "d": 7.7
     }
    },
    {
@@ -1127,6 +1222,44 @@
     }
    },
    {
+    "tk": "007810.KS",
+    "nm": "Korea Circuit Co., Ltd.",
+    "sec": "전자부품",
+    "q_spread": null,
+    "ear": -12.8,
+    "ear_to": "2026-08-19",
+    "spread": null,
+    "rs3": -18.8,
+    "rs6": -13.3,
+    "from_high": -53.8,
+    "pe": 38.21,
+    "q_end": "2026-06-30",
+    "flip": {
+     "now": 5.8,
+     "prev": -1.1,
+     "d": 6.9
+    }
+   },
+   {
+    "tk": "000720.KS",
+    "nm": "Hyundai Engineering & Constr",
+    "sec": "건설·엔지니어링",
+    "q_spread": null,
+    "ear": 25.7,
+    "ear_to": "2026-08-19",
+    "spread": null,
+    "rs3": 29.1,
+    "rs6": -35.6,
+    "from_high": -30.4,
+    "pe": 36.48,
+    "q_end": "2026-06-30",
+    "flip": {
+     "now": 2.3,
+     "prev": -4,
+     "d": 6.3
+    }
+   },
+   {
     "tk": "010060.KS",
     "nm": "OCI Holdings Company Ltd.",
     "sec": "자산운용",
@@ -1143,6 +1276,25 @@
      "now": 2.6,
      "prev": -3.4,
      "d": 6
+    }
+   },
+   {
+    "tk": "034220.KS",
+    "nm": "LG Display Co., Ltd.",
+    "sec": "가전·전자기기",
+    "q_spread": null,
+    "ear": 6.8,
+    "ear_to": "2026-08-19",
+    "spread": null,
+    "rs3": -15.9,
+    "rs6": -45.5,
+    "from_high": -49.3,
+    "pe": 18.76,
+    "q_end": "2026-06-30",
+    "flip": {
+     "now": 2.5,
+     "prev": -0.3,
+     "d": 2.8
     }
    }
   ]
