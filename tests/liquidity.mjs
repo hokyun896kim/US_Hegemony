@@ -41,7 +41,10 @@ console.log('\n━━ 한국 · 충분하면 안 붙는다 ━━');
     `유동성 충분한 ${enough.length}종목에는 아무것도 안 붙는다`);
   // 이번 회차 실제 후보가 전부 충분하다면 화면에도 배지가 없어야 한다
   const shown = d.querySelectorAll('#top5Panel .liq, #radarPanel .liq').length;
-  const cands = (w.eval('LAST_TOP5') || []).map(x => x.tk);
+  // 후보 = 두 패널에 실제로 그려진 카드 전부. 예전엔 TOP5 만 셌는데, 2026-09-23
+  // 재설계로 레이더에 ①·② 목록 카드가 생겼고 거기 저유동 종목(영원무역홀딩스
+  // 16억)이 들어오자 '배지는 있는데 후보는 다 충분' 으로 거짓 실패했다.
+  const cands = [...d.querySelectorAll('#top5Panel .t5-tk, #top5Panel .rc-tk, #radarPanel .rc-tk')].map(x => x.textContent.trim());
   const anyLow = cands.some(tk => TK[tk] && lvl(TK[tk]).c !== 'g');
   t(anyLow ? shown > 0 : shown === 0,
     `실데이터와 일치 (저유동 후보 ${anyLow ? '있음' : '없음'} · 화면 배지 ${shown})`);
