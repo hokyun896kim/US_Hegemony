@@ -249,6 +249,16 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
       return FT.has(tk) !== !!tag || (tag && tag.getAttribute('title') !== f2); });
     t(wc.length === L.wake.length && bad.length === 0,
       `① 카드 '주목 산업 안' 표시 = 주목 산업 구성 여부 (${wc.length - bad.length}/${wc.length} · 표시 ${wc.filter(c => c.querySelector('.rc-foc')).length})`);
+    // 최우선 후보 칸 — 주목 산업 ∩ ①. F2 가 통과한 한국에서만 연다(판정 규칙 4)
+    const PK = P.querySelector('.radar-pick');
+    const pkN = L.wake.filter(m => FT.has(m.tk)).length;
+    t(!!PK && P.firstElementChild && [...P.children].indexOf(PK) < [...P.children].findIndex(e => e.classList.contains('radar-sec')),
+      '최우선 후보 칸이 레이더 맨 위(주목 산업보다 먼저)');
+    t(bench === '코스피'
+        ? !PK.classList.contains('off') && PK.querySelectorAll('.rc').length === pkN && /\+3\.9p/.test(PK.textContent)
+          && (pkN === 0 || PK.textContent.includes(`지금 ${pkN}종목`))
+        : PK.classList.contains('off') && PK.querySelectorAll('.rc').length === 0 && /−2\.3p/.test(PK.textContent),
+      `최우선 후보 칸 — 한국은 교집합 ${pkN}종목을 카드로, 미국은 닫고 이유만`);
     t(bench === '코스피' ? /\+3\.9p/.test(f2) : /−2\.3p/.test(f2) && !/나았/.test(f2),
       "표시 근거가 판정 규칙 4 대로 — 한국 +3.9p · 미국은 사실만(과거에 나빴다)");
   }
@@ -310,6 +320,24 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
   t(RV.textContent.includes('목록별 성적') && RV.textContent.includes('+2.3p') && RV.textContent.includes('-1.5p'),
     '복기 — 목록별 초과수익 중앙값을 그린다');
   t(RV.textContent.includes('통계가 아니라 기록'), '복기 — 겹쳐 세는 관측이라 기록이라고 밝힌다');
+  t(!RV.textContent.includes('주목 산업 성적표'), '복기 — 주목 산업이 박제되기 전 파일이면 성적표를 그리지 않는다');
+  // 주목 산업 성적표 — ① 주목 산업 안 − 밖이 표본 밖에서도 나은가(한국 백테스트 +3.9p)
+  E(`REVIEW.focus={rounds:2,since:'2026-09-30',lists:[
+       {key:'fwake',label:'① ∩ 주목 산업',members:4,spans:{'1':{n:4,med:3.5,win:75},'3':{n:0,med:null,win:null},'6':{n:0,med:null,win:null}}},
+       {key:'owake',label:'① — 주목 산업 밖',members:20,spans:{'1':{n:20,med:1.25,win:55},'3':{n:0,med:null,win:null},'6':{n:0,med:null,win:null}}},
+       {key:'lead',label:'주도기업 후보(산업별 상위 3)',members:9,spans:{'1':{n:9,med:0.5,win:50},'3':{n:0,med:null,win:null},'6':{n:0,med:null,win:null}}},
+       {key:'fall',label:'주목 산업 전 종목',members:30,spans:{'1':{n:30,med:0.2,win:50},'3':{n:0,med:null,win:null},'6':{n:0,med:null,win:null}}}]};
+     renderReview()`);
+  {
+    const FB = w.document.querySelector('#reviewPanel .rv-focus');
+    const gapRow = FB && FB.querySelector('.rv-gap');
+    t(!!FB && /2회차 합산\(2026-09-30~\)/.test(FB.textContent) && FB.querySelectorAll('tbody tr').length === 5,
+      '복기 — 주목 산업 성적표(네 목록 + 차이 줄)');
+    t(!!gapRow && /\+2\.3p/.test(gapRow.textContent) && (gapRow.textContent.match(/—/g) || []).length === 2,
+      `복기 — 차이 줄 = ① 안 − 밖, 아직 안 온 구간은 — (${gapRow && gapRow.textContent.replace(/\s+/g, ' ')})`);
+    t(/한국 \+3\.9p · 미국 −2\.3p/.test(FB.textContent) && /표본 밖/.test(FB.textContent),
+      '복기 — 과거 기대치와 표본 밖 검증이라는 뜻을 함께 적는다');
+  }
   w.close();
 }
 
