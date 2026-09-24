@@ -42,6 +42,10 @@ w.eval(`window.__indEval = function(){
     out.push({sic:s.sic, desc:s.desc, bag:isBag(s), eligible:ok, pass:ok && indPass(x),
       acc:x.acc, qsp:x.qsp, rs:x.rs, hits:x.hits.length, clean:x.clean.length,
       ear:indEar(x), ilev:ilw.has(s.sic),
+      // 주도기업 규칙(backtest_leaders.py) — 화면과 같은 후보·같은 정렬로 규칙마다 1위
+      ...(()=>{ const c=ok?indLeadCands(x):[];
+        return {nC:c.length, lead:Object.fromEntries(Object.keys(LEAD_RULES)
+          .map(r=>[r, c.length>=2?leadSort(c,r)[0].tk:null]))}; })(),
       wake:x.clean.filter(m=>wake.has(m.tk)).length,
       doubt:x.clean.filter(m=>doubt.has(m.tk)).length,
       members:s.members.map(m=>m.tk)});
@@ -51,6 +55,8 @@ w.eval(`window.__indEval = function(){
   const seen = new Set(), pool = [];
   D.subs.forEach(s=>s.members.forEach(m=>{ if(seen.has(m.tk)) return; seen.add(m.tk);
     if(m.q_spread!=null && earOf(m)!=null) pool.push(m.tk); }));
+  const F=new Set(indFocus().list.map(x=>x.s.sic));
+  out.forEach(o=>{o.focus=F.has(o.sic);});
   return {n:L.n, wake:[...wake], ilJudged:IL.judged, inds:out, pool,
           wakeD:L.wake.map(m=>({tk:m.tk, rs6:m.rs6, fh:m.from_high}))};
 }`);
