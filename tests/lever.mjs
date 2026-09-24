@@ -241,6 +241,17 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
   t(P.querySelectorAll(':scope > .rc').length <= 8 * 3, '각 목록은 8개까지 펼치고 나머지는 접는다');
   t(L.wake.length <= 8 || !!P.querySelector('.radar-more'), '넘치면 "더 보기" 로 접는다');
   t(P.textContent.includes(`${bench} 대비`), `기준 지수 이름이 시장에 맞다 (${bench})`);
+  // ① 칸 설명 — ① 의 '반응' 은 실적 공개 몇 주의 반응이라 6개월로는 안 오른 종목이 많다.
+  // 그 사실(개수)은 적되, '막 깨기 시작' 같은 좋다는 표시는 넣지 않는다 — ① 안에서 덜 오른
+  // 쪽이 더 나았던 것은 아니다(docs/backtest-wake-quiet.md W1, 두 시장 모두 탈락).
+  {
+    const nWake = L.wake.length, nQuiet = L.wake.filter(m => m.rs6 != null && m.rs6 < 10).length;
+    t(P.textContent.includes(`지금 ${nWake}종목 중 ${nQuiet}종목이 6개월 ${bench} 대비 +10% 미만`),
+      `① 중 6개월 기준 안 오른 종목 수를 사실로 적는다 (${nQuiet}/${nWake})`);
+    t(/덜 오른 쪽이 더 나았던 것은 아닙니다/.test(P.textContent) && !/막 깨기 시작/.test(P.textContent)
+      && !/이미 오른 종목이 올라오는 게 정상/.test(P.textContent),
+      "백테스트대로 '덜 오른 쪽이 낫다' 고 말하지 않는다 — 예전의 '이미 오른 종목이 정상' 문장도 없다");
+  }
   const wk = L.wake[0].tk;
   E(`openTrade('${wk}')`);
   const body = w.document.getElementById('tcBody').textContent;
