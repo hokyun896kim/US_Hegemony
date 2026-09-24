@@ -47,6 +47,7 @@ import json
 import os
 import re
 import sys
+import threading
 import time
 import urllib.parse
 import urllib.request
@@ -81,6 +82,15 @@ STATUS_MSG = {
 }
 
 _last = 0.0
+# 빌더가 분기 재무를 여러 일꾼(스레드)으로 받는다(build_tree_kr.start_dart_pool).
+# 간격 조절과 status 집계가 공유 상태라 잠근다 — 안 잠그면 간격이 무너져
+# 여러 요청이 한꺼번에 나가고, 집계 횟수가 조용히 빠진다.
+_LOCK = threading.Lock()
+
+
+def _tally(st: str) -> None:
+    with _LOCK:
+        STATUS[st] = STATUS.get(st, 0) + 1
 
 
 def status_report() -> str:
@@ -98,12 +108,18 @@ def healthy() -> bool:
 
 
 def _throttle(sec: float = 0.12) -> None:
-    """DART 는 공식 상한을 공개하지 않는다. 예의상 초당 8건 정도로 둔다."""
+    """DART 는 공식 상한을 공개하지 않는다. 예의상 초당 8건 정도로 둔다.
+
+    일꾼이 여럿이어도 이 간격은 전체 합계로 지킨다 — 요청을 '보내는' 간격만
+    벌리고 응답은 겹쳐서 기다린다. 실측 병목이 건당 ~7초의 응답 대기라,
+    보내는 속도를 올리지 않고도 빌드가 빨라진다.
+    """
     global _last
-    dt = time.time() - _last
-    if dt < sec:
-        time.sleep(sec - dt)
-    _last = time.time()
+    with _LOCK:
+        dt = time.time() - _last
+        if dt < sec:
+            time.sleep(sec - dt)
+        _last = time.time()
 
 
 def _url(path: str, params: dict, key: str) -> str:
@@ -233,10 +249,10 @@ def statement(corp: str, year: int, rpt: str, log=print, fs_div=None):
                      {"corp_code": corp, "bsns_year": str(year),
                       "reprt_code": RPT[rpt], "fs_div": fs}, _key())
         except Exception:
-            STATUS["net"] = STATUS.get("net", 0) + 1
+            _tally("net")
             continue
         st = str(d.get("status"))
-        STATUS[st] = STATUS.get(st, 0) + 1
+        _tally(st)
         if st != "000":
             continue
         rows = [r for r in (d.get("list") or []) if r.get("sj_div") in ("IS", "CIS", None)]
@@ -761,6 +777,38 @@ def selftest() -> int:
     finally:
         STATUS.clear()
         STATUS.update(saved_status)
+
+    print("\n── 여러 일꾼이 동시에 불러도 ──")
+    # 빌더가 분기 재무를 일꾼 여럿으로 받는다. 간격이 무너지면 DART 에 한꺼번에
+    # 몰려가고, 집계가 빠지면 '전부 실패' 경고가 엉뚱하게 뜨거나 안 뜬다.
+    global _last
+    saved_status, saved_last = dict(STATUS), _last
+    try:
+        STATUS.clear()
+        _last = time.time()
+
+        def hit():
+            for _ in range(5):
+                _throttle(0.02)
+                for _ in range(500):
+                    _tally("000")
+        # 간격을 호출마다 재면 스레드가 잠금을 놓은 뒤 시각을 적기까지 밀려
+        # 순서가 뒤집히고, 멀쩡한데도 가끔 실패한다. 그래서 전체 걸린 시간으로
+        # 본다 — 20건이 0.02초씩 벌어져야 하니 합계는 0.4초 이상이다(안 잠그면
+        # 일꾼 4개가 나란히 돌아 0.1초 남짓).
+        t0 = time.monotonic()
+        th = [threading.Thread(target=hit) for _ in range(4)]
+        for x in th:
+            x.start()
+        for x in th:
+            x.join()
+        dt = time.monotonic() - t0
+        t(dt >= 0.38, f"일꾼 4개 × 5건이어도 보내는 간격은 전체 합계로 지킨다 ({dt:.2f}초 ≥ 0.38)")
+        t(STATUS.get("000") == 4 * 5 * 500, f"집계가 빠지지 않는다 ({STATUS.get('000')} = 10000)")
+    finally:
+        STATUS.clear()
+        STATUS.update(saved_status)
+        _last = saved_last
 
     print("\n✅ 전부 통과" if ok[0] else "\n❌ 실패")
     return 0 if ok[0] else 1

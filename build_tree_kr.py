@@ -22,6 +22,7 @@ import os
 import re
 import statistics
 import sys
+import threading
 import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -57,6 +58,9 @@ SPENT: dict[str, list] = {}          # 이름 → [초, 호출 수]
 # 끝나면 다시 쓴다. 워크플로가 커밋해 다음 회차로 넘긴다.
 DART_MEMO: dict = {}
 MEMO_STATS: dict[str, int] = {}
+# 병렬 모드에서 미리 걸어 둔 DART 작업. 종목코드 → Future (start_dart_pool).
+DART_PRE: dict = {}
+_SPENT_LOCK = threading.Lock()
 
 
 @contextlib.contextmanager
@@ -65,9 +69,10 @@ def _spent(name: str):
     try:
         yield
     finally:
-        s = SPENT.setdefault(name, [0.0, 0])
-        s[0] += time.monotonic() - t0
-        s[1] += 1
+        with _SPENT_LOCK:          # DART 일꾼 스레드도 여기에 적는다
+            s = SPENT.setdefault(name, [0.0, 0])
+            s[0] += time.monotonic() - t0
+            s[1] += 1
 
 
 def spent_line(n: int) -> str:
@@ -615,6 +620,81 @@ DART_CORP: dict = {}
 USE_NAVER: bool = not os.environ.get("NO_NAVER")
 
 
+def dart_part(code: str, corp: str) -> dict:
+    """한 종목의 DART 몫 — 공시 목록(ir) + 분기 재무. 일꾼 스레드에서도 돈다.
+
+    공시 목록을 먼저 받는다(1건). 공시일·원문 링크(ir)를 만들고, 같은 목록으로
+    '지난번 이후 새 공시가 있었나' 를 판정해 분기 재무를 다시 받을지 정한다
+    (dart.quarters_memo). 분기 재무가 빌드 시간의 97% 였다 — 종목당 요청 8건
+    × 건당 7.7초. 목록을 못 받으면 rows 는 None 이고, 그러면 재사용하지 않고
+    예전처럼 전부 받는다. ir 은 분기 데이터와 독립이라 실패해도 조용히 넘긴다.
+
+    스레드에서 돌기 때문에 로그를 직접 찍지 않고 errs 에 모아 돌려준다 —
+    호출한 종목 줄 옆에 찍혀야 어느 종목 얘기인지 읽힌다. 재사용분(DART_MEMO)
+    은 종목코드마다 칸이 달라 여러 일꾼이 동시에 써도 서로 덮지 않는다.
+    """
+    out = {"ir": None, "qs": None, "how": None, "errs": []}
+    rows = None
+    try:
+        with _spent("DART 공시"):
+            rows = dart._list_reports(corp, 400)
+        out["ir"] = dart.latest_report(corp, rows=rows)
+    except Exception as exc:  # noqa: BLE001
+        out["errs"].append(f"공시검색 실패({exc}) — ir 을 비웁니다")
+    try:
+        with _spent("DART 분기"):
+            out["qs"], out["how"] = dart.quarters_memo(code, corp, rows, DART_MEMO,
+                                                       log=lambda *a: None)
+    except Exception as exc:  # noqa: BLE001 — 실패는 폴백으로 흡수
+        out["errs"].append(f"DART 실패({exc}) — yfinance 로 대체")
+    return out
+
+
+# ── 공시 시즌 병렬화 ─────────────────────────────────────────────────
+# 재사용분이 생긴 뒤 평소 회차는 28분이다. 그런데 분기보고서 마감 주에는
+# 대부분 종목에 새 공시가 있어 전부 다시 받아야 하고, 그 회차는 재사용 전과
+# 같다 — 실측(재사용분 없이 돈 첫 회차) 255분, 종목당 50.7초 중 48.8초가 DART
+# 분기 재무였다. 요청 7.5건 × 건당 ~7초 — 요청 간격(0.12초)이 아니라 응답
+# 대기다. 그래서 요청을 더 자주 보내지 않고, 기다리는 시간만 겹친다.
+#
+# 야후는 지금처럼 한 종목씩 차례로 받는다(야후 스로틀이 예민하고, 종목별
+# 멈춤 감시 _stall_guard 는 SIGALRM 이라 메인 스레드에서만 끊긴다). DART
+# 몫만 일꾼 몇 개가 뒤에 올 종목을 미리 받아 두고, 메인 루프는 차례가 오면
+# 꺼내 쓴다. 보내는 간격은 dart._throttle 이 일꾼 전체 합계로 지킨다.
+DART_WORKERS = 4
+
+
+def start_dart_pool(rows, workers: int, log=print):
+    """rows 순서대로 DART 작업을 걸어 둔다. 병렬이 아니면 None."""
+    DART_PRE.clear()
+    if not DART_CORP or workers <= 1:
+        return None
+    from concurrent.futures import ThreadPoolExecutor
+    pool = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="dart")
+    for r in rows:
+        code = r["tk"].split(".")[0]
+        corp = DART_CORP.get(code)
+        if corp and code not in DART_PRE:
+            DART_PRE[code] = pool.submit(dart_part, code, corp)
+    log(f"  DART 일꾼 {workers}개 — {len(DART_PRE)}종목을 미리 받습니다"
+        f" ('DART 분기·공시' 는 일꾼 합계, 실제로 기다린 시간은 'DART 대기')")
+    return pool
+
+
+def stop_dart_pool(pool) -> int:
+    """아직 시작 안 한 작업은 버리고, 도는 것은 끝날 때까지 기다린다.
+
+    기다려야 한다 — 도는 일꾼이 DART_MEMO 에 쓰는 도중에 save_memo 가 그걸
+    순회하면 'dict changed size during iteration' 으로 죽는다. 버린 수를 돌려준다.
+    """
+    if pool is None:
+        return 0
+    left = sum(1 for f in DART_PRE.values() if not f.done() and not f.running())
+    pool.shutdown(wait=True, cancel_futures=True)
+    DART_PRE.clear()
+    return left
+
+
 def fetch_stock(tk, log=print):
     """한 종목의 연간/분기 스프레드 + 분류(섹터·산업) + 밸류.
 
@@ -666,28 +746,30 @@ def fetch_stock(tk, log=print):
     if DART_CORP:
         corp = DART_CORP.get(code)
         if corp:
-            # 공시 목록을 먼저 받는다(1건). 공시일·원문 링크(ir)를 만들고, 같은
-            # 목록으로 '지난번 이후 새 공시가 있었나' 를 판정해 분기 재무를
-            # 다시 받을지 정한다(dart.quarters_memo). 분기 재무가 빌드 시간의
-            # 97% 였다 — 종목당 요청 8건 × 건당 7.7초.
-            # 목록을 못 받으면 rows 는 None 이고, 그러면 재사용하지 않고 예전처럼
-            # 전부 받는다. ir 은 분기 데이터와 독립이라 실패해도 조용히 넘긴다.
-            rows = None
-            try:
-                with _spent("DART 공시"):
-                    rows = dart._list_reports(corp, 400)
-                ir = dart.latest_report(corp, rows=rows)
-            except Exception as exc:  # noqa: BLE001
-                log(f"  {tk} 공시검색 실패({exc}) — ir 을 비웁니다")
-            try:
-                with _spent("DART 분기"):
-                    qs, how = dart.quarters_memo(code, corp, rows, DART_MEMO,
-                                                 log=lambda *a: None)
-                MEMO_STATS[how] = MEMO_STATS.get(how, 0) + 1
-                if len(qs) >= 4:
-                    qseries = qs
-            except Exception as exc:  # noqa: BLE001 — 실패는 폴백으로 흡수
-                log(f"  {tk} DART 실패({exc}) — yfinance 로 대체")
+            # 병렬 모드면 일꾼이 이미 받아 뒀거나 받는 중이다 — 기다렸다 쓴다.
+            # 일꾼 쪽에서 예외가 났거나 취소됐으면 여기서 직접 받는다.
+            got, fut = None, DART_PRE.pop(code, None)
+            if fut is not None:
+                try:
+                    with _spent("DART 대기"):
+                        got = fut.result()
+                except Stall as exc:
+                    # 이 종목 몫의 시간이 다 됐다. 여기서 다시 받으면 멈춤 감시가
+                    # 무력해진다 — 예전 차례 모드에서 DART 도중 끊겼을 때처럼
+                    # yfinance 분기로 간다. 일꾼은 마저 받아 재사용분에 남긴다.
+                    got = {"ir": None, "qs": None, "how": None,
+                           "errs": [f"DART 대기 중 멈춤({exc}) — yfinance 로 대체"]}
+                except Exception:  # noqa: BLE001
+                    got = None
+            if got is None:
+                got = dart_part(code, corp)
+            for msg in got["errs"]:
+                log(f"  {tk} {msg}")
+            ir = got["ir"]
+            if got["how"]:
+                MEMO_STATS[got["how"]] = MEMO_STATS.get(got["how"], 0) + 1
+                if len(got["qs"]) >= 4:
+                    qseries = got["qs"]
 
     # DART 가 확정만 주는 사이, 시장은 이미 잠정으로 다음 분기를 보고 있다.
     # 그 한 분기를 네이버에서 받아 얹는다 — 선취매 도구에서 정작 중요한 구간이다.
@@ -1044,7 +1126,8 @@ def assemble(members, market, log=print, as_of=None):
     }
 
 
-def build(limit, min_cap, sleep, log=print, budget=None, stall=0, prev=None):
+def build(limit, min_cap, sleep, log=print, budget=None, stall=0, prev=None,
+          workers=1, fresh=False):
     budget = budget or Budget(0)
     prev = prev or {}
     today = datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d")
@@ -1063,9 +1146,12 @@ def build(limit, min_cap, sleep, log=print, budget=None, stall=0, prev=None):
         except Exception as exc:  # noqa: BLE001
             log(f"  DART 고유번호 실패({exc}) — 분기는 yfinance 로 받습니다")
             DART_CORP = {}
-        DART_MEMO = dart.load_memo()
+        # fresh: 재사용분을 무시하고 전부 받는다 — 공시 시즌 부하를 재현하는
+        # 스모크 빌드용. 부분만 받은 것으로 파일을 덮지 않도록 저장도 안 한다.
+        DART_MEMO = {} if fresh else dart.load_memo()
         MEMO_STATS.clear()
-        log(f"  DART 분기 재사용분 {len(DART_MEMO)}종목"
+        log("  DART 분기 재사용분 무시(--dart-fresh) — 전부 받고 저장하지 않습니다" if fresh else
+            f"  DART 분기 재사용분 {len(DART_MEMO)}종목"
             + ("" if DART_MEMO else " — 처음이라 전부 받습니다(다음 회차부터 새 공시가 있는 종목만)"))
     else:
         log("  DART_KEY 없음 — 분기는 yfinance 로 받습니다"
@@ -1083,49 +1169,60 @@ def build(limit, min_cap, sleep, log=print, budget=None, stall=0, prev=None):
         ))
         log(f"  실적이 오래된 종목부터 받습니다 (직전 회차 {len(prev)}종목 보유)")
 
+    pool = start_dart_pool(rows, workers, log)
     members, skipped = [], 0
-    for i, r in enumerate(rows, 1):
-        # 예산이 마무리 몫만 남았으면 여기서 끊는다. 남은 종목을 버리는 것이
-        # 아깝지만, 다 받으려다 한도에 걸려 전부 잃는 것보다는 낫다.
-        if budget.over(reserve=True):
-            skipped = len(rows) - i + 1
-            log(f"  ⏳ 시간 예산 소진({budget.spent()/60:.0f}분) — 남은 {skipped}종목을 "
-                f"건너뜁니다. 받은 {len(members)}종목으로 만듭니다.")
-            break
-        try:
-            with _stall_guard(stall), _spent("= 종목 전체"):
-                fin = fetch_stock(r["tk"], log)
-        except Stall as exc:
-            log(f"  {r['tk']} 매달림({exc}) — 건너뜁니다")
-            fin = None
-        if fin:
-            info = fin.pop("_info", {})
-            sector = info.get("sector") or r.get("sector") or "Unknown"
-            m = {
-                "tk": r["tk"],
-                "nm": (info.get("nm") or r["nm"] or r["tk"])[:28],
-                "sector": sector,
-                "industry": info.get("industry") or r.get("industry") or sector,
-            }
-            m.update(fin)
-            # 밸류는 info 우선, 없으면 스크리너 값
-            for k in ("pe", "fpe", "peg"):
-                m[k] = info.get(k) if info.get(k) is not None else num(r.get(k))
-            # 컨센서스 추정치 방향 — 없으면 None 그대로(화면이 중립 처리)
-            for k in ("est30", "est90", "last_earn", "next_earn"):
-                m[k] = info.get(k)
-            m["f_as_of"] = today          # 이번 회차에 새로 받은 실적
-            members.append(m)
-        if i % 25 == 0:
-            # 경과·잔여를 같이 찍는다. 취소된 회차를 사후에 읽을 때
-            # '어디서 느려졌는가' 를 알 수 있는 유일한 단서다.
-            pace = budget.spent() / max(i, 1)
-            eta = pace * (len(rows) - i) / 60
-            log(f"  {i}/{len(rows)} (확보 {len(members)}) "
-                f"· {budget.spent()/60:.0f}분 경과 · 남은 예상 {eta:.0f}분")
-            log(f"    {spent_line(i)}")
-        with _spent("대기(예의상)"):
-            time.sleep(sleep)
+    try:
+        for i, r in enumerate(rows, 1):
+            # 예산이 마무리 몫만 남았으면 여기서 끊는다. 남은 종목을 버리는 것이
+            # 아깝지만, 다 받으려다 한도에 걸려 전부 잃는 것보다는 낫다.
+            if budget.over(reserve=True):
+                skipped = len(rows) - i + 1
+                log(f"  ⏳ 시간 예산 소진({budget.spent()/60:.0f}분) — 남은 {skipped}종목을 "
+                    f"건너뜁니다. 받은 {len(members)}종목으로 만듭니다.")
+                break
+            try:
+                with _stall_guard(stall), _spent("= 종목 전체"):
+                    fin = fetch_stock(r["tk"], log)
+            except Stall as exc:
+                log(f"  {r['tk']} 매달림({exc}) — 건너뜁니다")
+                fin = None
+            if fin:
+                info = fin.pop("_info", {})
+                sector = info.get("sector") or r.get("sector") or "Unknown"
+                m = {
+                    "tk": r["tk"],
+                    "nm": (info.get("nm") or r["nm"] or r["tk"])[:28],
+                    "sector": sector,
+                    "industry": info.get("industry") or r.get("industry") or sector,
+                }
+                m.update(fin)
+                # 밸류는 info 우선, 없으면 스크리너 값
+                for k in ("pe", "fpe", "peg"):
+                    m[k] = info.get(k) if info.get(k) is not None else num(r.get(k))
+                # 컨센서스 추정치 방향 — 없으면 None 그대로(화면이 중립 처리)
+                for k in ("est30", "est90", "last_earn", "next_earn"):
+                    m[k] = info.get(k)
+                m["f_as_of"] = today          # 이번 회차에 새로 받은 실적
+                members.append(m)
+            if i % 25 == 0:
+                # 경과·잔여를 같이 찍는다. 취소된 회차를 사후에 읽을 때
+                # '어디서 느려졌는가' 를 알 수 있는 유일한 단서다.
+                pace = budget.spent() / max(i, 1)
+                eta = pace * (len(rows) - i) / 60
+                log(f"  {i}/{len(rows)} (확보 {len(members)}) "
+                    f"· {budget.spent()/60:.0f}분 경과 · 남은 예상 {eta:.0f}분")
+                log(f"    {spent_line(i)}")
+            with _spent("대기(예의상)"):
+                time.sleep(sleep)
+    finally:
+        # 예외로 루프를 빠져나가도 일꾼을 거둔다 — 안 그러면 인터프리터가 끝나기
+        # 전에 남은 작업을 전부(최대 수백 종목) 마저 돌고서야 죽는다.
+        dropped = stop_dart_pool(pool)
+    if pool is not None:
+        w = SPENT.get("DART 대기", [0.0, 0])[0]
+        work = sum(SPENT.get(k, [0.0, 0])[0] for k in ("DART 분기", "DART 공시"))
+        log(f"  DART 병렬 — 일꾼 작업 합계 {work/60:.0f}분 · 실제로 기다린 시간 {w/60:.0f}분"
+            + (f" · 안 쓰여 취소한 작업 {dropped}" if dropped else ""))
     # 흑자전환(전년 적자) 종목은 트리에 넣지 않는다 — 스프레드가 없어 트리·
     # TOP5·점수가 다룰 수 없다. 별도 목록으로 싣고 시세만 같이 받는다.
     flips = [m for m in members if m.get("flip")]
@@ -1176,7 +1273,8 @@ def build(limit, min_cap, sleep, log=print, budget=None, stall=0, prev=None):
             f" · {dart.status_report()}")
         hit, miss, nom = (MEMO_STATS.get(k, 0) for k in ("hit", "miss", "nomemo"))
         log(f"  DART 분기 재사용 {hit}종목 · 새 공시로 다시 받음 {miss} · 받았지만 저장 안 함 {nom}"
-            f" (저장 {dart.save_memo(DART_MEMO)}종목)")
+            + (" (재사용분 무시 모드 — 저장 안 함)" if fresh
+               else f" (저장 {dart.save_memo(DART_MEMO)}종목)"))
         # 재사용만 한 회차에는 재무 요청이 0건이라 000 이 없을 수 있다. 재사용도
         # 공시 목록을 정상으로 받았다는 증거라 그때는 경고하지 않는다.
         if not dart.healthy() and not hit:
@@ -1810,7 +1908,86 @@ def selftest():
             f3 = fetch_stock("005930.KS", quiet)
             check(f3 and not f3.get("flip") and f3["spread"] is not None,
                   "전년 흑자 종목은 예전 경로 그대로 — 트리에 들어간다")
+
+            print("\n── 공시 시즌 병렬화 — 결과는 같고 시간만 준다 ──")
+            # DART 응답 대기(실측 건당 ~7초)를 흉내 내 sleep 을 건다. 결과가 한 글자라도
+            # 다르면 병렬화는 속도가 아니라 버그다.
+            codes = [f"{i:06d}" for i in range(1, 9)]
+            tks = [c + ".KS" for c in codes]
+            DART_CORP = {c: "C" + c for c in codes}
+            lock, live, peak, calls = threading.Lock(), [0], [0], []
+
+            def slow_q(code, corp, today=None, log=print, years=3):
+                with lock:
+                    live[0] += 1
+                    peak[0] = max(peak[0], live[0])
+                    calls.append(corp)
+                time.sleep(0.15)
+                with lock:
+                    live[0] -= 1
+                n = int(code)                     # 종목마다 다른 값 — 섞이면 드러난다
+                return [(e, 100e9 + n * 1e9 + 5e9 * i, 10e9 + n * 1e8 + 2e9 * i)
+                        for i, e in enumerate(ends)]
+            dart.quarters = slow_q
+            dart._list_reports = lambda corp, days, today=None: list(rows)
+            univ = [{"tk": t} for t in tks]
+
+            DART_MEMO = {}
+            t0 = time.monotonic()
+            serial = [fetch_stock(t, quiet) for t in tks]
+            ts = time.monotonic() - t0
+
+            DART_MEMO, peak[0] = {}, 0
+            t0 = time.monotonic()
+            pool = start_dart_pool(univ, 4, quiet)
+            par = [fetch_stock(t, quiet) for t in tks]
+            left = stop_dart_pool(pool)
+            tp = time.monotonic() - t0
+            check(all(serial) and par == serial,
+                  "병렬로 받은 8종목이 차례로 받은 것과 한 글자도 다르지 않다(종목끼리 안 섞인다)")
+            check(tp < ts / 2, f"응답 대기가 겹쳐 빨라진다 (차례 {ts:.2f}초 → 병렬 {tp:.2f}초)")
+            check(1 < peak[0] <= 4, f"동시에 도는 일꾼은 정한 수를 넘지 않는다 (최대 {peak[0]})")
+            check(len(DART_MEMO) == 8 and not DART_PRE and left == 0,
+                  "일꾼이 받은 것도 재사용분에 남고, 끝나면 걸어 둔 작업이 비어 있다")
+            check(start_dart_pool(univ, 1, quiet) is None and not DART_PRE,
+                  "일꾼 1 이면 예전처럼 차례대로 — 미리 걸지 않는다")
+
+            # 예산이 끊기면 안 시작한 작업은 버리고, 도는 것은 끝나길 기다린다 —
+            # 기다리지 않으면 save_memo 가 순회하는 도중 일꾼이 재사용분에 쓴다.
+            DART_MEMO, calls[:] = {}, []
+            pool = start_dart_pool(univ, 2, quiet)
+            time.sleep(0.05)
+            left = stop_dart_pool(pool)
+            n_after, m_after = len(calls), len(DART_MEMO)
+            time.sleep(0.4)
+            check(left >= 6 and len(calls) == n_after <= 2 and len(DART_MEMO) == m_after,
+                  f"끊으면 안 시작한 {left}개는 버리고, 멈춘 뒤로는 아무도 재사용분에 안 쓴다")
+
+            # 일꾼 쪽이 취소·예외로 끝났으면 그 종목은 직접 받는다 — 빠지지 않는다
+            from concurrent.futures import Future
+            dead = Future()
+            dead.cancel()
+            DART_PRE[codes[0]] = dead
+            DART_MEMO, calls[:] = {}, []
+            got = fetch_stock(tks[0], quiet)
+            check(got == serial[0] and len(calls) == 1 and not DART_PRE,
+                  "일꾼 작업이 취소됐으면 그 자리에서 직접 받는다")
+
+            # 기다리는 도중 종목 멈춤 감시(SIGALRM → Stall)가 터지면, 그 자리에서
+            # DART 를 다시 받으면 안 된다 — Stall 도 Exception 이라 '일꾼 실패' 로
+            # 읽으면 그렇게 된다. 예전처럼 yfinance 분기로 가고 종목은 남긴다.
+            class _Hang:
+                def result(self):
+                    raise Stall("90초 초과")
+            DART_PRE[codes[0]] = _Hang()
+            calls[:] = []
+            logs = []
+            h = fetch_stock(tks[0], lambda m: logs.append(m))
+            check(h is not None and not calls and h["ir"] is None and not is_dart(h.get("q_src"))
+                  and any("DART 대기 중 멈춤" in m for m in logs),
+                  "기다리다 멈춤 감시가 터지면 다시 받지 않고 yfinance 분기로 간다(종목은 남는다)")
         finally:
+            DART_PRE.clear()
             (yf.Ticker, dart._list_reports, dart.quarters, naver.quarters,
              DART_CORP, DART_MEMO) = saved[:6]
             dart.STATUS.clear(); dart.STATUS.update(saved[6])
@@ -1887,6 +2064,10 @@ def main():
                     help="직전 파일 대비 최소 종목 비율. 밑돌면 덮어쓰지 않는다")
     ap.add_argument("--no-carry", action="store_true",
                     help="지난 회차 실적 이월을 끄고 이번에 받은 것만 쓴다(처음부터 다시)")
+    ap.add_argument("--dart-workers", type=int, default=DART_WORKERS,
+                    help="DART 분기 재무를 미리 받는 일꾼 수(1 이면 예전처럼 차례대로)")
+    ap.add_argument("--dart-fresh", action="store_true",
+                    help="DART 재사용분을 무시하고 전부 받는다(공시 시즌 재현 · 저장 안 함)")
     ap.add_argument("--out", default=str(OUT))
     ap.add_argument("--selftest", action="store_true",
                     help="네트워크 없이 로직·스키마만 검증")
@@ -1899,7 +2080,8 @@ def main():
     out = Path(args.out)
     prev = {} if args.no_carry else load_prev(out)
     data = build(args.limit, args.min_cap, args.sleep,
-                 budget=Budget(args.deadline), stall=args.stall, prev=prev)
+                 budget=Budget(args.deadline), stall=args.stall, prev=prev,
+                 workers=args.dart_workers, fresh=args.dart_fresh)
     out.parent.mkdir(parents=True, exist_ok=True)
 
     # 반쪽짜리가 멀쩡한 직전 파일을 덮어쓰면 안 된다. 부분 수집은 '없는 것보다
