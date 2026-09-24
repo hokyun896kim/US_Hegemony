@@ -88,6 +88,7 @@ for (const [file, url] of [['index.html', 'https://x.test/'], ['us.html', 'https
   t(/산업 검증 지침/.test(snap), '설치된 지침을 따르라는 헤더');
   t(/가속 중앙/.test(snap) && /RS6M 중앙/.test(snap), '집계 수치');
   t(/본후보/.test(snap), '스크리너 판정(본후보) 명시');
+  t(/스프레드×반응 산업 목록: 판정 불가\(판정 산업 \d+개/.test(snap), '판정 산업이 모자라면 스냅샷도 "판정 불가"');
   t(/SHIP1/.test(snap) && /PER/.test(snap), '구성 종목 표');
   t(/네 검증 대상/.test(snap), '스크리너가 확인 못 한 것을 GPT 몫으로 명시');
 
@@ -164,6 +165,51 @@ for (const [file, url] of [['index.html', 'https://x.test/'], ['us.html', 'https
   // 4) 본후보가 4개 이상이면 채우지 않고 그대로 4개까지만 (기존 동작 유지)
   //    — 여기서는 계산 함수 수준으로만 확인한다
   t(E('LAST_INDS').length <= 4, `목록 상한 4 유지 (실제 ${E('LAST_INDS').length})`);
+
+  // 5) 새 산업 레이더 — 스프레드 × 반응 (2026-09-24, docs/backtest-industry.md H2)
+  //    판정 산업이 15개 미만이면 분위가 의미 없어 판정하지 않는다. 이 픽스처는
+  //    판정 산업이 4개라 '판정 불가' 여야 하고, '없다' 라고 적으면 거짓말이다.
+  const P = d.getElementById('radarPanel');
+  const secs = [...P.querySelectorAll(':scope > .radar-sec')].map(e => e.textContent);
+  t(secs.findIndex(x => /이익이 좋아졌고 시장이 반응한 곳/.test(x))
+      < secs.findIndex(x => /가속 중인데 RS 가 낮은 곳/.test(x)),
+    '새 산업 목록(스프레드 × 반응)이 옛 산업 목록보다 먼저 나온다');
+  t(!secs.some(x => /아직 안 쟀습니다/.test(x)) && secs.some(x => /약 \+0\.7p/.test(x)),
+    "옛 산업 목록의 '아직 안 쟀습니다' 가 실측 결과로 바뀌었다");
+  t(P.querySelectorAll('.rl').length === 0 && /판정 불가 — 실적 반응이 있는 판정 산업이 \d+개/.test(P.textContent),
+    '판정 산업이 모자라면 "판정 불가" — "해당 없음" 과 구분한다');
+
+  // 판정 산업 20개 합성: 분기 중앙 = i, 반응 중앙 = (7i mod 20).
+  //   스프레드 상위 40% 문턱 = 정렬[12] = 12 · 반응 상위⅓ 문턱 = 정렬[13] = 13
+  //   → i ≥ 12 이고 반응 ≥ 13 인 산업 = 14(18) · 17(19) · 19(13), 반응 순 17 → 14 → 19
+  //   backtest_industry.py 자가진단의 lever_set 과 같은 답이다(파이썬판과 같은 규칙).
+  const many = { ...D, subs: Array.from({ length: 20 }, (_, i) => sub(`Ind${i}`, `산업${i}`,
+    [0, 1].map(j => stock(`I${i}_${j}`, { q_spread: i, ear: (7 * i) % 20 })))) };
+  w.eval(`D=${JSON.stringify(many)}; renderRadar()`);
+  const IL = E('indLever()');
+  t(IL.judged && IL.n === 20, `판정 산업 20개면 판정한다 (${IL.n})`);
+  t(JSON.stringify(IL.wake.map(x => x.s.desc)) === '["Ind17","Ind14","Ind19"]',
+    `스프레드 상위 40% × 반응 상위⅓, 반응 순 (${IL.wake.map(x => x.s.desc).join(',')})`);
+  const rl = [...d.querySelectorAll('#radarPanel .rl')].map(e => e.textContent.replace(/\s+/g, ' '));
+  t(rl.length === 3 && /산업17/.test(rl[0]) && /반응 중앙 \+19%p/.test(rl[0]) && /분기 중앙 \+17p/.test(rl[0]),
+    `화면 줄에 산업·반응 중앙·분기 중앙 (${(rl[0] || '').slice(0, 60)})`);
+  t(!/null|NaN|undefined/.test(rl.join(' ')), '줄에 null·NaN 이 새지 않는다');
+  // GPT 로 넘기는 산업 스냅샷에도 같은 판정이 실린다 — 안 실리면 GPT 는 새 목록을 모른다
+  const snapOf = desc => E('indSnapshot')(E('indAggJudged')(E('D').subs.find(x => x.desc === desc)));
+  t(/실적 반응 중앙 \+19%p/.test(snapOf('Ind17')) && /스프레드×반응 산업 목록: 포함/.test(snapOf('Ind17'))
+    && /스프레드×반응 산업 목록: 미포함/.test(snapOf('Ind12')),
+    '산업 스냅샷에 반응 중앙과 스프레드×반응 판정(포함/미포함)');
+  // 자루는 반응이 좋아도 절대 안 나온다
+  const withBag = { ...many, subs: [...many.subs, sub('Unknown', '', [0, 1].map(j =>
+    stock(`B_${j}`, { q_spread: 99, ear: 99 })))] };
+  w.eval(`D=${JSON.stringify(withBag)}`);
+  t(!E('indLever()').wake.some(x => x.s.desc === 'Unknown'), '자루(Unknown)는 반응이 좋아도 안 나온다');
+  // 반응이 1종목뿐인 산업은 중앙값이 아니다 — 판정에서 빠진다
+  const one = { ...many, subs: many.subs.map((s0, i) => i === 17
+    ? { ...s0, members: s0.members.map((m, j) => j ? { ...m, ear: null } : m) } : s0) };
+  w.eval(`D=${JSON.stringify(one)}`);
+  t(!E('indLever()').wake.some(x => x.s.desc === 'Ind17'), '반응이 1종목뿐이면 산업 반응 중앙을 내지 않는다');
+  w.eval(`D=${JSON.stringify(D)}; renderRadar()`);
 
   dom.window.close();
 }

@@ -31,6 +31,7 @@ on:
       - 'naver.py'
       - 'review_build.py'
       - 'backtest_reaction.py'
+      - 'backtest_industry.py'
       - '.github/workflows/*.yml'
       # 주간 자동 갱신이 커밋하는 데이터도 검사 대상이다. 코드가 멀쩡해도
       # 데이터가 잘못 채워지면 화면이 조용히 빈다 — 실제로 미국판 선취매
@@ -98,6 +99,7 @@ jobs:
           python verify_live.py --selftest
           python review_build.py --selftest
           python backtest_reaction.py --selftest
+          python backtest_industry.py --selftest
           # build_data.py 는 첫 줄부터 네트워크를 타서 자가진단을 못 붙인다.
           # 최소한 문법은 본다 — 이게 없어서 파이썬만 고친 커밋에 CI 가
           # 아예 안 돌던 적이 있다.

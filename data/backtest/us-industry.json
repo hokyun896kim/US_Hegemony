@@ -1,0 +1,2535 @@
+{
+"kind": "industry",
+"market": "us",
+"built": "2026-09-24",
+"note": "과거 종목에 오늘의 분류를 붙였다 — 분류가 거의 안 바뀌지만 look-ahead 가 조금 있다",
+"stocks": {
+"CVI": {
+"sic": "2911",
+"desc": "Petroleum Refining",
+"ko": "정유",
+"gics": "에너지",
+"src": "tree"
+},
+"DK": {
+"sic": "2911",
+"desc": "Petroleum Refining",
+"ko": "정유",
+"gics": "에너지",
+"src": "tree"
+},
+"PBF": {
+"sic": "2911",
+"desc": "Petroleum Refining",
+"ko": "정유",
+"gics": "에너지",
+"src": "tree"
+},
+"MPC": {
+"sic": "2911",
+"desc": "Petroleum Refining",
+"ko": "정유",
+"gics": "에너지",
+"src": "tree"
+},
+"SUN": {
+"sic": "2911",
+"desc": "Petroleum Refining",
+"ko": "정유",
+"gics": "에너지",
+"src": "tree"
+},
+"DINO": {
+"sic": "4610",
+"desc": "Pipe Lines (No Natural Gas)",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"PAGP": {
+"sic": "4610",
+"desc": "Pipe Lines (No Natural Gas)",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"WDAY": {
+"sic": "7374",
+"desc": "Services-Computer Processing & Data Preparation",
+"ko": "데이터처리·클라우드",
+"gics": "정보기술",
+"src": "tree"
+},
+"DXC": {
+"sic": "7374",
+"desc": "Services-Computer Processing & Data Preparation",
+"ko": "데이터처리·클라우드",
+"gics": "정보기술",
+"src": "tree"
+},
+"NIQ": {
+"sic": "7370",
+"desc": "Services-Computer Programming, Data Processing, Etc.",
+"ko": "컴퓨터 프로그래밍",
+"gics": "정보기술",
+"src": "tree"
+},
+"PINS": {
+"sic": "7370",
+"desc": "Services-Computer Programming, Data Processing, Etc.",
+"ko": "컴퓨터 프로그래밍",
+"gics": "정보기술",
+"src": "tree"
+},
+"APP": {
+"sic": "7370",
+"desc": "Services-Computer Programming, Data Processing, Etc.",
+"ko": "컴퓨터 프로그래밍",
+"gics": "정보기술",
+"src": "tree"
+},
+"ZM": {
+"sic": "7370",
+"desc": "Services-Computer Programming, Data Processing, Etc.",
+"ko": "컴퓨터 프로그래밍",
+"gics": "정보기술",
+"src": "tree"
+},
+"SNAP": {
+"sic": "7370",
+"desc": "Services-Computer Programming, Data Processing, Etc.",
+"ko": "컴퓨터 프로그래밍",
+"gics": "정보기술",
+"src": "tree"
+},
+"GOOGN": {
+"sic": "7370",
+"desc": "Services-Computer Programming, Data Processing, Etc.",
+"ko": "컴퓨터 프로그래밍",
+"gics": "정보기술",
+"src": "tree"
+},
+"META": {
+"sic": "7370",
+"desc": "Services-Computer Programming, Data Processing, Etc.",
+"ko": "컴퓨터 프로그래밍",
+"gics": "정보기술",
+"src": "tree"
+},
+"CAH": {
+"sic": "5122",
+"desc": "Wholesale-Drugs, Proprietaries & Druggists' Sundries",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"MCK": {
+"sic": "5122",
+"desc": "Wholesale-Drugs, Proprietaries & Druggists' Sundries",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"HLF": {
+"sic": "5122",
+"desc": "Wholesale-Drugs, Proprietaries & Druggists' Sundries",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"COR": {
+"sic": "5122",
+"desc": "Wholesale-Drugs, Proprietaries & Druggists' Sundries",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"CHRW": {
+"sic": "4731",
+"desc": "Arrangement of  Transportation of  Freight & Cargo",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"BCO": {
+"sic": "4731",
+"desc": "Arrangement of  Transportation of  Freight & Cargo",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"EXPD": {
+"sic": "4731",
+"desc": "Arrangement of  Transportation of  Freight & Cargo",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"SOLV": {
+"sic": "3841",
+"desc": "Surgical & Medical Instruments & Apparatus",
+"ko": "의료기기",
+"gics": "헬스케어",
+"src": "tree"
+},
+"DXCM": {
+"sic": "3841",
+"desc": "Surgical & Medical Instruments & Apparatus",
+"ko": "의료기기",
+"gics": "헬스케어",
+"src": "tree"
+},
+"SYK": {
+"sic": "3841",
+"desc": "Surgical & Medical Instruments & Apparatus",
+"ko": "의료기기",
+"gics": "헬스케어",
+"src": "tree"
+},
+"BSX": {
+"sic": "3841",
+"desc": "Surgical & Medical Instruments & Apparatus",
+"ko": "의료기기",
+"gics": "헬스케어",
+"src": "tree"
+},
+"RSMDF": {
+"sic": "3841",
+"desc": "Surgical & Medical Instruments & Apparatus",
+"ko": "의료기기",
+"gics": "헬스케어",
+"src": "tree"
+},
+"BDX": {
+"sic": "3841",
+"desc": "Surgical & Medical Instruments & Apparatus",
+"ko": "의료기기",
+"gics": "헬스케어",
+"src": "tree"
+},
+"MMM": {
+"sic": "3841",
+"desc": "Surgical & Medical Instruments & Apparatus",
+"ko": "의료기기",
+"gics": "헬스케어",
+"src": "tree"
+},
+"GVA": {
+"sic": "1600",
+"desc": "Heavy Construction Other Than Bldg Const - Contractors",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"KBR": {
+"sic": "1600",
+"desc": "Heavy Construction Other Than Bldg Const - Contractors",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"FLR": {
+"sic": "1600",
+"desc": "Heavy Construction Other Than Bldg Const - Contractors",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"LEVI": {
+"sic": "2300",
+"desc": "Apparel & Other Finishd Prods of  Fabrics & Similar Matl",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"UA": {
+"sic": "2300",
+"desc": "Apparel & Other Finishd Prods of  Fabrics & Similar Matl",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"LULU": {
+"sic": "2300",
+"desc": "Apparel & Other Finishd Prods of  Fabrics & Similar Matl",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"COMP": {
+"sic": "6531",
+"desc": "Real Estate Agents & Managers (For Others)",
+"ko": "부동산 중개·관리",
+"gics": "부동산",
+"src": "tree"
+},
+"OPENZ": {
+"sic": "6531",
+"desc": "Real Estate Agents & Managers (For Others)",
+"ko": "부동산 중개·관리",
+"gics": "부동산",
+"src": "tree"
+},
+"JLL": {
+"sic": "6531",
+"desc": "Real Estate Agents & Managers (For Others)",
+"ko": "부동산 중개·관리",
+"gics": "부동산",
+"src": "tree"
+},
+"AGNT": {
+"sic": "6531",
+"desc": "Real Estate Agents & Managers (For Others)",
+"ko": "부동산 중개·관리",
+"gics": "부동산",
+"src": "tree"
+},
+"RTX": {
+"sic": "3724",
+"desc": "Aircraft Engines & Engine Parts",
+"ko": "",
+"gics": "산업재",
+"src": "tree"
+},
+"SARO": {
+"sic": "3724",
+"desc": "Aircraft Engines & Engine Parts",
+"ko": "",
+"gics": "산업재",
+"src": "tree"
+},
+"HEI-A": {
+"sic": "3724",
+"desc": "Aircraft Engines & Engine Parts",
+"ko": "",
+"gics": "산업재",
+"src": "tree"
+},
+"HON": {
+"sic": "3724",
+"desc": "Aircraft Engines & Engine Parts",
+"ko": "",
+"gics": "산업재",
+"src": "tree"
+},
+"HWM": {
+"sic": "3350",
+"desc": "Rolling Drawing & Extruding of  Nonferrous Metals",
+"ko": "",
+"gics": "소재",
+"src": "tree"
+},
+"MLI": {
+"sic": "3350",
+"desc": "Rolling Drawing & Extruding of  Nonferrous Metals",
+"ko": "",
+"gics": "소재",
+"src": "tree"
+},
+"BEIGF": {
+"sic": "2834",
+"desc": "Pharmaceutical Preparations",
+"ko": "제약",
+"gics": "헬스케어",
+"src": "tree"
+},
+"ABBV": {
+"sic": "2834",
+"desc": "Pharmaceutical Preparations",
+"ko": "제약",
+"gics": "헬스케어",
+"src": "tree"
+},
+"ABT": {
+"sic": "2834",
+"desc": "Pharmaceutical Preparations",
+"ko": "제약",
+"gics": "헬스케어",
+"src": "tree"
+},
+"BHC": {
+"sic": "2834",
+"desc": "Pharmaceutical Preparations",
+"ko": "제약",
+"gics": "헬스케어",
+"src": "tree"
+},
+"REGN": {
+"sic": "2834",
+"desc": "Pharmaceutical Preparations",
+"ko": "제약",
+"gics": "헬스케어",
+"src": "tree"
+},
+"JAZZ": {
+"sic": "2834",
+"desc": "Pharmaceutical Preparations",
+"ko": "제약",
+"gics": "헬스케어",
+"src": "tree"
+},
+"PANW": {
+"sic": "3577",
+"desc": "Computer Peripheral Equipment, NEC",
+"ko": "컴퓨터 주변기기",
+"gics": "정보기술",
+"src": "tree"
+},
+"LOGI": {
+"sic": "3577",
+"desc": "Computer Peripheral Equipment, NEC",
+"ko": "컴퓨터 주변기기",
+"gics": "정보기술",
+"src": "tree"
+},
+"FTNT": {
+"sic": "3577",
+"desc": "Computer Peripheral Equipment, NEC",
+"ko": "컴퓨터 주변기기",
+"gics": "정보기술",
+"src": "tree"
+},
+"CWK": {
+"sic": "6500",
+"desc": "Real Estate",
+"ko": "",
+"gics": "금융",
+"src": "tree"
+},
+"CBRE": {
+"sic": "6500",
+"desc": "Real Estate",
+"ko": "",
+"gics": "금융",
+"src": "tree"
+},
+"CHD": {
+"sic": "2840",
+"desc": "Soap, Detergents, Cleang Preparations, Perfumes, Cosmetics",
+"ko": "",
+"gics": "필수소비재",
+"src": "tree"
+},
+"PG": {
+"sic": "2840",
+"desc": "Soap, Detergents, Cleang Preparations, Perfumes, Cosmetics",
+"ko": "",
+"gics": "필수소비재",
+"src": "tree"
+},
+"ECL": {
+"sic": "2840",
+"desc": "Soap, Detergents, Cleang Preparations, Perfumes, Cosmetics",
+"ko": "",
+"gics": "필수소비재",
+"src": "tree"
+},
+"KO": {
+"sic": "2080",
+"desc": "Beverages",
+"ko": "",
+"gics": "필수소비재",
+"src": "tree"
+},
+"KDP": {
+"sic": "2080",
+"desc": "Beverages",
+"ko": "",
+"gics": "필수소비재",
+"src": "tree"
+},
+"PRMB": {
+"sic": "2080",
+"desc": "Beverages",
+"ko": "",
+"gics": "필수소비재",
+"src": "tree"
+},
+"PEP": {
+"sic": "2080",
+"desc": "Beverages",
+"ko": "",
+"gics": "필수소비재",
+"src": "tree"
+},
+"CYH": {
+"sic": "8062",
+"desc": "Services-General Medical & Surgical Hospitals, NEC",
+"ko": "종합병원",
+"gics": "헬스케어",
+"src": "tree"
+},
+"UHS": {
+"sic": "8062",
+"desc": "Services-General Medical & Surgical Hospitals, NEC",
+"ko": "종합병원",
+"gics": "헬스케어",
+"src": "tree"
+},
+"THC": {
+"sic": "8062",
+"desc": "Services-General Medical & Surgical Hospitals, NEC",
+"ko": "종합병원",
+"gics": "헬스케어",
+"src": "tree"
+},
+"LNG": {
+"sic": "4924",
+"desc": "Natural Gas Distribution",
+"ko": "",
+"gics": "유틸리티",
+"src": "tree"
+},
+"VG": {
+"sic": "4924",
+"desc": "Natural Gas Distribution",
+"ko": "",
+"gics": "유틸리티",
+"src": "tree"
+},
+"ATO": {
+"sic": "4924",
+"desc": "Natural Gas Distribution",
+"ko": "",
+"gics": "유틸리티",
+"src": "tree"
+},
+"CQP": {
+"sic": "4924",
+"desc": "Natural Gas Distribution",
+"ko": "",
+"gics": "유틸리티",
+"src": "tree"
+},
+"SON": {
+"sic": "2650",
+"desc": "Paperboard Containers & Boxes",
+"ko": "",
+"gics": "소재",
+"src": "tree"
+},
+"SW": {
+"sic": "2650",
+"desc": "Paperboard Containers & Boxes",
+"ko": "",
+"gics": "소재",
+"src": "tree"
+},
+"PKG": {
+"sic": "2650",
+"desc": "Paperboard Containers & Boxes",
+"ko": "",
+"gics": "소재",
+"src": "tree"
+},
+"GPK": {
+"sic": "2650",
+"desc": "Paperboard Containers & Boxes",
+"ko": "",
+"gics": "소재",
+"src": "tree"
+},
+"GDDY": {
+"sic": "7373",
+"desc": "Services-Computer Integrated Systems Design",
+"ko": "컴퓨터 통합시스템",
+"gics": "정보기술",
+"src": "tree"
+},
+"LDOS": {
+"sic": "7373",
+"desc": "Services-Computer Integrated Systems Design",
+"ko": "컴퓨터 통합시스템",
+"gics": "정보기술",
+"src": "tree"
+},
+"OTEX": {
+"sic": "7373",
+"desc": "Services-Computer Integrated Systems Design",
+"ko": "컴퓨터 통합시스템",
+"gics": "정보기술",
+"src": "tree"
+},
+"CACI": {
+"sic": "7373",
+"desc": "Services-Computer Integrated Systems Design",
+"ko": "컴퓨터 통합시스템",
+"gics": "정보기술",
+"src": "tree"
+},
+"PSN": {
+"sic": "7373",
+"desc": "Services-Computer Integrated Systems Design",
+"ko": "컴퓨터 통합시스템",
+"gics": "정보기술",
+"src": "tree"
+},
+"SAIC": {
+"sic": "7373",
+"desc": "Services-Computer Integrated Systems Design",
+"ko": "컴퓨터 통합시스템",
+"gics": "정보기술",
+"src": "tree"
+},
+"TRU": {
+"sic": "7320",
+"desc": "Services-Consumer Credit Reporting, Collection Agencies",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"SPGI": {
+"sic": "7320",
+"desc": "Services-Consumer Credit Reporting, Collection Agencies",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"MCO": {
+"sic": "7320",
+"desc": "Services-Consumer Credit Reporting, Collection Agencies",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"EFX": {
+"sic": "7320",
+"desc": "Services-Consumer Credit Reporting, Collection Agencies",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"NDAQ": {
+"sic": "6200",
+"desc": "Security & Commodity Brokers, Dealers, Exchanges & Services",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"ICE": {
+"sic": "6200",
+"desc": "Security & Commodity Brokers, Dealers, Exchanges & Services",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"CME": {
+"sic": "6200",
+"desc": "Security & Commodity Brokers, Dealers, Exchanges & Services",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"VFC": {
+"sic": "2320",
+"desc": "Men's & Boys' Furnishgs, Work Clothg, & Allied Garments",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"RL": {
+"sic": "2320",
+"desc": "Men's & Boys' Furnishgs, Work Clothg, & Allied Garments",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"CTAS": {
+"sic": "2320",
+"desc": "Men's & Boys' Furnishgs, Work Clothg, & Allied Garments",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"PVH": {
+"sic": "2320",
+"desc": "Men's & Boys' Furnishgs, Work Clothg, & Allied Garments",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"TRGP": {
+"sic": "4922",
+"desc": "Natural Gas Transmission",
+"ko": "",
+"gics": "유틸리티",
+"src": "tree"
+},
+"WMB": {
+"sic": "4922",
+"desc": "Natural Gas Transmission",
+"ko": "",
+"gics": "유틸리티",
+"src": "tree"
+},
+"EP-PC": {
+"sic": "4922",
+"desc": "Natural Gas Transmission",
+"ko": "",
+"gics": "유틸리티",
+"src": "tree"
+},
+"ET-PI": {
+"sic": "4922",
+"desc": "Natural Gas Transmission",
+"ko": "",
+"gics": "유틸리티",
+"src": "tree"
+},
+"WTW": {
+"sic": "6411",
+"desc": "Insurance Agents, Brokers & Service",
+"ko": "",
+"gics": "금융",
+"src": "tree"
+},
+"AON": {
+"sic": "6411",
+"desc": "Insurance Agents, Brokers & Service",
+"ko": "",
+"gics": "금융",
+"src": "tree"
+},
+"MRSH": {
+"sic": "6411",
+"desc": "Insurance Agents, Brokers & Service",
+"ko": "",
+"gics": "금융",
+"src": "tree"
+},
+"CLS": {
+"sic": "3672",
+"desc": "Printed Circuit Boards",
+"ko": "인쇄회로기판(PCB)",
+"gics": "정보기술",
+"src": "tree"
+},
+"FLEX": {
+"sic": "3672",
+"desc": "Printed Circuit Boards",
+"ko": "인쇄회로기판(PCB)",
+"gics": "정보기술",
+"src": "tree"
+},
+"SANM": {
+"sic": "3672",
+"desc": "Printed Circuit Boards",
+"ko": "인쇄회로기판(PCB)",
+"gics": "정보기술",
+"src": "tree"
+},
+"JBL": {
+"sic": "3672",
+"desc": "Printed Circuit Boards",
+"ko": "인쇄회로기판(PCB)",
+"gics": "정보기술",
+"src": "tree"
+},
+"AEE": {
+"sic": "4931",
+"desc": "Electric & Other Services Combined",
+"ko": "",
+"gics": "유틸리티",
+"src": "tree"
+},
+"EXC": {
+"sic": "4931",
+"desc": "Electric & Other Services Combined",
+"ko": "",
+"gics": "유틸리티",
+"src": "tree"
+},
+"PEG": {
+"sic": "4931",
+"desc": "Electric & Other Services Combined",
+"ko": "",
+"gics": "유틸리티",
+"src": "tree"
+},
+"LNT": {
+"sic": "4931",
+"desc": "Electric & Other Services Combined",
+"ko": "",
+"gics": "유틸리티",
+"src": "tree"
+},
+"PCG-PX": {
+"sic": "4931",
+"desc": "Electric & Other Services Combined",
+"ko": "",
+"gics": "유틸리티",
+"src": "tree"
+},
+"NI": {
+"sic": "4931",
+"desc": "Electric & Other Services Combined",
+"ko": "",
+"gics": "유틸리티",
+"src": "tree"
+},
+"CMS-PC": {
+"sic": "4931",
+"desc": "Electric & Other Services Combined",
+"ko": "",
+"gics": "유틸리티",
+"src": "tree"
+},
+"EVRG": {
+"sic": "4931",
+"desc": "Electric & Other Services Combined",
+"ko": "",
+"gics": "유틸리티",
+"src": "tree"
+},
+"ED": {
+"sic": "4931",
+"desc": "Electric & Other Services Combined",
+"ko": "",
+"gics": "유틸리티",
+"src": "tree"
+},
+"WEC": {
+"sic": "4931",
+"desc": "Electric & Other Services Combined",
+"ko": "",
+"gics": "유틸리티",
+"src": "tree"
+},
+"TDY": {
+"sic": "3812",
+"desc": "Search, Detection, Navigation, Guidance, Aeronautical Sys",
+"ko": "항법·유도장비(방산)",
+"gics": "산업재",
+"src": "tree"
+},
+"GRMN": {
+"sic": "3812",
+"desc": "Search, Detection, Navigation, Guidance, Aeronautical Sys",
+"ko": "항법·유도장비(방산)",
+"gics": "산업재",
+"src": "tree"
+},
+"NOC": {
+"sic": "3812",
+"desc": "Search, Detection, Navigation, Guidance, Aeronautical Sys",
+"ko": "항법·유도장비(방산)",
+"gics": "산업재",
+"src": "tree"
+},
+"TWLO": {
+"sic": "7372",
+"desc": "Services-Prepackaged Software",
+"ko": "소프트웨어(패키지)",
+"gics": "정보기술",
+"src": "tree"
+},
+"PLTR": {
+"sic": "7372",
+"desc": "Services-Prepackaged Software",
+"ko": "소프트웨어(패키지)",
+"gics": "정보기술",
+"src": "tree"
+},
+"BSQKZ": {
+"sic": "7372",
+"desc": "Services-Prepackaged Software",
+"ko": "소프트웨어(패키지)",
+"gics": "정보기술",
+"src": "tree"
+},
+"TTWO": {
+"sic": "7372",
+"desc": "Services-Prepackaged Software",
+"ko": "소프트웨어(패키지)",
+"gics": "정보기술",
+"src": "tree"
+},
+"INTU": {
+"sic": "7372",
+"desc": "Services-Prepackaged Software",
+"ko": "소프트웨어(패키지)",
+"gics": "정보기술",
+"src": "tree"
+},
+"ADBE": {
+"sic": "7372",
+"desc": "Services-Prepackaged Software",
+"ko": "소프트웨어(패키지)",
+"gics": "정보기술",
+"src": "tree"
+},
+"NOW": {
+"sic": "7372",
+"desc": "Services-Prepackaged Software",
+"ko": "소프트웨어(패키지)",
+"gics": "정보기술",
+"src": "tree"
+},
+"SHOP": {
+"sic": "7372",
+"desc": "Services-Prepackaged Software",
+"ko": "소프트웨어(패키지)",
+"gics": "정보기술",
+"src": "tree"
+},
+"CRM": {
+"sic": "7372",
+"desc": "Services-Prepackaged Software",
+"ko": "소프트웨어(패키지)",
+"gics": "정보기술",
+"src": "tree"
+},
+"GENVR": {
+"sic": "7372",
+"desc": "Services-Prepackaged Software",
+"ko": "소프트웨어(패키지)",
+"gics": "정보기술",
+"src": "tree"
+},
+"MSFT": {
+"sic": "7372",
+"desc": "Services-Prepackaged Software",
+"ko": "소프트웨어(패키지)",
+"gics": "정보기술",
+"src": "tree"
+},
+"SSNC": {
+"sic": "7372",
+"desc": "Services-Prepackaged Software",
+"ko": "소프트웨어(패키지)",
+"gics": "정보기술",
+"src": "tree"
+},
+"ORCL-PD": {
+"sic": "7372",
+"desc": "Services-Prepackaged Software",
+"ko": "소프트웨어(패키지)",
+"gics": "정보기술",
+"src": "tree"
+},
+"ORCL": {
+"sic": "7372",
+"desc": "Services-Prepackaged Software",
+"ko": "소프트웨어(패키지)",
+"gics": "정보기술",
+"src": "tree"
+},
+"ADSK": {
+"sic": "7372",
+"desc": "Services-Prepackaged Software",
+"ko": "소프트웨어(패키지)",
+"gics": "정보기술",
+"src": "tree"
+},
+"CDNS": {
+"sic": "7372",
+"desc": "Services-Prepackaged Software",
+"ko": "소프트웨어(패키지)",
+"gics": "정보기술",
+"src": "tree"
+},
+"SNOW": {
+"sic": "7372",
+"desc": "Services-Prepackaged Software",
+"ko": "소프트웨어(패키지)",
+"gics": "정보기술",
+"src": "tree"
+},
+"TEAM": {
+"sic": "7372",
+"desc": "Services-Prepackaged Software",
+"ko": "소프트웨어(패키지)",
+"gics": "정보기술",
+"src": "tree"
+},
+"SNPS": {
+"sic": "7372",
+"desc": "Services-Prepackaged Software",
+"ko": "소프트웨어(패키지)",
+"gics": "정보기술",
+"src": "tree"
+},
+"RBLX": {
+"sic": "7372",
+"desc": "Services-Prepackaged Software",
+"ko": "소프트웨어(패키지)",
+"gics": "정보기술",
+"src": "tree"
+},
+"CRWV": {
+"sic": "7372",
+"desc": "Services-Prepackaged Software",
+"ko": "소프트웨어(패키지)",
+"gics": "정보기술",
+"src": "tree"
+},
+"LINE": {
+"sic": "6798",
+"desc": "Real Estate Investment Trusts",
+"ko": "리츠(REIT)",
+"gics": "부동산",
+"src": "tree"
+},
+"EQIX": {
+"sic": "6798",
+"desc": "Real Estate Investment Trusts",
+"ko": "리츠(REIT)",
+"gics": "부동산",
+"src": "tree"
+},
+"DLR-PJ": {
+"sic": "6798",
+"desc": "Real Estate Investment Trusts",
+"ko": "리츠(REIT)",
+"gics": "부동산",
+"src": "tree"
+},
+"WY": {
+"sic": "6798",
+"desc": "Real Estate Investment Trusts",
+"ko": "리츠(REIT)",
+"gics": "부동산",
+"src": "tree"
+},
+"IRM": {
+"sic": "6798",
+"desc": "Real Estate Investment Trusts",
+"ko": "리츠(REIT)",
+"gics": "부동산",
+"src": "tree"
+},
+"CCI": {
+"sic": "6798",
+"desc": "Real Estate Investment Trusts",
+"ko": "리츠(REIT)",
+"gics": "부동산",
+"src": "tree"
+},
+"AMT": {
+"sic": "6798",
+"desc": "Real Estate Investment Trusts",
+"ko": "리츠(REIT)",
+"gics": "부동산",
+"src": "tree"
+},
+"SPG-PJ": {
+"sic": "6798",
+"desc": "Real Estate Investment Trusts",
+"ko": "리츠(REIT)",
+"gics": "부동산",
+"src": "tree"
+},
+"PLDGP": {
+"sic": "6798",
+"desc": "Real Estate Investment Trusts",
+"ko": "리츠(REIT)",
+"gics": "부동산",
+"src": "tree"
+},
+"HST": {
+"sic": "6798",
+"desc": "Real Estate Investment Trusts",
+"ko": "리츠(REIT)",
+"gics": "부동산",
+"src": "tree"
+},
+"HLT": {
+"sic": "7011",
+"desc": "Hotels & Motels",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"MAR": {
+"sic": "7011",
+"desc": "Hotels & Motels",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"LVS": {
+"sic": "7011",
+"desc": "Hotels & Motels",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"CZR": {
+"sic": "7011",
+"desc": "Hotels & Motels",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"BYD": {
+"sic": "7011",
+"desc": "Hotels & Motels",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"MGM": {
+"sic": "7011",
+"desc": "Hotels & Motels",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"DG": {
+"sic": "5331",
+"desc": "Retail-Variety Stores",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"FIVE": {
+"sic": "5331",
+"desc": "Retail-Variety Stores",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"COST": {
+"sic": "5331",
+"desc": "Retail-Variety Stores",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"DLTR": {
+"sic": "5331",
+"desc": "Retail-Variety Stores",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"BJ": {
+"sic": "5331",
+"desc": "Retail-Variety Stores",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"PSMT": {
+"sic": "5331",
+"desc": "Retail-Variety Stores",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"WMT": {
+"sic": "5331",
+"desc": "Retail-Variety Stores",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"TGT": {
+"sic": "5331",
+"desc": "Retail-Variety Stores",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"ABM": {
+"sic": "7340",
+"desc": "Services-To Dwellings & Other Buildings",
+"ko": "빌딩관리",
+"gics": "기타",
+"src": "tree"
+},
+"APG": {
+"sic": "7340",
+"desc": "Services-To Dwellings & Other Buildings",
+"ko": "빌딩관리",
+"gics": "기타",
+"src": "tree"
+},
+"ABNB": {
+"sic": "7340",
+"desc": "Services-To Dwellings & Other Buildings",
+"ko": "빌딩관리",
+"gics": "기타",
+"src": "tree"
+},
+"DELL": {
+"sic": "3571",
+"desc": "Electronic Computers",
+"ko": "전자컴퓨터",
+"gics": "정보기술",
+"src": "tree"
+},
+"AAPL": {
+"sic": "3571",
+"desc": "Electronic Computers",
+"ko": "전자컴퓨터",
+"gics": "정보기술",
+"src": "tree"
+},
+"SMCIP": {
+"sic": "3571",
+"desc": "Electronic Computers",
+"ko": "전자컴퓨터",
+"gics": "정보기술",
+"src": "tree"
+},
+"EIX": {
+"sic": "4911",
+"desc": "Electric Services",
+"ko": "전력 유틸리티",
+"gics": "유틸리티",
+"src": "tree"
+},
+"D": {
+"sic": "4911",
+"desc": "Electric Services",
+"ko": "전력 유틸리티",
+"gics": "유틸리티",
+"src": "tree"
+},
+"PPLC": {
+"sic": "4911",
+"desc": "Electric Services",
+"ko": "전력 유틸리티",
+"gics": "유틸리티",
+"src": "tree"
+},
+"ETR": {
+"sic": "4911",
+"desc": "Electric Services",
+"ko": "전력 유틸리티",
+"gics": "유틸리티",
+"src": "tree"
+},
+"ES": {
+"sic": "4911",
+"desc": "Electric Services",
+"ko": "전력 유틸리티",
+"gics": "유틸리티",
+"src": "tree"
+},
+"PNW": {
+"sic": "4911",
+"desc": "Electric Services",
+"ko": "전력 유틸리티",
+"gics": "유틸리티",
+"src": "tree"
+},
+"CNP": {
+"sic": "4911",
+"desc": "Electric Services",
+"ko": "전력 유틸리티",
+"gics": "유틸리티",
+"src": "tree"
+},
+"WELPM": {
+"sic": "4911",
+"desc": "Electric Services",
+"ko": "전력 유틸리티",
+"gics": "유틸리티",
+"src": "tree"
+},
+"SOMN": {
+"sic": "4911",
+"desc": "Electric Services",
+"ko": "전력 유틸리티",
+"gics": "유틸리티",
+"src": "tree"
+},
+"FE": {
+"sic": "4911",
+"desc": "Electric Services",
+"ko": "전력 유틸리티",
+"gics": "유틸리티",
+"src": "tree"
+},
+"NRG": {
+"sic": "4911",
+"desc": "Electric Services",
+"ko": "전력 유틸리티",
+"gics": "유틸리티",
+"src": "tree"
+},
+"CEG": {
+"sic": "4911",
+"desc": "Electric Services",
+"ko": "전력 유틸리티",
+"gics": "유틸리티",
+"src": "tree"
+},
+"VST": {
+"sic": "4911",
+"desc": "Electric Services",
+"ko": "전력 유틸리티",
+"gics": "유틸리티",
+"src": "tree"
+},
+"MRVL": {
+"sic": "3674",
+"desc": "Semiconductors & Related Devices",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "tree"
+},
+"INTC": {
+"sic": "3674",
+"desc": "Semiconductors & Related Devices",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "tree"
+},
+"AVGO": {
+"sic": "3674",
+"desc": "Semiconductors & Related Devices",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "tree"
+},
+"AMD": {
+"sic": "3674",
+"desc": "Semiconductors & Related Devices",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "tree"
+},
+"MCHPP": {
+"sic": "3674",
+"desc": "Semiconductors & Related Devices",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "tree"
+},
+"MCHP": {
+"sic": "3674",
+"desc": "Semiconductors & Related Devices",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "tree"
+},
+"ADI": {
+"sic": "3674",
+"desc": "Semiconductors & Related Devices",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "tree"
+},
+"AMAT": {
+"sic": "3674",
+"desc": "Semiconductors & Related Devices",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "tree"
+},
+"AMKR": {
+"sic": "3674",
+"desc": "Semiconductors & Related Devices",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "tree"
+},
+"NVDA": {
+"sic": "3674",
+"desc": "Semiconductors & Related Devices",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "tree"
+},
+"TXN": {
+"sic": "3674",
+"desc": "Semiconductors & Related Devices",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "tree"
+},
+"NXPI": {
+"sic": "3674",
+"desc": "Semiconductors & Related Devices",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "tree"
+},
+"FSLR": {
+"sic": "3674",
+"desc": "Semiconductors & Related Devices",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "tree"
+},
+"ARM": {
+"sic": "3674",
+"desc": "Semiconductors & Related Devices",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "tree"
+},
+"SWKS": {
+"sic": "3674",
+"desc": "Semiconductors & Related Devices",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "tree"
+},
+"ON": {
+"sic": "3674",
+"desc": "Semiconductors & Related Devices",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "tree"
+},
+"NSC": {
+"sic": "4011",
+"desc": "Railroads, Line-Haul Operating",
+"ko": "",
+"gics": "산업재",
+"src": "tree"
+},
+"UNP": {
+"sic": "4011",
+"desc": "Railroads, Line-Haul Operating",
+"ko": "",
+"gics": "산업재",
+"src": "tree"
+},
+"CSX": {
+"sic": "4011",
+"desc": "Railroads, Line-Haul Operating",
+"ko": "",
+"gics": "산업재",
+"src": "tree"
+},
+"WCN": {
+"sic": "4953",
+"desc": "Refuse Systems",
+"ko": "",
+"gics": "유틸리티",
+"src": "tree"
+},
+"RSG": {
+"sic": "4953",
+"desc": "Refuse Systems",
+"ko": "",
+"gics": "유틸리티",
+"src": "tree"
+},
+"WM": {
+"sic": "4953",
+"desc": "Refuse Systems",
+"ko": "",
+"gics": "유틸리티",
+"src": "tree"
+},
+"AAP": {
+"sic": "5531",
+"desc": "Retail-Auto & Home Supply Stores",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"ORLY": {
+"sic": "5531",
+"desc": "Retail-Auto & Home Supply Stores",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"AZO": {
+"sic": "5531",
+"desc": "Retail-Auto & Home Supply Stores",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"EXPE": {
+"sic": "4700",
+"desc": "Transportation Services",
+"ko": "운송서비스",
+"gics": "산업재",
+"src": "tree"
+},
+"BKNG": {
+"sic": "4700",
+"desc": "Transportation Services",
+"ko": "운송서비스",
+"gics": "산업재",
+"src": "tree"
+},
+"GXO": {
+"sic": "4700",
+"desc": "Transportation Services",
+"ko": "운송서비스",
+"gics": "산업재",
+"src": "tree"
+},
+"XPO": {
+"sic": "4700",
+"desc": "Transportation Services",
+"ko": "운송서비스",
+"gics": "산업재",
+"src": "tree"
+},
+"RXO": {
+"sic": "4700",
+"desc": "Transportation Services",
+"ko": "운송서비스",
+"gics": "산업재",
+"src": "tree"
+},
+"T-PC": {
+"sic": "4813",
+"desc": "Telephone Communications (No Radiotelephone)",
+"ko": "유선통신",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"VZ": {
+"sic": "4813",
+"desc": "Telephone Communications (No Radiotelephone)",
+"ko": "유선통신",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"CTHH": {
+"sic": "4813",
+"desc": "Telephone Communications (No Radiotelephone)",
+"ko": "유선통신",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"LUMN": {
+"sic": "4813",
+"desc": "Telephone Communications (No Radiotelephone)",
+"ko": "유선통신",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"WBD": {
+"sic": "4841",
+"desc": "Cable & Other Pay Television Services",
+"ko": "",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"ROKU": {
+"sic": "4841",
+"desc": "Cable & Other Pay Television Services",
+"ko": "",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"LBTYK": {
+"sic": "4841",
+"desc": "Cable & Other Pay Television Services",
+"ko": "",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"CHTR": {
+"sic": "4841",
+"desc": "Cable & Other Pay Television Services",
+"ko": "",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"CCZ": {
+"sic": "4841",
+"desc": "Cable & Other Pay Television Services",
+"ko": "",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"OPTU": {
+"sic": "4841",
+"desc": "Cable & Other Pay Television Services",
+"ko": "",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"AME": {
+"sic": "3823",
+"desc": "Industrial Instruments For Measurement, Display, and Control",
+"ko": "산업계측기",
+"gics": "정보기술",
+"src": "tree"
+},
+"ROP": {
+"sic": "3823",
+"desc": "Industrial Instruments For Measurement, Display, and Control",
+"ko": "산업계측기",
+"gics": "정보기술",
+"src": "tree"
+},
+"FTV": {
+"sic": "3823",
+"desc": "Industrial Instruments For Measurement, Display, and Control",
+"ko": "산업계측기",
+"gics": "정보기술",
+"src": "tree"
+},
+"KEYS": {
+"sic": "3823",
+"desc": "Industrial Instruments For Measurement, Display, and Control",
+"ko": "산업계측기",
+"gics": "정보기술",
+"src": "tree"
+},
+"DHR": {
+"sic": "3823",
+"desc": "Industrial Instruments For Measurement, Display, and Control",
+"ko": "산업계측기",
+"gics": "정보기술",
+"src": "tree"
+},
+"DRI": {
+"sic": "5812",
+"desc": "Retail-Eating  Places",
+"ko": "외식",
+"gics": "경기소비재",
+"src": "tree"
+},
+"YUMC": {
+"sic": "5812",
+"desc": "Retail-Eating  Places",
+"ko": "외식",
+"gics": "경기소비재",
+"src": "tree"
+},
+"MCD": {
+"sic": "5812",
+"desc": "Retail-Eating  Places",
+"ko": "외식",
+"gics": "경기소비재",
+"src": "tree"
+},
+"YUM": {
+"sic": "5812",
+"desc": "Retail-Eating  Places",
+"ko": "외식",
+"gics": "경기소비재",
+"src": "tree"
+},
+"CMG": {
+"sic": "5812",
+"desc": "Retail-Eating  Places",
+"ko": "외식",
+"gics": "경기소비재",
+"src": "tree"
+},
+"TXRH": {
+"sic": "5812",
+"desc": "Retail-Eating  Places",
+"ko": "외식",
+"gics": "경기소비재",
+"src": "tree"
+},
+"RSTRF": {
+"sic": "5812",
+"desc": "Retail-Eating  Places",
+"ko": "외식",
+"gics": "경기소비재",
+"src": "tree"
+},
+"QSR": {
+"sic": "5812",
+"desc": "Retail-Eating  Places",
+"ko": "외식",
+"gics": "경기소비재",
+"src": "tree"
+},
+"INGR": {
+"sic": "2040",
+"desc": "Grain Mill Products",
+"ko": "곡물가공",
+"gics": "필수소비재",
+"src": "tree"
+},
+"POST": {
+"sic": "2040",
+"desc": "Grain Mill Products",
+"ko": "곡물가공",
+"gics": "필수소비재",
+"src": "tree"
+},
+"GIS": {
+"sic": "2040",
+"desc": "Grain Mill Products",
+"ko": "곡물가공",
+"gics": "필수소비재",
+"src": "tree"
+},
+"THG": {
+"sic": "6331",
+"desc": "Fire, Marine & Casualty Insurance",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"AFGE": {
+"sic": "6331",
+"desc": "Fire, Marine & Casualty Insurance",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"MKL": {
+"sic": "6331",
+"desc": "Fire, Marine & Casualty Insurance",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"URBN": {
+"sic": "5651",
+"desc": "Retail-Family Clothing Stores",
+"ko": "의류 리테일",
+"gics": "경기소비재",
+"src": "tree"
+},
+"GAP": {
+"sic": "5651",
+"desc": "Retail-Family Clothing Stores",
+"ko": "의류 리테일",
+"gics": "경기소비재",
+"src": "tree"
+},
+"ROST": {
+"sic": "5651",
+"desc": "Retail-Family Clothing Stores",
+"ko": "의류 리테일",
+"gics": "경기소비재",
+"src": "tree"
+},
+"ANF": {
+"sic": "5651",
+"desc": "Retail-Family Clothing Stores",
+"ko": "의류 리테일",
+"gics": "경기소비재",
+"src": "tree"
+},
+"AEO": {
+"sic": "5651",
+"desc": "Retail-Family Clothing Stores",
+"ko": "의류 리테일",
+"gics": "경기소비재",
+"src": "tree"
+},
+"DAN": {
+"sic": "3714",
+"desc": "Motor Vehicle Parts & Accessories",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"LCII": {
+"sic": "3714",
+"desc": "Motor Vehicle Parts & Accessories",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"ALV": {
+"sic": "3714",
+"desc": "Motor Vehicle Parts & Accessories",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"BWA": {
+"sic": "3714",
+"desc": "Motor Vehicle Parts & Accessories",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"LEA": {
+"sic": "3714",
+"desc": "Motor Vehicle Parts & Accessories",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"APTV": {
+"sic": "3714",
+"desc": "Motor Vehicle Parts & Accessories",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"DCH": {
+"sic": "3714",
+"desc": "Motor Vehicle Parts & Accessories",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"CHWY": {
+"sic": "5961",
+"desc": "Retail-Catalog & Mail-Order Houses",
+"ko": "전자상거래",
+"gics": "경기소비재",
+"src": "tree"
+},
+"W": {
+"sic": "5961",
+"desc": "Retail-Catalog & Mail-Order Houses",
+"ko": "전자상거래",
+"gics": "경기소비재",
+"src": "tree"
+},
+"AMZN": {
+"sic": "5961",
+"desc": "Retail-Catalog & Mail-Order Houses",
+"ko": "전자상거래",
+"gics": "경기소비재",
+"src": "tree"
+},
+"CPNG": {
+"sic": "5961",
+"desc": "Retail-Catalog & Mail-Order Houses",
+"ko": "전자상거래",
+"gics": "경기소비재",
+"src": "tree"
+},
+"CDW": {
+"sic": "5961",
+"desc": "Retail-Catalog & Mail-Order Houses",
+"ko": "전자상거래",
+"gics": "경기소비재",
+"src": "tree"
+},
+"NSIT": {
+"sic": "5961",
+"desc": "Retail-Catalog & Mail-Order Houses",
+"ko": "전자상거래",
+"gics": "경기소비재",
+"src": "tree"
+},
+"UBER": {
+"sic": "7389",
+"desc": "Services-Business Services, NEC",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"FOUR-PA": {
+"sic": "7389",
+"desc": "Services-Business Services, NEC",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"BR": {
+"sic": "7389",
+"desc": "Services-Business Services, NEC",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"PYPL": {
+"sic": "7389",
+"desc": "Services-Business Services, NEC",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"MMS": {
+"sic": "7389",
+"desc": "Services-Business Services, NEC",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"MA": {
+"sic": "7389",
+"desc": "Services-Business Services, NEC",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"ACN": {
+"sic": "7389",
+"desc": "Services-Business Services, NEC",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"CPAY": {
+"sic": "7389",
+"desc": "Services-Business Services, NEC",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"FIS": {
+"sic": "7389",
+"desc": "Services-Business Services, NEC",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"FISV": {
+"sic": "7389",
+"desc": "Services-Business Services, NEC",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"AMTM": {
+"sic": "7389",
+"desc": "Services-Business Services, NEC",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"V": {
+"sic": "7389",
+"desc": "Services-Business Services, NEC",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"EBAY": {
+"sic": "7389",
+"desc": "Services-Business Services, NEC",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"GPN": {
+"sic": "7389",
+"desc": "Services-Business Services, NEC",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"RBA": {
+"sic": "7389",
+"desc": "Services-Business Services, NEC",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"MELI": {
+"sic": "7389",
+"desc": "Services-Business Services, NEC",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"LYFT": {
+"sic": "7389",
+"desc": "Services-Business Services, NEC",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"CNXC": {
+"sic": "7389",
+"desc": "Services-Business Services, NEC",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"FND": {
+"sic": "5211",
+"desc": "Retail-Lumber & Other Building Materials Dealers",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"LOW": {
+"sic": "5211",
+"desc": "Retail-Lumber & Other Building Materials Dealers",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"HD": {
+"sic": "5211",
+"desc": "Retail-Lumber & Other Building Materials Dealers",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"BLDR": {
+"sic": "5211",
+"desc": "Retail-Lumber & Other Building Materials Dealers",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"CVNA": {
+"sic": "5500",
+"desc": "Retail-Auto Dealers & Gasoline Stations",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"CWH": {
+"sic": "5500",
+"desc": "Retail-Auto Dealers & Gasoline Stations",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"ABG": {
+"sic": "5500",
+"desc": "Retail-Auto Dealers & Gasoline Stations",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"LAD": {
+"sic": "5500",
+"desc": "Retail-Auto Dealers & Gasoline Stations",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"PAG": {
+"sic": "5500",
+"desc": "Retail-Auto Dealers & Gasoline Stations",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"AN": {
+"sic": "5500",
+"desc": "Retail-Auto Dealers & Gasoline Stations",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"RUSHB": {
+"sic": "5500",
+"desc": "Retail-Auto Dealers & Gasoline Stations",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"SAH": {
+"sic": "5500",
+"desc": "Retail-Auto Dealers & Gasoline Stations",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"GPI": {
+"sic": "5500",
+"desc": "Retail-Auto Dealers & Gasoline Stations",
+"ko": "",
+"gics": "경기소비재",
+"src": "tree"
+},
+"SCCO": {
+"sic": "1000",
+"desc": "Metal Mining",
+"ko": "",
+"gics": "소재",
+"src": "tree"
+},
+"FCX": {
+"sic": "1000",
+"desc": "Metal Mining",
+"ko": "",
+"gics": "소재",
+"src": "tree"
+},
+"CLF": {
+"sic": "1000",
+"desc": "Metal Mining",
+"ko": "",
+"gics": "소재",
+"src": "tree"
+},
+"ILMN": {
+"sic": "3826",
+"desc": "Laboratory Analytical Instruments",
+"ko": "실험분석기기",
+"gics": "헬스케어",
+"src": "tree"
+},
+"A": {
+"sic": "3826",
+"desc": "Laboratory Analytical Instruments",
+"ko": "실험분석기기",
+"gics": "헬스케어",
+"src": "tree"
+},
+"AVTR": {
+"sic": "3826",
+"desc": "Laboratory Analytical Instruments",
+"ko": "실험분석기기",
+"gics": "헬스케어",
+"src": "tree"
+},
+"STE": {
+"sic": "3842",
+"desc": "Orthopedic, Prosthetic & Surgical Appliances & Supplies",
+"ko": "",
+"gics": "헬스케어",
+"src": "tree"
+},
+"ISRG": {
+"sic": "3842",
+"desc": "Orthopedic, Prosthetic & Surgical Appliances & Supplies",
+"ko": "",
+"gics": "헬스케어",
+"src": "tree"
+},
+"EW": {
+"sic": "3842",
+"desc": "Orthopedic, Prosthetic & Surgical Appliances & Supplies",
+"ko": "",
+"gics": "헬스케어",
+"src": "tree"
+},
+"ZBH": {
+"sic": "3842",
+"desc": "Orthopedic, Prosthetic & Surgical Appliances & Supplies",
+"ko": "",
+"gics": "헬스케어",
+"src": "tree"
+},
+"JBLU": {
+"sic": "4512",
+"desc": "Air Transportation, Scheduled",
+"ko": "",
+"gics": "산업재",
+"src": "tree"
+},
+"LUV": {
+"sic": "4512",
+"desc": "Air Transportation, Scheduled",
+"ko": "",
+"gics": "산업재",
+"src": "tree"
+},
+"DAL": {
+"sic": "4512",
+"desc": "Air Transportation, Scheduled",
+"ko": "",
+"gics": "산업재",
+"src": "tree"
+},
+"UAL": {
+"sic": "4512",
+"desc": "Air Transportation, Scheduled",
+"ko": "",
+"gics": "산업재",
+"src": "tree"
+},
+"AAL": {
+"sic": "4512",
+"desc": "Air Transportation, Scheduled",
+"ko": "",
+"gics": "산업재",
+"src": "tree"
+},
+"ALK": {
+"sic": "4512",
+"desc": "Air Transportation, Scheduled",
+"ko": "",
+"gics": "산업재",
+"src": "tree"
+},
+"BEN": {
+"sic": "6282",
+"desc": "Investment Advice",
+"ko": "투자자문",
+"gics": "금융",
+"src": "tree"
+},
+"TROW": {
+"sic": "6282",
+"desc": "Investment Advice",
+"ko": "투자자문",
+"gics": "금융",
+"src": "tree"
+},
+"IVZ": {
+"sic": "6282",
+"desc": "Investment Advice",
+"ko": "투자자문",
+"gics": "금융",
+"src": "tree"
+},
+"URI": {
+"sic": "7359",
+"desc": "Services-Equipment Rental & Leasing, NEC",
+"ko": "",
+"gics": "산업재",
+"src": "tree"
+},
+"UPBD": {
+"sic": "7359",
+"desc": "Services-Equipment Rental & Leasing, NEC",
+"ko": "",
+"gics": "산업재",
+"src": "tree"
+},
+"BBWI": {
+"sic": "5990",
+"desc": "Retail-Retail Stores, NEC",
+"ko": "리테일 기타",
+"gics": "경기소비재",
+"src": "tree"
+},
+"ULTA": {
+"sic": "5990",
+"desc": "Retail-Retail Stores, NEC",
+"ko": "리테일 기타",
+"gics": "경기소비재",
+"src": "tree"
+},
+"SNDR": {
+"sic": "4213",
+"desc": "Trucking (No Local)",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"KNX": {
+"sic": "4213",
+"desc": "Trucking (No Local)",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"LSTR": {
+"sic": "4213",
+"desc": "Trucking (No Local)",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"ITW": {
+"sic": "3560",
+"desc": "General Industrial Machinery & Equipment",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"ZBRA": {
+"sic": "3560",
+"desc": "General Industrial Machinery & Equipment",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"IR": {
+"sic": "3560",
+"desc": "General Industrial Machinery & Equipment",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"SFM": {
+"sic": "5411",
+"desc": "Retail-Grocery Stores",
+"ko": "",
+"gics": "필수소비재",
+"src": "tree"
+},
+"WMK": {
+"sic": "5411",
+"desc": "Retail-Grocery Stores",
+"ko": "",
+"gics": "필수소비재",
+"src": "tree"
+},
+"IMKTA": {
+"sic": "5411",
+"desc": "Retail-Grocery Stores",
+"ko": "",
+"gics": "필수소비재",
+"src": "tree"
+},
+"KR": {
+"sic": "5411",
+"desc": "Retail-Grocery Stores",
+"ko": "",
+"gics": "필수소비재",
+"src": "tree"
+},
+"ACI": {
+"sic": "5411",
+"desc": "Retail-Grocery Stores",
+"ko": "",
+"gics": "필수소비재",
+"src": "tree"
+},
+"GO": {
+"sic": "5411",
+"desc": "Retail-Grocery Stores",
+"ko": "",
+"gics": "필수소비재",
+"src": "tree"
+},
+"EQT": {
+"sic": "1311",
+"desc": "Crude Petroleum & Natural Gas",
+"ko": "원유·가스채굴",
+"gics": "에너지",
+"src": "tree"
+},
+"EXE": {
+"sic": "1311",
+"desc": "Crude Petroleum & Natural Gas",
+"ko": "원유·가스채굴",
+"gics": "에너지",
+"src": "tree"
+},
+"EOG": {
+"sic": "1311",
+"desc": "Crude Petroleum & Natural Gas",
+"ko": "원유·가스채굴",
+"gics": "에너지",
+"src": "tree"
+},
+"PR": {
+"sic": "1311",
+"desc": "Crude Petroleum & Natural Gas",
+"ko": "원유·가스채굴",
+"gics": "에너지",
+"src": "tree"
+},
+"OVV": {
+"sic": "1311",
+"desc": "Crude Petroleum & Natural Gas",
+"ko": "원유·가스채굴",
+"gics": "에너지",
+"src": "tree"
+},
+"CHRD": {
+"sic": "1311",
+"desc": "Crude Petroleum & Natural Gas",
+"ko": "원유·가스채굴",
+"gics": "에너지",
+"src": "tree"
+},
+"FANG": {
+"sic": "1311",
+"desc": "Crude Petroleum & Natural Gas",
+"ko": "원유·가스채굴",
+"gics": "에너지",
+"src": "tree"
+},
+"FWONB": {
+"sic": "4833",
+"desc": "Television Broadcasting Stations",
+"ko": "",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"NXST": {
+"sic": "4833",
+"desc": "Television Broadcasting Stations",
+"ko": "",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"RIVN": {
+"sic": "3711",
+"desc": "Motor Vehicles & Passenger Car Bodies",
+"ko": "자동차",
+"gics": "경기소비재",
+"src": "tree"
+},
+"OSK": {
+"sic": "3711",
+"desc": "Motor Vehicles & Passenger Car Bodies",
+"ko": "자동차",
+"gics": "경기소비재",
+"src": "tree"
+},
+"TSLA": {
+"sic": "3711",
+"desc": "Motor Vehicles & Passenger Car Bodies",
+"ko": "자동차",
+"gics": "경기소비재",
+"src": "tree"
+},
+"GM": {
+"sic": "3711",
+"desc": "Motor Vehicles & Passenger Car Bodies",
+"ko": "자동차",
+"gics": "경기소비재",
+"src": "tree"
+},
+"F-PD": {
+"sic": "3711",
+"desc": "Motor Vehicles & Passenger Car Bodies",
+"ko": "자동차",
+"gics": "경기소비재",
+"src": "tree"
+},
+"HUM": {
+"sic": "6324",
+"desc": "Hospital & Medical Service Plans",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"CI": {
+"sic": "6324",
+"desc": "Hospital & Medical Service Plans",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"ELV": {
+"sic": "6324",
+"desc": "Hospital & Medical Service Plans",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"UNH": {
+"sic": "6324",
+"desc": "Hospital & Medical Service Plans",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"MOH": {
+"sic": "6324",
+"desc": "Hospital & Medical Service Plans",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"CNC": {
+"sic": "6324",
+"desc": "Hospital & Medical Service Plans",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"KVUE": {
+"sic": "2844",
+"desc": "Perfumes, Cosmetics & Other Toilet Preparations",
+"ko": "",
+"gics": "필수소비재",
+"src": "tree"
+},
+"CL": {
+"sic": "2844",
+"desc": "Perfumes, Cosmetics & Other Toilet Preparations",
+"ko": "",
+"gics": "필수소비재",
+"src": "tree"
+},
+"COTY": {
+"sic": "2844",
+"desc": "Perfumes, Cosmetics & Other Toilet Preparations",
+"ko": "",
+"gics": "필수소비재",
+"src": "tree"
+},
+"EL": {
+"sic": "2844",
+"desc": "Perfumes, Cosmetics & Other Toilet Preparations",
+"ko": "",
+"gics": "필수소비재",
+"src": "tree"
+},
+"CPB": {
+"sic": "2000",
+"desc": "Food and Kindred Products",
+"ko": "식품·가공",
+"gics": "필수소비재",
+"src": "tree"
+},
+"MDLZ": {
+"sic": "2000",
+"desc": "Food and Kindred Products",
+"ko": "식품·가공",
+"gics": "필수소비재",
+"src": "tree"
+},
+"FLO": {
+"sic": "2000",
+"desc": "Food and Kindred Products",
+"ko": "식품·가공",
+"gics": "필수소비재",
+"src": "tree"
+},
+"CAG": {
+"sic": "2000",
+"desc": "Food and Kindred Products",
+"ko": "식품·가공",
+"gics": "필수소비재",
+"src": "tree"
+},
+"MAN": {
+"sic": "7363",
+"desc": "Services-Help Supply Services",
+"ko": "",
+"gics": "산업재",
+"src": "tree"
+},
+"RHI": {
+"sic": "7363",
+"desc": "Services-Help Supply Services",
+"ko": "",
+"gics": "산업재",
+"src": "tree"
+},
+"NSP": {
+"sic": "7363",
+"desc": "Services-Help Supply Services",
+"ko": "",
+"gics": "산업재",
+"src": "tree"
+},
+"KELYB": {
+"sic": "7363",
+"desc": "Services-Help Supply Services",
+"ko": "",
+"gics": "산업재",
+"src": "tree"
+},
+"HPQ": {
+"sic": "3570",
+"desc": "Computer & office Equipment",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"HPE-PC": {
+"sic": "3570",
+"desc": "Computer & office Equipment",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"HPE": {
+"sic": "3570",
+"desc": "Computer & office Equipment",
+"ko": "",
+"gics": "기타",
+"src": "tree"
+},
+"LYB": {
+"sic": "2860",
+"desc": "Industrial Organic Chemicals",
+"ko": "산업용 유기화학",
+"gics": "소재",
+"src": "tree"
+},
+"IFF": {
+"sic": "2860",
+"desc": "Industrial Organic Chemicals",
+"ko": "산업용 유기화학",
+"gics": "소재",
+"src": "tree"
+},
+"WLK": {
+"sic": "2860",
+"desc": "Industrial Organic Chemicals",
+"ko": "산업용 유기화학",
+"gics": "소재",
+"src": "tree"
+}
+}
+}

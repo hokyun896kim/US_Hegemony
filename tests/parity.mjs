@@ -57,7 +57,9 @@ const SHARED = ['priceIn', 'cooling', 'realAccel', 'accelCheck', 'turnaround',
                 // 같은 백테스트 정의를 쓴다는 말이 거짓이 된다
                 'earOf', 'leverAll', 'leverLists', 'flipOf', 'flipList',
                 'leverKind', 'leverWhy', 'leverCard', 'earRank', 'earRankTxt',
-                'flipDepth', 'flipNote'];
+                'flipDepth', 'flipNote',
+                // 산업 레이더(2026-09-24) — 산업 단위 백테스트 H2 와 같은 규칙
+                'indEar', 'indLever'];
 // 같은 함수를 두 번 정의하면 뒤엣것이 이기므로 화면은 멀쩡히 돈다. 그래서
 // 안 잡힌다 — 실제로 us.html 에 liqWarn 이 두 벌 들어갔고(한 페이지의 코드를
 // 다른 페이지로 복사할 때 이미 삽입된 블록까지 딸려갔다) 파리티도 통과했다.

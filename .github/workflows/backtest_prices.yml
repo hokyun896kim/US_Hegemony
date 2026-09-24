@@ -28,6 +28,9 @@ on:
       src:
         description: '가격을 받을 종목 목록. 유니버스를 새로 받으면 그 파일을 준다.'
         default: 'data/backtest/kr-quarters.json'
+      task:
+        description: 'prices = 일별 종가 · industry = 재현 종목의 산업 분류(산업 레이더 백테스트용)'
+        default: 'prices'
 
 permissions:
   contents: write
@@ -47,15 +50,28 @@ jobs:
         run: pip install --quiet yfinance
 
       - name: Logic self-test (네트워크 불필요)
-        run: python backtest_prices.py --selftest
+        run: |
+          python backtest_prices.py --selftest
+          python backtest_industry.py --selftest
+
+      # 산업 레이더 백테스트(backtest_industry.py)에 필요한 과거 종목의 산업 분류.
+      # 재현 데이터에는 분류가 없고, 한국은 화면 트리가 800종목 중 240개만 덮는다.
+      # 나머지는 야후에서 받는데 개발 환경에서는 야후가 막혀 있어 여기서 받는다.
+      # 새 워크플로를 만들면 기본 브랜치에 올릴 때까지 dispatch 가 404 라 여기 얹는다.
+      - name: 산업 분류
+        if: inputs.task == 'industry'
+        run: |
+          python backtest_industry.py --classify kr
+          python backtest_industry.py --classify us
 
       # 유니버스 확대와 가격 수집은 둘 다 야후를 쓰고 몇 분이면 끝난다.
       # 워크플로를 또 만들면 기본 브랜치에 올릴 때까지 dispatch 가 404 다.
       - name: 유니버스 확대
-        if: inputs.universe != '0' && inputs.universe != ''
+        if: inputs.task != 'industry' && inputs.universe != '0' && inputs.universe != ''
         run: python backtest_universe.py --limit ${{ inputs.universe }}
 
       - name: 일별 종가 수집
+        if: inputs.task != 'industry'
         run: |
           python backtest_prices.py \
             --src '${{ inputs.src }}' \
@@ -70,11 +86,12 @@ jobs:
           git config user.email "bot@users.noreply.github.com"
           # 수집이 실패하면 파일이 없다. 없는 경로를 add 하면 pathspec 오류로
           # 스텝이 죽는다 — 미국판 run #22 와 같은 함정.
-          for f in '${{ inputs.out }}' data/backtest/kr-universe.json; do
+          for f in '${{ inputs.out }}' data/backtest/kr-universe.json \
+                   data/backtest/kr-industry.json data/backtest/us-industry.json; do
             [ -f "$f" ] && git add "$f" || true
           done
           git diff --staged --quiet && echo "변경 없음" && exit 0
-          git commit -m "auto(backtest): 일별 종가 수집 $(date +%Y-%m-%d)"
+          git commit -m "auto(backtest): ${{ inputs.task }} 수집 $(date +%Y-%m-%d)"
           for i in 1 2 3 4 5; do
             git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
             echo "::notice::push 거부 — 원격을 받아 rebase 후 재시도 ($i/5)"
