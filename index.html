@@ -2726,7 +2726,7 @@ function renderRadar(){
 
   ${Math.abs(L.med)>=LEVER.SHIFT?`<div class="radar-note">이번 회차는 비교 종목의 절반이 ${BENCH_NM}보다 <b>${fx(L.med)}%p 이상</b> ${L.med>0?'앞섰습니다':'뒤졌습니다'} — 지수가 소수 대형주에 끌려 움직였다는 뜻입니다. 그래서 ①·②는 ${BENCH_NM} 대비 절대값이 아니라 <b>종목끼리의 순위</b>(상·하위⅓)로 가릅니다. ②에 ${BENCH_NM} 대비 ${L.med>0?'+':'−'}가 찍혀 있어도 <b>"다른 종목들보다 덜 반응했다"</b>는 뜻입니다.</div>`:''}
   <div class="radar-sec">${LEVER_KIND.wake.t} — ${LEVER_KIND.wake.d}</div>
-  <div class="radar-note">실적이 나오는 동안 주가가 ${BENCH_NM}보다 크게 올랐다는 건 그 숫자가 <b>예상 밖이었다</b>는 뜻입니다. 백테스트에서 이 칸은 반응이 약했던 칸보다 이후 6개월 초과수익이 <b>한국 약 +3p · 미국 약 +2p</b> 높았습니다(앞뒤 기간 모두). <b>이미 오른 종목이 올라오는 게 정상입니다</b> — 재평가는 보통 여러 달 이어집니다(조선 4사는 흑자전환 뒤 12개월 동안 +22~48%를 더 갔습니다).</div>
+  <div class="radar-note">실적이 나오는 동안 주가가 ${BENCH_NM}보다 크게 올랐다는 건 그 숫자가 <b>예상 밖이었다</b>는 뜻입니다. 백테스트에서 이 칸은 반응이 약했던 칸보다 이후 6개월 초과수익이 <b>한국 약 +3p · 미국 약 +2p</b> 높았습니다(앞뒤 기간 모두). 재평가는 보통 여러 달 이어집니다(조선 4사는 흑자전환 뒤 12개월 동안 +22~48%를 더 갔습니다). 여기서 '반응'은 실적이 나오는 몇 주 동안의 반응이라, 6개월로 보면 <b>지수보다 뒤처져 있던 종목이 많습니다</b>${(()=>{const q=L.wake.filter(m=>m.rs6!=null&&m.rs6<10).length;return L.wake.length?` — 지금 ${L.wake.length}종목 중 ${q}종목이 6개월 ${BENCH_NM} 대비 +10% 미만(카드의 RS6M)`:'';})()}. 다만 ① 안에서 <b>덜 오른 쪽이 더 나았던 것은 아닙니다</b>(한국 +0.7p · 미국 −1.0p, 백테스트) — 덜 올랐다는 이유보다 ① 이라는 사실로 보세요.</div>
   ${L.wake.length ? L.wake.slice(0,LEVER.CAP).map(m=>leverCard(m,'wake')).join('')+more(L.wake,'wake')
     : `<div class="radar-empty">이번 회차에는 해당 종목이 없습니다.</div>`}
 
