@@ -153,7 +153,8 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
       q_end: '2026-06-30', f_as_of: '2026-09-22', ir: { date: '2026-08-14', docs: [] }, ear: 12.3, ear_to: '2026-08-18',
       rs3: 5, rs6: 10, from_high: -20, pe: 15, qs: q([30, 20, 10, 5, -10, -20, -30, -40]) };
     const dupe = { ...FL, tk: 'M40', nm: '트리에도 있는 종목' };     // 합성 트리 종목과 같은 티커
-    const { w: w2, errs: e2 } = await load(page, { ...synth(REAL), flips: [FL, dupe] });
+    const unk = { ...FL, tk: 'FL02', nm: '분류없음', sec: 'Unknown' };   // 야후 분류를 못 받은 종목(실측: 에코프로)
+    const { w: w2, errs: e2 } = await load(page, { ...synth(REAL), flips: [FL, dupe, unk] });
     const E2 = s => w2.eval(s);
     t(e2.length === 0, `D.flips 가 있어도 스크립트 오류 없음${e2.length ? ' — ' + e2[0] : ''}`);
     const fl = E2('flipList()').map(m => m.tk);
@@ -162,6 +163,8 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
     t(E2("!!TKINDEX['FL01'] && TKINDEX['FL01'].flipOnly === true"),
       '색인(TKINDEX)에 들어간다 — 트레이드 카드·관심종목·프롬프트가 이걸로 찾는다');
     t(E2("TKINDEX['FL01'] ? leverKind(TKINDEX['FL01']) : null") === 'flip', '판정 = 흑자전환');
+    t(E2("flipList().find(m=>m.tk==='FL02')?.sec") === '미분류' && E2("TKINDEX['FL02']?.sec") === '미분류',
+      "분류를 못 받은 종목은 'Unknown' 대신 '미분류' — 트리와 같게");
     t(!E2('leverAll()').some(m => m.tk === 'FL01') && !E2('D.subs.some(s=>s.members.some(m=>m.tk==="FL01"))'),
       '트리·①② 판정 대상에는 들어가지 않는다 — 스프레드가 없다');
     E2('renderRadar()');
