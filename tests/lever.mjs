@@ -184,6 +184,43 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
     w2.close();
   }
 
+  // 흑자전환 칸의 안내 — '판정을 못 했다' 와 '해당 종목이 없다' 는 다르다.
+  // 미국판은 야후가 분기를 5개까지만 줘서(판정엔 8개) 칸이 늘 비는데, 예전엔 그걸
+  // "흑자전환 종목이 없습니다" 로 적었다. 문구는 시장 이름이 아니라 데이터로 가른다.
+  {
+    const flipSec = async data => {
+      const { w: w3 } = await load(page, data);
+      const P3 = w3.document.getElementById('radarPanel');
+      const sec = [...P3.querySelectorAll(':scope > .radar-sec')].find(e => e.textContent.includes('흑자전환'));
+      const note = sec?.nextElementSibling?.textContent || '';
+      let body = '', e = sec?.nextElementSibling?.nextElementSibling;
+      while (e && !e.classList.contains('radar-sec')) { body += e.textContent; e = e.nextElementSibling; }
+      const r = { depth: w3.eval('flipDepth()'), note, body };
+      w3.close();
+      return r;
+    };
+    const real = await flipSec(REAL);
+    if (page === 'us.html') {
+      t(real.depth < 8 && /판정할 수 없습니다/.test(real.note) && /판정 불가/.test(real.body) && !/종목이 없습니다/.test(real.body),
+        `미국 실데이터: 분기 ${real.depth}개라 "판정 불가" 라고 말한다 — "종목이 없다" 가 아니다`);
+    } else {
+      t(real.depth >= 8 && /빌더가 따로 실어/.test(real.note) && !/판정할 수 없습니다/.test(real.note),
+        `한국 실데이터: 분기 ${real.depth}개 · 트리 밖 종목까지 싣는다고 말한다`);
+    }
+    const cut = JSON.parse(JSON.stringify(REAL));
+    cut.subs.forEach(s => s.members.forEach(m => { if (m.qs) m.qs = m.qs.slice(0, 5); }));
+    (cut.flips || []).forEach(m => { if (m.qs) m.qs = m.qs.slice(0, 5); });
+    const c5 = await flipSec(cut);
+    t(c5.depth === 5 && /판정할 수 없습니다/.test(c5.note) && /판정 불가 — 분기 이력이 종목당 최대 5개/.test(c5.body),
+      '분기가 5개뿐인 데이터면 시장과 무관하게 판정 불가로 적는다');
+    const noFl = JSON.parse(JSON.stringify(REAL));
+    delete noFl.flips;
+    noFl.subs.forEach(s => s.members.forEach(m => { m.qs = q([5, 5, 5, 5, 1, 1, 1, 1]); }));
+    const nf = await flipSec(noFl);
+    t(/일부만 보입니다/.test(nf.note) && !/빌더가 따로 실어/.test(nf.note) && /종목이 없습니다/.test(nf.body),
+      '8분기가 있어도 빌더가 트리 밖 종목을 안 실었으면 "일부만" — 없는 걸 있다고 말하지 않는다');
+  }
+
   console.log('── 3. 화면 ──');
   const P = w.document.getElementById('radarPanel');
   const secs = [...P.querySelectorAll('.radar-sec')].map(e => e.textContent);

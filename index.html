@@ -2515,6 +2515,23 @@ function flipOf(m){
  const now=op/rv*100, prev=op0/rv0*100;
  return {now:+now.toFixed(1), prev:+prev.toFixed(1), d:+(now-prev).toFixed(1)};
 }
+// 흑자전환 판정에 쓸 수 있는 분기 깊이 — 종목당 분기(qs)의 최대 개수.
+// 판정은 최근 4분기 vs 그 전 4분기라 8개가 있어야 한다. 미국판은 야후가 분기를
+// 5개까지만 줘서 이 칸이 늘 비는데, 예전엔 그걸 '종목이 없다' 로 적었다 —
+// 판정을 못 한 것과 해당이 없는 것은 다르다.
+function flipDepth(){
+ return [...leverAll(), ...(D.flips||[])].reduce((n,m)=>Math.max(n,(m.qs||[]).length),0);
+}
+function flipNote(){
+ const why='전년 이익이 적자라 <b>스프레드가 계산되지 않아</b> 위 목록에 절대 나오지 않는 종목입니다. 조선 4사가 흑자전환 뒤 12개월씩 화면에서 사라졌던 이유가 이것입니다. <b>수익률 효과는 검증되지 않았습니다</b> — 과거 데이터가 오늘 살아 있는 종목뿐이라 적자 기업일수록 생존 편향이 큽니다.';
+ const n=flipDepth();
+ if(n<8) return why+` <b>이 데이터로는 판정할 수 없습니다</b> — 최근 4분기와 그 전 4분기(8분기)를 비교해야 하는데 종목당 분기가 최대 ${n}개입니다(분기 출처가 야후뿐이면 5개까지만 옵니다). 이 칸이 비어 있어도 흑자전환 종목이 없다는 뜻이 아닙니다 — 트레이드 카드의 분기 추이를 직접 보세요.`;
+ // 빌더가 트리 밖(전년 연간 적자) 종목을 따로 실었는가. 안 실었으면 연간이
+ // 흑자인 트리 종목만 보이므로 일부다.
+ return why+(Array.isArray(D.flips)
+   ? ' 트리에도 들어가지 못하는 종목까지 빌더가 따로 실어 <b>여기서만</b> 보여줍니다 — TOP5·점수에는 들어가지 않습니다.'
+   : ' 연간 실적이 흑자인 트리 종목만 판정하므로 <b>일부만 보입니다</b> — 전년 연간 적자 종목은 이 데이터에 없습니다.');
+}
 function flipList(){
  // 트리 종목 + 트리 밖 흑자전환 종목(D.flips). 전년 영업이익이 0 이하면 YoY 가
  // 정의되지 않아 트리에서 빠지는데, 흑자전환은 정의상 거의 전부 그 경우다
@@ -2695,9 +2712,11 @@ function renderRadar(){
  }
  leverHtml+=`
   <div class="radar-sec">${LEVER_KIND.flip.t} — 전년 적자 → 최근 흑자</div>
-  <div class="radar-note">전년 이익이 적자라 <b>스프레드가 계산되지 않아</b> 위 목록에 절대 나오지 않는 종목입니다. 트리에도 들어가지 못하는 종목까지 빌더가 따로 실어 <b>여기서만</b> 보여줍니다 — TOP5·점수에는 들어가지 않습니다. 조선 4사가 흑자전환 뒤 12개월씩 화면에서 사라졌던 이유가 이것입니다. <b>수익률 효과는 검증되지 않았습니다</b> — 과거 데이터가 오늘 살아 있는 종목뿐이라 적자 기업일수록 생존 편향이 큽니다. 연간 실적이 흑자인 종목만 트리에 들어와 <b>일부만 보입니다.</b></div>
+  <div class="radar-note">${flipNote()}</div>
   ${flips.length ? flips.slice(0,LEVER.CAP).map(m=>leverCard(m,'flip')).join('')+more(flips,'flip')
-    : `<div class="radar-empty">분기 원값으로 확인되는 흑자전환 종목이 없습니다.</div>`}`;
+    : `<div class="radar-empty">${flipDepth()<8
+        ? `판정 불가 — 분기 이력이 종목당 최대 ${flipDepth()}개입니다(8개 필요). 흑자전환 종목이 없다는 뜻이 아닙니다.`
+        : '분기 원값으로 확인되는 흑자전환 종목이 없습니다.'}</div>`}`;
 
  panel.innerHTML=`
   <div class="radar-head">🎯 선취매 레이더<i class="help-i" onclick="tip('radar')">i</i></div>
