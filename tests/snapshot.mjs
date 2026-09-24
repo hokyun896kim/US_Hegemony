@@ -116,6 +116,16 @@ const lever = window.eval(`(()=>{
           flip:flipList().map(m=>({...pick(m),flip:flipOf(m)}))};
 })()`);
 
+// 주목 산업 → 주도기업 후보(2026-09-24 재구성). 산업 선택(한국 +4.0p)과 산업 안 순서(미검증)를
+// 표본 밖에서 다시 재려면 그 주의 판정을 남겨야 한다(docs/backtest-leaders.md).
+const focus = window.eval(`(()=>{
+  const F=indFocus();
+  return {lever_judged:F.lever.judged, lever_n:F.lever.n, rule:LEAD.rule,
+          list:F.list.map(x=>({sic:x.s.sic, nm:x.s.ko||x.s.desc, quiet:x.quiet, lever:x.lever,
+            acc:x.acc, qsp:x.qsp, rs:x.rs, ear:x.ear, members:x.s.members.map(m=>m.tk),
+            lead:leadSort(indLeadCands(x),LEAD.rule).slice(0,3).map(m=>m.tk)}))};
+})()`);
+
 // coverage 를 함께 남긴다. 그 주 데이터가 얼마나 온전했는지 모르면 나중에
 // 적중률을 어디까지 믿을지 판단할 수 없다 — 123/233 인 주와 221/233 인 주는
 // 같은 무게로 셀 수 없다.
@@ -130,7 +140,7 @@ const rec = {
   // 화면 기본이 아닌 배점으로 돌렸는가 — 백테스트 산출물을 주간 박제와
   // 섞어 세지 않기 위해서다
   weights_overridden: !!WEIGHTS,
-  top5, radar, lever,
+  top5, radar, lever, focus,
 };
 
 const dir = path.isAbsolute(OUTDIR) ? OUTDIR : path.join(root, OUTDIR);
@@ -142,6 +152,7 @@ console.log(`박제 ${path.relative(root, out)}`);
 if (flag('data')) console.log(`  입력 ${DATA}`);
 console.log(`  기준일 ${D.updated} · ${rec.n_members}종목 · TOP5 ${top5.length} · 구 레이더 ${radar.length}`
   + ` · ① 깨어남 ${lever.wake.length} · ② 안 믿음 ${lever.doubt.length} · 흑자전환 ${lever.flip.length}`
+  + ` · 주목 산업 ${focus.list.length}`
   + (lever.n < 30 ? ` (실적 반응 판정 가능 ${lever.n}종목 — 목록을 내지 않음)` : ''));
 if (rec.coverage) console.log(`  그 주 실적층: 새로 ${rec.coverage.fresh}/${rec.coverage.total} (이월 ${rec.coverage.carried})`);
 dom.window.close();

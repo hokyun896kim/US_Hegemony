@@ -166,33 +166,75 @@ for (const [file, url] of [['index.html', 'https://x.test/'], ['us.html', 'https
   //    — 여기서는 계산 함수 수준으로만 확인한다
   t(E('LAST_INDS').length <= 4, `목록 상한 4 유지 (실제 ${E('LAST_INDS').length})`);
 
-  // 5) 새 산업 레이더 — 스프레드 × 반응 (2026-09-24, docs/backtest-industry.md H2)
-  //    판정 산업이 15개 미만이면 분위가 의미 없어 판정하지 않는다. 이 픽스처는
-  //    판정 산업이 4개라 '판정 불가' 여야 하고, '없다' 라고 적으면 거짓말이다.
+  // 5) 주목 산업 = 안 깨움 ∪ 막 감지 (2026-09-24 '산업 → 주도기업', docs/backtest-leaders.md)
+  //    막 감지(indLever)는 판정 산업이 15개 미만이면 분위가 의미 없어 판정하지 않는다. 이
+  //    픽스처는 판정 산업이 4개라 '판정 불가' 여야 하고, '없다' 라고 적으면 거짓말이다.
   const P = d.getElementById('radarPanel');
   const secs = [...P.querySelectorAll(':scope > .radar-sec')].map(e => e.textContent);
-  t(secs.findIndex(x => /이익이 좋아졌고 시장이 반응한 곳/.test(x))
-      < secs.findIndex(x => /가속 중인데 RS 가 낮은 곳/.test(x)),
-    '새 산업 목록(스프레드 × 반응)이 옛 산업 목록보다 먼저 나온다');
-  t(!secs.some(x => /아직 안 쟀습니다/.test(x)) && secs.some(x => /약 \+0\.7p/.test(x)),
-    "옛 산업 목록의 '아직 안 쟀습니다' 가 실측 결과로 바뀌었다");
-  t(P.querySelectorAll('.rl').length === 0 && /판정 불가 — 실적 반응이 있는 판정 산업이 \d+개/.test(P.textContent),
-    '판정 산업이 모자라면 "판정 불가" — "해당 없음" 과 구분한다');
+  t(/주목 산업 — 시장이 안 깨웠거나 이제 막 감지한 곳/.test(secs[0] || ''),
+    `주목 산업이 레이더 맨 위 칸이다 (${(secs[0] || '').slice(0, 20)})`);
+  t(!secs.some(x => /가속 중인데 RS 가 낮은 곳|이익이 좋아졌고 시장이 반응한 곳/.test(x)),
+    '옛 산업 두 목록은 주목 산업 한 목록으로 합쳐졌다');
+  t(secs[0].includes(E('IND_EVID').tag), `주목 산업 칸에 시장별 근거 표시 (${E('IND_EVID').tag})`);
+  t(file === 'us.html' ? /근거 약함/.test(secs[0]) : /\+4\.0p/.test(secs[0]),
+    '근거 표시가 판정 규칙대로 — 한국 +4.0p · 미국 근거 약함');
+  t(P.querySelectorAll('.ri.lv').length === 0 && /판정 불가 — 실적 반응이 있는 판정 산업이 \d+개/.test(P.textContent),
+    '막 감지 판정 산업이 모자라면 "판정 불가" — "해당 없음" 과 구분한다');
+  t(/안 깨움/.test(rows[0].querySelector('.ri-nm').textContent), '본후보(indPass) 산업에 안 깨움 태그');
+  t(!!rows[0].querySelector('.ld-box') && rows.filter(r => r.classList.contains('obs')).every(r => !r.querySelector('.ld-box')),
+    '주목 산업에만 주도기업 후보 칸이 붙는다(관찰 산업에는 없다)');
+  t(/주도기업 후보 없음/.test(rows[0].querySelector('.ld-box').textContent) && !rows[0].querySelector('.ld'),
+    '실적 반응·4분기 매출이 없으면 후보를 지어내지 않고 "후보 없음"');
 
   // 판정 산업 20개 합성: 분기 중앙 = i, 반응 중앙 = (7i mod 20).
   //   스프레드 상위 40% 문턱 = 정렬[12] = 12 · 반응 상위⅓ 문턱 = 정렬[13] = 13
   //   → i ≥ 12 이고 반응 ≥ 13 인 산업 = 14(18) · 17(19) · 19(13), 반응 순 17 → 14 → 19
   //   backtest_industry.py 자가진단의 lever_set 과 같은 답이다(파이썬판과 같은 규칙).
   const many = { ...D, subs: Array.from({ length: 20 }, (_, i) => sub(`Ind${i}`, `산업${i}`,
-    [0, 1].map(j => stock(`I${i}_${j}`, { q_spread: i, ear: (7 * i) % 20 })))) };
+    [0, 1].map(j => stock(`I${i}_${j}`, { q_spread: i, ear: (7 * i) % 20,
+      qs: [['2026-06-30', 100 + j], ['2026-03-31', 100], ['2025-12-31', 100], ['2025-09-30', 100]] })))) };
   w.eval(`D=${JSON.stringify(many)}; renderRadar()`);
   const IL = E('indLever()');
   t(IL.judged && IL.n === 20, `판정 산업 20개면 판정한다 (${IL.n})`);
   t(JSON.stringify(IL.wake.map(x => x.s.desc)) === '["Ind17","Ind14","Ind19"]',
     `스프레드 상위 40% × 반응 상위⅓, 반응 순 (${IL.wake.map(x => x.s.desc).join(',')})`);
-  const rl = [...d.querySelectorAll('#radarPanel .rl')].map(e => e.textContent.replace(/\s+/g, ' '));
+  const rl = [...d.querySelectorAll('#radarPanel .ri.lv')].map(e => e.textContent.replace(/\s+/g, ' '));
   t(rl.length === 3 && /산업17/.test(rl[0]) && /반응 중앙 \+19%p/.test(rl[0]) && /분기 중앙 \+17p/.test(rl[0]),
-    `화면 줄에 산업·반응 중앙·분기 중앙 (${(rl[0] || '').slice(0, 60)})`);
+    `막 감지 줄에 산업·반응 중앙·분기 중앙 (${(rl[0] || '').slice(0, 60)})`);
+  // 주목 산업 순서: 둘 다(안 깨움+막 감지) → 막 감지 → 안 깨움. 이 합성은 막 감지 셋이 모두
+  // 안 깨움도 통과한다(RS −20) — 그래서 맨 앞 세 줄이 반응 순 17 → 14 → 19 이다.
+  const snapOf0 = desc => E('indSnapshot')(E('indAggJudged')(E('D').subs.find(x => x.desc === desc)));
+  const FO = E('indFocus()').list;
+  t(JSON.stringify(FO.slice(0, 3).map(x => x.s.desc)) === '["Ind17","Ind14","Ind19"]' && FO[0].quiet && FO[0].lever,
+    `주목 산업 순서 — 둘 다 → 막 감지 → 안 깨움 (${FO.slice(0, 4).map(x => x.s.desc).join(',')})`);
+  const r0 = d.querySelector('#radarPanel .ri.lv');
+  t(/안 깨움/.test(r0.textContent) && /막 감지/.test(r0.textContent), '둘 다인 산업에는 태그 두 개');
+  const lds = [...r0.querySelectorAll('.ld')].map(e => e.textContent.replace(/\s+/g, ' '));
+  t(lds.length === 2 && /I17_0/.test(lds[0]) && /I17_1/.test(lds[1]) && /매출 4분기/.test(lds[0]),
+    `주도기업 후보 — 스프레드 순, 같으면 종목코드 순 · 4분기 매출 표시 (${(lds[0] || '').slice(0, 50)})`);
+  t(/순서 미검증/.test(r0.querySelector('.ld-h').textContent)
+      && r0.querySelector('.ld-nv').getAttribute('title') === E('IND_EVID').lead
+      && /산업 평균과 같았습니다/.test(E('IND_EVID').lead) && /검증된 순서가 아닙니다/.test(P.textContent),
+    '후보 정렬이 수익률로 검증된 순서가 아니라고 밝힌다(판정 규칙 1 — 세 규칙 모두 탈락)');
+  t(E('LEAD').rule === 'sp', '판정 규칙 1 결과대로 정렬 규칙 = 스프레드');
+  t(P.querySelectorAll(':scope > .ri').length === E('IND_FOCUS_CAP') && !!P.querySelector('details.radar-more .ri'),
+    `주목 산업은 ${E('IND_FOCUS_CAP')}개까지 펼치고 나머지는 접는다`);
+  t(E('LAST_INDS').length === FO.length && E('LAST_INDS')[0].s.desc === 'Ind17',
+    '스냅샷 복사 목록 = 화면 순서(접힌 것까지)');
+  // 주도기업 후보 판정 함수
+  const tr = (qs) => E('ttmRev')({ qs });
+  t(tr([['2026-06-30', 1], ['2026-03-31', 2], ['2025-12-31', 3], ['2025-09-30', 4]]) === 10, '최근 4분기 매출 합');
+  t(tr([['2026-06-30', 1], ['2025-12-31', 2], ['2025-09-30', 3], ['2025-06-30', 4]]) === null,
+    '분기가 하나라도 비면 합하지 않는다(네 분기가 1년이 아니다 — flipOf 와 같은 검사)');
+  t(tr([['2026-06-30', 1], ['2026-03-31', null], ['2025-12-31', 3], ['2025-09-30', 4]]) === null
+    && tr([['2026-06-30', 1]]) === null && E('ttmRev')({}) === null, '빈 분기·모자란 분기는 null — 지어내지 않는다');
+  const ls = E('leadSort')([{ tk: 'B', q_spread: 5, ear: 1 }, { tk: 'A', q_spread: 5, ear: 9 }, { tk: 'C', q_spread: 9, ear: 0 }], 'ear');
+  t(ls.map(m => m.tk).join('') === 'ABC', `leadSort — 규칙 값 내림차순 (${ls.map(m => m.tk).join('')})`);
+  const snap17 = E('indSnapshot')(E('indAggJudged')(E('D').subs.find(x => x.desc === 'Ind17')));
+  t(/주목 산업 판정: 안 깨움 \+ 막 감지/.test(snap17) && /\[주도기업 후보 — 분기 스프레드 순 상위 2\/2/.test(snap17)
+    && /I17_0/.test(snap17) && /가격결정력을 가진\) 종목이 누구인지/.test(snap17),
+    '산업 스냅샷에 주목 산업 판정·주도기업 후보·GPT 검증 몫');
+  t(/주목 산업 판정: 해당 없음/.test(snapOf0('Ind0')), '주목 산업이 아니면 "해당 없음"');
   t(!/null|NaN|undefined/.test(rl.join(' ')), '줄에 null·NaN 이 새지 않는다');
   // GPT 로 넘기는 산업 스냅샷에도 같은 판정이 실린다 — 안 실리면 GPT 는 새 목록을 모른다
   const snapOf = desc => E('indSnapshot')(E('indAggJudged')(E('D').subs.find(x => x.desc === desc)));
