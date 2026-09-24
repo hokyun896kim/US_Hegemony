@@ -662,6 +662,27 @@ def dart_part(code: str, corp: str) -> dict:
 # 몫만 일꾼 몇 개가 뒤에 올 종목을 미리 받아 두고, 메인 루프는 차례가 오면
 # 꺼내 쓴다. 보내는 간격은 dart._throttle 이 일꾼 전체 합계로 지킨다.
 DART_WORKERS = 4
+# 일꾼 결과를 기다리는 상한(초). 종목 멈춤 감시(--stall 90초)와 따로 둔다 —
+# 스모크 실측(#125): 일꾼이 막 출발한 첫 종목들은 DART 몫 전체(요청 10건 × ~7초)를
+# 기다려야 하는데, 그 대기까지 90초 감시에 들어가 2/40 종목이 DART 를 버리고
+# yfinance 로 떨어졌다. 감시는 원래 야후가 매달리는 걸 끊으려는 장치다.
+DART_WAIT = 180
+
+
+def wait_dart(tk: str) -> None:
+    """이 종목의 일꾼 작업이 끝나길 기다린다(멈춤 감시 밖에서, 상한 DART_WAIT).
+
+    상한을 넘기면 그냥 돌아간다 — fetch_stock 이 다시 기다리다 멈춤 감시에
+    걸리면 yfinance 로 간다(예전 차례 모드와 같은 결과).
+    """
+    fut = DART_PRE.get(tk.split(".")[0])
+    if fut is None:
+        return
+    with _spent("DART 대기"):
+        try:
+            fut.result(timeout=DART_WAIT)
+        except Exception:  # noqa: BLE001 — 시간 초과·취소는 fetch_stock 이 처리한다
+            pass
 
 
 def start_dart_pool(rows, workers: int, log=print):
@@ -1180,6 +1201,7 @@ def build(limit, min_cap, sleep, log=print, budget=None, stall=0, prev=None,
                 log(f"  ⏳ 시간 예산 소진({budget.spent()/60:.0f}분) — 남은 {skipped}종목을 "
                     f"건너뜁니다. 받은 {len(members)}종목으로 만듭니다.")
                 break
+            wait_dart(r["tk"])
             try:
                 with _stall_guard(stall), _spent("= 종목 전체"):
                     fin = fetch_stock(r["tk"], log)
@@ -1986,6 +2008,37 @@ def selftest():
             check(h is not None and not calls and h["ir"] is None and not is_dart(h.get("q_src"))
                   and any("DART 대기 중 멈춤" in m for m in logs),
                   "기다리다 멈춤 감시가 터지면 다시 받지 않고 yfinance 분기로 간다(종목은 남는다)")
+
+            # 빌드 루프는 멈춤 감시에 들어가기 전에 wait_dart 로 먼저 기다린다 —
+            # 첫 종목들은 일꾼이 막 출발해 DART 몫 전체를 기다려야 한다(실측 2/40 이
+            # 90초 감시에 걸려 DART 를 버렸다). 상한을 넘기면 조용히 돌아간다.
+            from concurrent.futures import ThreadPoolExecutor
+            saved_wait = DART_WAIT
+            try:
+                with ThreadPoolExecutor(1) as ex:
+                    DART_PRE[codes[1]] = ex.submit(time.sleep, 0.3)
+                    t0 = time.monotonic()
+                    wait_dart(tks[1])
+                    check(DART_PRE[codes[1]].done() and time.monotonic() - t0 >= 0.25,
+                          "wait_dart 는 일꾼이 끝날 때까지 기다린다")
+                    globals()["DART_WAIT"] = 0.05
+                    DART_PRE[codes[1]] = ex.submit(time.sleep, 0.5)
+                    t0 = time.monotonic()
+                    wait_dart(tks[1])
+                    check(time.monotonic() - t0 < 0.3 and not DART_PRE[codes[1]].done(),
+                          "상한(DART_WAIT)을 넘기면 예외 없이 돌아간다 — 뒷일은 fetch_stock 몫")
+                    t0 = time.monotonic()
+                    wait_dart("999999.KS")
+                    check(time.monotonic() - t0 < 0.05, "걸어 둔 작업이 없는 종목은 바로 지나간다")
+                # 순서가 핵심이라 빌드 루프를 직접 본다(루프 전체를 돌리려면 유니버스·
+                # 시세까지 흉내 내야 한다). 감시 안으로 들어가면 같은 문제가 조용히 돌아온다.
+                import inspect
+                src = inspect.getsource(build)
+                check(0 < src.find('wait_dart(r["tk"])') < src.find("_stall_guard(stall)"),
+                      "빌드 루프가 멈춤 감시에 들어가기 전에 wait_dart 로 기다린다")
+            finally:
+                globals()["DART_WAIT"] = saved_wait
+                DART_PRE.clear()
         finally:
             DART_PRE.clear()
             (yf.Ticker, dart._list_reports, dart.quarters, naver.quarters,
