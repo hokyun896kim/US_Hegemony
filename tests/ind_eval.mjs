@@ -46,7 +46,13 @@ w.eval(`window.__indEval = function(){
       doubt:x.clean.filter(m=>doubt.has(m.tk)).length,
       members:s.members.map(m=>m.tk)});
   });
-  return {n:L.n, wake:[...wake], ilJudged:IL.judged, inds:out};
+  // ① 종목의 가격 위치(backtest_wake.py — ① 안에서 '막 깨기 시작' 이 나은가)와
+  // 비교 기준이 될 판정 종목 전체(스프레드·반응이 둘 다 있는 종목, 중복 제거)
+  const seen = new Set(), pool = [];
+  D.subs.forEach(s=>s.members.forEach(m=>{ if(seen.has(m.tk)) return; seen.add(m.tk);
+    if(m.q_spread!=null && earOf(m)!=null) pool.push(m.tk); }));
+  return {n:L.n, wake:[...wake], ilJudged:IL.judged, inds:out, pool,
+          wakeD:L.wake.map(m=>({tk:m.tk, rs6:m.rs6, fh:m.from_high}))};
 }`);
 
 const res = {};
