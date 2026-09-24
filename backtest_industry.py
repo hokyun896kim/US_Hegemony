@@ -201,6 +201,29 @@ def hyp_at(inds, pf):
     return out
 
 
+def lever_set(inds):
+    """화면 indLever 와 같은 규칙의 파이썬판 — 산업 판정에 성과를 쓰지 않는다.
+
+    H2 는 이후 수익률이 있는 산업만으로 분위를 나눴지만(그래야 비교가 된다), 화면은
+    미래를 모르므로 판정 대상 전부로 나눈다. 이 함수는 화면 쪽 규칙이다. 시점마다
+    화면의 결과(ilev)와 대조해 한 곳이라도 다르면 보고서에 적는다.
+    """
+    pool = [x for x in inds if x["eligible"] and x["ear"] is not None]
+    if len(pool) < MIN_H2:
+        return set()
+    qs = sorted(x["qsp"] for x in pool)
+    er = sorted(x["ear"] for x in pool)
+    tsp, hi = qs[int(len(qs) * (1 - BX.SP_TOP))], er[len(er) * 2 // 3]
+    return {x["sic"] for x in pool if x["qsp"] >= tsp and x["ear"] >= hi}
+
+
+def parity(res):
+    """(화면 판정과 파이썬 판정이 다른 시점 수, 전체 시점 수)"""
+    bad = sum(1 for r in res.values()
+              if lever_set(r["inds"]) != {x["sic"] for x in r["inds"] if x.get("ilev")})
+    return bad, len(res)
+
+
 def analyze(res, pdict, bdict):
     """{가설: {h: {T: 값}}}, 시점별 판정 대상 산업 수."""
     stats, counts = {}, {}
@@ -237,7 +260,7 @@ def verdict(s6):
     return bool(s6 and s6["med"] > 0 and (s6["a"] or 0) > 0 and (s6["b"] or 0) > 0)
 
 
-def report(market, stats, counts):
+def report(market, stats, counts, par=None):
     TS = sorted(counts)
     if not TS:
         return f"## {market} — 표본 없음", {}
@@ -246,7 +269,9 @@ def report(market, stats, counts):
     ps = [p for _, p in counts.values()]
     L = [f"## {'한국' if market == 'kr' else '미국'} — {TS[0]} ~ {TS[-1]} · 월말 {len(TS)}시점 · 반쪽 경계 {cut}", "",
          f"- 판정 대상 산업 시점당 중앙 **{st.median(ns):.0f}개**(최소 {min(ns)} · 최대 {max(ns)}) · "
-         f"현행 레이더 통과 산업 시점당 중앙 **{st.median(ps):.0f}개**(0개인 시점 {sum(p == 0 for p in ps)})", "",
+         f"현행 레이더 통과 산업 시점당 중앙 **{st.median(ps):.0f}개**(0개인 시점 {sum(p == 0 for p in ps)})",
+         *([f"- 화면 `indLever` 판정과 이 스크립트의 같은 규칙 판정이 다른 시점 **{par[0]}/{par[1]}**"]
+           if par else []), "",
          "| 가설 | 3개월 | 6개월 | 판정 규칙 통과(6개월) |", "|---|---|---|---|"]
     ok = {}
     for k in ("H1", "H1b", "H2", "H3", "H3x"):
@@ -274,7 +299,10 @@ def main(argv=None):
         print(f"[{m}] 판정")
         res, pdict, bdict = judge(m)
         stats, counts = analyze(res, pdict, bdict)
-        txt, oks[m] = report(m, stats, counts)
+        par = parity(res)
+        if par[0]:
+            print(f"  ⚠ 화면 판정과 다른 시점 {par[0]}/{par[1]}")
+        txt, oks[m] = report(m, stats, counts, par)
         parts.append(txt)
         print(txt)
     both = {k: all(o.get(k) for o in oks.values()) for k in LABEL} if len(oks) == 2 else {}
@@ -364,6 +392,14 @@ def selftest() -> int:
     wk = [mk("a", wake=3), mk("b", wake=2), mk("c"), mk("d"), mk("e"), mk("f")]
     hv = hyp_at(wk, {"a": 9, "b": 7, "c": 1, "d": 1, "e": 1, "f": 1})
     t(hv["H3"] == 7 and hv["H3x"] == 7, f"H3 = ① 비율 상위⅓ − 하위⅓ · H3′ = ① 있음 − 없음 ({hv['H3']}, {hv['H3x']})")
+
+    ls = lever_set(many)
+    t(ls == {x["sic"] for x in many if x["qsp"] >= 12 and x["ear"] >= 13},
+      f"화면 규칙판 — 스프레드 상위 40% × 반응 상위⅓, 성과 없이 판정 ({sorted(ls)})")
+    t(lever_set(many[:10]) == set(), f"화면 규칙판도 판정 산업이 {MIN_H2}개 미만이면 비운다")
+    t(parity({"t": {"inds": [dict(x, ilev=x["sic"] in ls) for x in many]}}) == (0, 1)
+      and parity({"t": {"inds": [dict(x, ilev=False) for x in many]}}) == (1, 1),
+      "화면 판정과 다르면 센다")
 
     print("\n── 판정 규칙 ──")
     t(verdict({"med": 1, "a": 0.5, "b": 0.1}) and not verdict({"med": 1, "a": -0.1, "b": 2})

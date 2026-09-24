@@ -33,19 +33,20 @@ const w = dom.window;
 // 가속·분기 중앙 있음)를 쓰고, 산업마다 화면 판정(indPass)과 가설에 필요한 값을 낸다.
 w.eval(`window.__indEval = function(){
   const L = leverLists(), wake = new Set(L.wake.map(m=>m.tk)), doubt = new Set(L.doubt.map(m=>m.tk));
+  // 화면의 새 산업 레이더(indLever) — 파이썬이 같은 규칙으로 낸 판정과 시점마다 대조한다
+  const IL = indLever(), ilw = new Set(IL.wake.map(x=>x.s.sic));
   const out = [];
   D.subs.forEach(s=>{
     const x = indAgg(s);
     const ok = !isBag(s) && x.clean.length>=2 && x.acc!=null && x.qsp!=null;
-    const ears = x.clean.map(m=>earOf(m)).filter(v=>v!=null);
     out.push({sic:s.sic, desc:s.desc, bag:isBag(s), eligible:ok, pass:ok && indPass(x),
       acc:x.acc, qsp:x.qsp, rs:x.rs, hits:x.hits.length, clean:x.clean.length,
-      ear:ears.length>=2 ? medOf(ears) : null,
+      ear:indEar(x), ilev:ilw.has(s.sic),
       wake:x.clean.filter(m=>wake.has(m.tk)).length,
       doubt:x.clean.filter(m=>doubt.has(m.tk)).length,
       members:s.members.map(m=>m.tk)});
   });
-  return {n:L.n, wake:[...wake], inds:out};
+  return {n:L.n, wake:[...wake], ilJudged:IL.judged, inds:out};
 }`);
 
 const res = {};
