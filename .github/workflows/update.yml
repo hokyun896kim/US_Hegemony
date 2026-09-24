@@ -202,6 +202,8 @@ jobs:
           # git add 하면 pathspec 오류로 스텝이 죽고 — 실측으로 run #22 에서
           # 가격 갱신을 다 해놓고 커밋을 못 했다 — 데이터가 통째로 버려진다.
           [ -f data/sec_tickers.json ] && git add data/sec_tickers.json || true
+          # SEC 분기 이력 — SEC 가 막힌 회차에 야후 5분기를 8분기로 늘리는 데 쓴다
+          [ -f data/sec_quarters_us.json ] && git add data/sec_quarters_us.json || true
           git diff --staged --quiet && echo "변경 없음" && exit 0
           # 커밋 메시지가 회차의 실제 내용과 어긋나면 이력이 거짓말을 한다.
           # 세 갈래다: 전체 빌드 성공 / 야후로 실적층 일부 / 가격층만.

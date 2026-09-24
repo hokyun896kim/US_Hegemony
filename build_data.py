@@ -429,6 +429,16 @@ for _r in rows:
         else: _m["next_earn"]=None; _m["d_until"]=None
 
 print("[7/7] 저장")
+# SEC 가 열린 회차에 받은 분기를 이력으로 남긴다. SEC 는 Actions 공유 출구 IP 에서
+# 자주 막히고(실측 최근 6회 전부), 그 회차에는 refresh_prices.py 가 야후로 실적층을
+# 받는데 야후는 분기를 5개까지만 준다 — 이 이력이 흑자전환 판정용 8분기를 만든다.
+_hist={}
+for _r in rows:
+    for _m in _r["members"]:
+        if _m.get("qs"):
+            _m["qs_src"]="SEC"; _hist[_m["tk"]]=_m["qs"]
+try: print(f"    SEC 분기 이력 저장 {buildlib.save_sec_hist(_hist)}종목")
+except Exception as _e: print(f"    SEC 분기 이력 저장 실패({_e}) — 다음 회차에 다시 한다")
 out={"sectors":sectors,"subs":rows,
      "market":{"vix":vix_now,"vix_state":vix_state,"spy3":round(spy3,1),"spy6":round(spy6,1)},
      # 전체 빌드라 펀더멘털도 오늘 것이다. refresh_prices.py 가 도는 회차에는
