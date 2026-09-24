@@ -154,6 +154,11 @@ jobs:
             echo "limit=40"     >> "$GITHUB_OUTPUT"
             echo "commit=false" >> "$GITHUB_OUTPUT"
             echo "floor=0"      >> "$GITHUB_OUTPUT"
+            # 스모크는 DART 재사용분을 무시하고 전부 받는다. 재사용분이 커밋된 뒤로
+            # 평소 회차는 새로 받는 종목이 적어, 스모크가 가장 무거운 경로(공시
+            # 마감 주 — 거의 전 종목 재수신)를 한 번도 안 태운다. 커밋하지 않으니
+            # 재사용분 파일도 건드리지 않는다.
+            echo "extra=--dart-fresh" >> "$GITHUB_OUTPUT"
             echo "::notice::개발 브랜치 스모크 빌드 — 40종목만 받고 커밋하지 않습니다(덮어쓰기 문턱 해제)"
           fi
 
@@ -173,7 +178,7 @@ jobs:
           python build_tree_kr.py \
             --limit ${{ steps.mode.outputs.limit }} \
             --deadline 310 \
-            --floor ${{ steps.mode.outputs.floor }}
+            --floor ${{ steps.mode.outputs.floor }} ${{ steps.mode.outputs.extra }}
 
       - name: Summarize
         if: inputs.probe == '' && steps.need.outputs.run == 'true'
