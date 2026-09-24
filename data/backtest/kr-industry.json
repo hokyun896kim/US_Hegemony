@@ -1,0 +1,4866 @@
+{
+"kind": "industry",
+"market": "kr",
+"built": "2026-09-24",
+"note": "과거 종목에 오늘의 분류를 붙였다 — 분류가 거의 안 바뀌지만 look-ahead 가 조금 있다",
+"stocks": {
+"032350.KS": {
+"sic": "resorts_casinos",
+"desc": "Resorts & Casinos",
+"ko": "리조트·카지노",
+"gics": "경기소비재",
+"src": "tree"
+},
+"035250.KS": {
+"sic": "resorts_casinos",
+"desc": "Resorts & Casinos",
+"ko": "리조트·카지노",
+"gics": "경기소비재",
+"src": "tree"
+},
+"064350.KS": {
+"sic": "railroads",
+"desc": "Railroads",
+"ko": "철도",
+"gics": "산업재",
+"src": "tree"
+},
+"015760.KS": {
+"sic": "utilities_regulated_electric",
+"desc": "Utilities - Regulated Electric",
+"ko": "전력",
+"gics": "유틸리티",
+"src": "tree"
+},
+"196170.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "tree"
+},
+"068270.KS": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "tree"
+},
+"326030.KS": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "tree"
+},
+"207940.KS": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "tree"
+},
+"214450.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "tree"
+},
+"145020.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "tree"
+},
+"252990.KQ": {
+"sic": "semiconductors",
+"desc": "Semiconductors",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "tree"
+},
+"000660.KS": {
+"sic": "semiconductors",
+"desc": "Semiconductors",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "tree"
+},
+"402340.KS": {
+"sic": "semiconductors",
+"desc": "Semiconductors",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "tree"
+},
+"000990.KS": {
+"sic": "semiconductors",
+"desc": "Semiconductors",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "tree"
+},
+"267250.KS": {
+"sic": "oil_gas_refining_marketing",
+"desc": "Oil & Gas Refining & Marketing",
+"ko": "정유",
+"gics": "에너지",
+"src": "tree"
+},
+"006120.KS": {
+"sic": "oil_gas_refining_marketing",
+"desc": "Oil & Gas Refining & Marketing",
+"ko": "정유",
+"gics": "에너지",
+"src": "tree"
+},
+"018670.KS": {
+"sic": "oil_gas_refining_marketing",
+"desc": "Oil & Gas Refining & Marketing",
+"ko": "정유",
+"gics": "에너지",
+"src": "tree"
+},
+"096770.KS": {
+"sic": "oil_gas_refining_marketing",
+"desc": "Oil & Gas Refining & Marketing",
+"ko": "정유",
+"gics": "에너지",
+"src": "tree"
+},
+"010950.KS": {
+"sic": "oil_gas_refining_marketing",
+"desc": "Oil & Gas Refining & Marketing",
+"ko": "정유",
+"gics": "에너지",
+"src": "tree"
+},
+"008930.KS": {
+"sic": "medical_distribution",
+"desc": "Medical Distribution",
+"ko": "의료 유통",
+"gics": "헬스케어",
+"src": "tree"
+},
+"042660.KS": {
+"sic": "aerospace_defense",
+"desc": "Aerospace & Defense",
+"ko": "항공우주·방산",
+"gics": "산업재",
+"src": "tree"
+},
+"329180.KS": {
+"sic": "aerospace_defense",
+"desc": "Aerospace & Defense",
+"ko": "항공우주·방산",
+"gics": "산업재",
+"src": "tree"
+},
+"009540.KS": {
+"sic": "aerospace_defense",
+"desc": "Aerospace & Defense",
+"ko": "항공우주·방산",
+"gics": "산업재",
+"src": "tree"
+},
+"439260.KS": {
+"sic": "aerospace_defense",
+"desc": "Aerospace & Defense",
+"ko": "항공우주·방산",
+"gics": "산업재",
+"src": "tree"
+},
+"010140.KS": {
+"sic": "aerospace_defense",
+"desc": "Aerospace & Defense",
+"ko": "항공우주·방산",
+"gics": "산업재",
+"src": "tree"
+},
+"443060.KS": {
+"sic": "aerospace_defense",
+"desc": "Aerospace & Defense",
+"ko": "항공우주·방산",
+"gics": "산업재",
+"src": "tree"
+},
+"079550.KS": {
+"sic": "aerospace_defense",
+"desc": "Aerospace & Defense",
+"ko": "항공우주·방산",
+"gics": "산업재",
+"src": "tree"
+},
+"047810.KS": {
+"sic": "aerospace_defense",
+"desc": "Aerospace & Defense",
+"ko": "항공우주·방산",
+"gics": "산업재",
+"src": "tree"
+},
+"012450.KS": {
+"sic": "aerospace_defense",
+"desc": "Aerospace & Defense",
+"ko": "항공우주·방산",
+"gics": "산업재",
+"src": "tree"
+},
+"272210.KS": {
+"sic": "aerospace_defense",
+"desc": "Aerospace & Defense",
+"ko": "항공우주·방산",
+"gics": "산업재",
+"src": "tree"
+},
+"001430.KS": {
+"sic": "steel",
+"desc": "Steel",
+"ko": "철강",
+"gics": "소재",
+"src": "tree"
+},
+"004020.KS": {
+"sic": "steel",
+"desc": "Steel",
+"ko": "철강",
+"gics": "소재",
+"src": "tree"
+},
+"005490.KS": {
+"sic": "steel",
+"desc": "Steel",
+"ko": "철강",
+"gics": "소재",
+"src": "tree"
+},
+"031330.KQ": {
+"sic": "electronics_computer_distribution",
+"desc": "Electronics & Computer Distribution",
+"ko": "전자·컴퓨터 유통",
+"gics": "정보기술",
+"src": "tree"
+},
+"010130.KS": {
+"sic": "other_industrial_metals_mining",
+"desc": "Other Industrial Metals & Mining",
+"ko": "비철금속",
+"gics": "소재",
+"src": "tree"
+},
+"006280.KS": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "tree"
+},
+"000100.KS": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "tree"
+},
+"068760.KQ": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "tree"
+},
+"069620.KS": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "tree"
+},
+"128940.KS": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "tree"
+},
+"195940.KQ": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "tree"
+},
+"111770.KS": {
+"sic": "apparel_manufacturing",
+"desc": "Apparel Manufacturing",
+"ko": "의류 제조",
+"gics": "경기소비재",
+"src": "tree"
+},
+"009970.KS": {
+"sic": "apparel_manufacturing",
+"desc": "Apparel Manufacturing",
+"ko": "의류 제조",
+"gics": "경기소비재",
+"src": "tree"
+},
+"383220.KS": {
+"sic": "apparel_manufacturing",
+"desc": "Apparel Manufacturing",
+"ko": "의류 제조",
+"gics": "경기소비재",
+"src": "tree"
+},
+"031210.KS": {
+"sic": "insurance_diversified",
+"desc": "Insurance - Diversified",
+"ko": "종합보험",
+"gics": "금융",
+"src": "tree"
+},
+"081660.KS": {
+"sic": "leisure",
+"desc": "Leisure",
+"ko": "레저",
+"gics": "경기소비재",
+"src": "tree"
+},
+"475150.KS": {
+"sic": "utilities_renewable",
+"desc": "Utilities - Renewable",
+"ko": "Utilities - Renewable",
+"gics": "유틸리티",
+"src": "tree"
+},
+"012630.KS": {
+"sic": "engineering_construction",
+"desc": "Engineering & Construction",
+"ko": "건설·엔지니어링",
+"gics": "산업재",
+"src": "tree"
+},
+"006360.KS": {
+"sic": "engineering_construction",
+"desc": "Engineering & Construction",
+"ko": "건설·엔지니어링",
+"gics": "산업재",
+"src": "tree"
+},
+"294870.KS": {
+"sic": "engineering_construction",
+"desc": "Engineering & Construction",
+"ko": "건설·엔지니어링",
+"gics": "산업재",
+"src": "tree"
+},
+"375500.KS": {
+"sic": "engineering_construction",
+"desc": "Engineering & Construction",
+"ko": "건설·엔지니어링",
+"gics": "산업재",
+"src": "tree"
+},
+"028260.KS": {
+"sic": "engineering_construction",
+"desc": "Engineering & Construction",
+"ko": "건설·엔지니어링",
+"gics": "산업재",
+"src": "tree"
+},
+"028050.KS": {
+"sic": "engineering_construction",
+"desc": "Engineering & Construction",
+"ko": "건설·엔지니어링",
+"gics": "산업재",
+"src": "tree"
+},
+"051600.KS": {
+"sic": "engineering_construction",
+"desc": "Engineering & Construction",
+"ko": "건설·엔지니어링",
+"gics": "산업재",
+"src": "tree"
+},
+"052690.KS": {
+"sic": "engineering_construction",
+"desc": "Engineering & Construction",
+"ko": "건설·엔지니어링",
+"gics": "산업재",
+"src": "tree"
+},
+"035720.KS": {
+"sic": "internet_content_information",
+"desc": "Internet Content & Information",
+"ko": "인터넷 콘텐츠",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"035420.KS": {
+"sic": "internet_content_information",
+"desc": "Internet Content & Information",
+"ko": "인터넷 콘텐츠",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"003690.KS": {
+"sic": "insurance_reinsurance",
+"desc": "Insurance - Reinsurance",
+"ko": "Insurance - Reinsurance",
+"gics": "금융",
+"src": "tree"
+},
+"353200.KS": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "tree"
+},
+"007660.KS": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "tree"
+},
+"009150.KS": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "tree"
+},
+"011070.KS": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "tree"
+},
+"001820.KS": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "tree"
+},
+"069960.KS": {
+"sic": "department_stores",
+"desc": "Department Stores",
+"ko": "백화점",
+"gics": "경기소비재",
+"src": "tree"
+},
+"023530.KS": {
+"sic": "department_stores",
+"desc": "Department Stores",
+"ko": "백화점",
+"gics": "경기소비재",
+"src": "tree"
+},
+"007070.KS": {
+"sic": "department_stores",
+"desc": "Department Stores",
+"ko": "백화점",
+"gics": "경기소비재",
+"src": "tree"
+},
+"004170.KS": {
+"sic": "department_stores",
+"desc": "Department Stores",
+"ko": "백화점",
+"gics": "경기소비재",
+"src": "tree"
+},
+"373220.KS": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "tree"
+},
+"298040.KS": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "tree"
+},
+"103590.KS": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "tree"
+},
+"229640.KS": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "tree"
+},
+"267260.KS": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "tree"
+},
+"062040.KS": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "tree"
+},
+"010120.KS": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "tree"
+},
+"001440.KS": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "tree"
+},
+"006260.KS": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "tree"
+},
+"006340.KS": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "tree"
+},
+"437730.KQ": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "tree"
+},
+"278470.KS": {
+"sic": "household_personal_products",
+"desc": "Household & Personal Products",
+"ko": "생활용품·화장품",
+"gics": "필수소비재",
+"src": "tree"
+},
+"090430.KS": {
+"sic": "household_personal_products",
+"desc": "Household & Personal Products",
+"ko": "생활용품·화장품",
+"gics": "필수소비재",
+"src": "tree"
+},
+"002790.KS": {
+"sic": "household_personal_products",
+"desc": "Household & Personal Products",
+"ko": "생활용품·화장품",
+"gics": "필수소비재",
+"src": "tree"
+},
+"241710.KQ": {
+"sic": "household_personal_products",
+"desc": "Household & Personal Products",
+"ko": "생활용품·화장품",
+"gics": "필수소비재",
+"src": "tree"
+},
+"161890.KS": {
+"sic": "household_personal_products",
+"desc": "Household & Personal Products",
+"ko": "생활용품·화장품",
+"gics": "필수소비재",
+"src": "tree"
+},
+"483650.KS": {
+"sic": "household_personal_products",
+"desc": "Household & Personal Products",
+"ko": "생활용품·화장품",
+"gics": "필수소비재",
+"src": "tree"
+},
+"192820.KS": {
+"sic": "household_personal_products",
+"desc": "Household & Personal Products",
+"ko": "생활용품·화장품",
+"gics": "필수소비재",
+"src": "tree"
+},
+"257720.KQ": {
+"sic": "household_personal_products",
+"desc": "Household & Personal Products",
+"ko": "생활용품·화장품",
+"gics": "필수소비재",
+"src": "tree"
+},
+"051900.KS": {
+"sic": "household_personal_products",
+"desc": "Household & Personal Products",
+"ko": "생활용품·화장품",
+"gics": "필수소비재",
+"src": "tree"
+},
+"005440.KS": {
+"sic": "food_distribution",
+"desc": "Food Distribution",
+"ko": "식품 유통",
+"gics": "필수소비재",
+"src": "tree"
+},
+"026960.KS": {
+"sic": "food_distribution",
+"desc": "Food Distribution",
+"ko": "식품 유통",
+"gics": "필수소비재",
+"src": "tree"
+},
+"071970.KS": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "tree"
+},
+"082740.KS": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "tree"
+},
+"077970.KS": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "tree"
+},
+"112610.KS": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "tree"
+},
+"017800.KS": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "tree"
+},
+"009450.KS": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "tree"
+},
+"034020.KS": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "tree"
+},
+"030530.KQ": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "tree"
+},
+"323280.KQ": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "tree"
+},
+"012750.KS": {
+"sic": "security_protection_services",
+"desc": "Security & Protection Services",
+"ko": "보안서비스",
+"gics": "산업재",
+"src": "tree"
+},
+"451800.KS": {
+"sic": "reit_office",
+"desc": "REIT - Office",
+"ko": "REIT - Office",
+"gics": "부동산",
+"src": "tree"
+},
+"395400.KS": {
+"sic": "reit_office",
+"desc": "REIT - Office",
+"ko": "REIT - Office",
+"gics": "부동산",
+"src": "tree"
+},
+"030190.KS": {
+"sic": "credit_services",
+"desc": "Credit Services",
+"ko": "여신·카드",
+"gics": "금융",
+"src": "tree"
+},
+"089860.KS": {
+"sic": "rental_leasing_services",
+"desc": "Rental & Leasing Services",
+"ko": "렌탈·리스",
+"gics": "산업재",
+"src": "tree"
+},
+"086280.KS": {
+"sic": "integrated_freight_logistics",
+"desc": "Integrated Freight & Logistics",
+"ko": "물류",
+"gics": "산업재",
+"src": "tree"
+},
+"000120.KS": {
+"sic": "integrated_freight_logistics",
+"desc": "Integrated Freight & Logistics",
+"ko": "물류",
+"gics": "산업재",
+"src": "tree"
+},
+"098460.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "tree"
+},
+"039030.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "tree"
+},
+"232140.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "tree"
+},
+"281820.KS": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "tree"
+},
+"058470.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "tree"
+},
+"166090.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "tree"
+},
+"403870.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "tree"
+},
+"042700.KS": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "tree"
+},
+"319660.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "tree"
+},
+"089030.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "tree"
+},
+"183300.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "tree"
+},
+"195870.KS": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "tree"
+},
+"064400.KS": {
+"sic": "information_technology_services",
+"desc": "Information Technology Services",
+"ko": "IT 서비스",
+"gics": "정보기술",
+"src": "tree"
+},
+"018260.KS": {
+"sic": "information_technology_services",
+"desc": "Information Technology Services",
+"ko": "IT 서비스",
+"gics": "정보기술",
+"src": "tree"
+},
+"307950.KS": {
+"sic": "information_technology_services",
+"desc": "Information Technology Services",
+"ko": "IT 서비스",
+"gics": "정보기술",
+"src": "tree"
+},
+"022100.KS": {
+"sic": "information_technology_services",
+"desc": "Information Technology Services",
+"ko": "IT 서비스",
+"gics": "정보기술",
+"src": "tree"
+},
+"033780.KS": {
+"sic": "tobacco",
+"desc": "Tobacco",
+"ko": "담배",
+"gics": "필수소비재",
+"src": "tree"
+},
+"003230.KS": {
+"sic": "packaged_foods",
+"desc": "Packaged Foods",
+"ko": "가공식품",
+"gics": "필수소비재",
+"src": "tree"
+},
+"004370.KS": {
+"sic": "packaged_foods",
+"desc": "Packaged Foods",
+"ko": "가공식품",
+"gics": "필수소비재",
+"src": "tree"
+},
+"003380.KQ": {
+"sic": "packaged_foods",
+"desc": "Packaged Foods",
+"ko": "가공식품",
+"gics": "필수소비재",
+"src": "tree"
+},
+"006040.KS": {
+"sic": "packaged_foods",
+"desc": "Packaged Foods",
+"ko": "가공식품",
+"gics": "필수소비재",
+"src": "tree"
+},
+"097950.KS": {
+"sic": "packaged_foods",
+"desc": "Packaged Foods",
+"ko": "가공식품",
+"gics": "필수소비재",
+"src": "tree"
+},
+"007310.KS": {
+"sic": "packaged_foods",
+"desc": "Packaged Foods",
+"ko": "가공식품",
+"gics": "필수소비재",
+"src": "tree"
+},
+"330590.KS": {
+"sic": "reit_retail",
+"desc": "REIT - Retail",
+"ko": "REIT - Retail",
+"gics": "부동산",
+"src": "tree"
+},
+"017960.KS": {
+"sic": "chemicals",
+"desc": "Chemicals",
+"ko": "화학",
+"gics": "소재",
+"src": "tree"
+},
+"004000.KS": {
+"sic": "chemicals",
+"desc": "Chemicals",
+"ko": "화학",
+"gics": "소재",
+"src": "tree"
+},
+"051910.KS": {
+"sic": "chemicals",
+"desc": "Chemicals",
+"ko": "화학",
+"gics": "소재",
+"src": "tree"
+},
+"014680.KS": {
+"sic": "chemicals",
+"desc": "Chemicals",
+"ko": "화학",
+"gics": "소재",
+"src": "tree"
+},
+"002380.KS": {
+"sic": "chemicals",
+"desc": "Chemicals",
+"ko": "화학",
+"gics": "소재",
+"src": "tree"
+},
+"005290.KQ": {
+"sic": "chemicals",
+"desc": "Chemicals",
+"ko": "화학",
+"gics": "소재",
+"src": "tree"
+},
+"357780.KQ": {
+"sic": "chemicals",
+"desc": "Chemicals",
+"ko": "화학",
+"gics": "소재",
+"src": "tree"
+},
+"120110.KS": {
+"sic": "chemicals",
+"desc": "Chemicals",
+"ko": "화학",
+"gics": "소재",
+"src": "tree"
+},
+"030000.KS": {
+"sic": "advertising_agencies",
+"desc": "Advertising Agencies",
+"ko": "광고",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"085620.KS": {
+"sic": "insurance_life",
+"desc": "Insurance - Life",
+"ko": "생명보험",
+"gics": "금융",
+"src": "tree"
+},
+"088350.KS": {
+"sic": "insurance_life",
+"desc": "Insurance - Life",
+"ko": "생명보험",
+"gics": "금융",
+"src": "tree"
+},
+"032830.KS": {
+"sic": "insurance_life",
+"desc": "Insurance - Life",
+"ko": "생명보험",
+"gics": "금융",
+"src": "tree"
+},
+"082640.KS": {
+"sic": "insurance_life",
+"desc": "Insurance - Life",
+"ko": "생명보험",
+"gics": "금융",
+"src": "tree"
+},
+"214150.KQ": {
+"sic": "medical_devices",
+"desc": "Medical Devices",
+"ko": "의료기기",
+"gics": "헬스케어",
+"src": "tree"
+},
+"290650.KQ": {
+"sic": "medical_devices",
+"desc": "Medical Devices",
+"ko": "의료기기",
+"gics": "헬스케어",
+"src": "tree"
+},
+"000370.KS": {
+"sic": "insurance_property_casualty",
+"desc": "Insurance - Property & Casualty",
+"ko": "손해보험",
+"gics": "금융",
+"src": "tree"
+},
+"001450.KS": {
+"sic": "insurance_property_casualty",
+"desc": "Insurance - Property & Casualty",
+"ko": "손해보험",
+"gics": "금융",
+"src": "tree"
+},
+"005830.KS": {
+"sic": "insurance_property_casualty",
+"desc": "Insurance - Property & Casualty",
+"ko": "손해보험",
+"gics": "금융",
+"src": "tree"
+},
+"000810.KS": {
+"sic": "insurance_property_casualty",
+"desc": "Insurance - Property & Casualty",
+"ko": "손해보험",
+"gics": "금융",
+"src": "tree"
+},
+"030200.KS": {
+"sic": "telecom_services",
+"desc": "Telecom Services",
+"ko": "통신서비스",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"032640.KS": {
+"sic": "telecom_services",
+"desc": "Telecom Services",
+"ko": "통신서비스",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"017670.KS": {
+"sic": "telecom_services",
+"desc": "Telecom Services",
+"ko": "통신서비스",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"004800.KS": {
+"sic": "conglomerates",
+"desc": "Conglomerates",
+"ko": "복합기업",
+"gics": "산업재",
+"src": "tree"
+},
+"000880.KS": {
+"sic": "conglomerates",
+"desc": "Conglomerates",
+"ko": "복합기업",
+"gics": "산업재",
+"src": "tree"
+},
+"047050.KS": {
+"sic": "conglomerates",
+"desc": "Conglomerates",
+"ko": "복합기업",
+"gics": "산업재",
+"src": "tree"
+},
+"000150.KS": {
+"sic": "conglomerates",
+"desc": "Conglomerates",
+"ko": "복합기업",
+"gics": "산업재",
+"src": "tree"
+},
+"001040.KS": {
+"sic": "conglomerates",
+"desc": "Conglomerates",
+"ko": "복합기업",
+"gics": "산업재",
+"src": "tree"
+},
+"078930.KS": {
+"sic": "conglomerates",
+"desc": "Conglomerates",
+"ko": "복합기업",
+"gics": "산업재",
+"src": "tree"
+},
+"001740.KS": {
+"sic": "conglomerates",
+"desc": "Conglomerates",
+"ko": "복합기업",
+"gics": "산업재",
+"src": "tree"
+},
+"034730.KS": {
+"sic": "conglomerates",
+"desc": "Conglomerates",
+"ko": "복합기업",
+"gics": "산업재",
+"src": "tree"
+},
+"001120.KS": {
+"sic": "conglomerates",
+"desc": "Conglomerates",
+"ko": "복합기업",
+"gics": "산업재",
+"src": "tree"
+},
+"282330.KS": {
+"sic": "grocery_stores",
+"desc": "Grocery Stores",
+"ko": "식료품 소매",
+"gics": "필수소비재",
+"src": "tree"
+},
+"021240.KS": {
+"sic": "furnishings_fixtures_appliances",
+"desc": "Furnishings, Fixtures & Appliances",
+"ko": "가구·인테리어",
+"gics": "경기소비재",
+"src": "tree"
+},
+"018880.KS": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "tree"
+},
+"012330.KS": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "tree"
+},
+"005850.KS": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "tree"
+},
+"000240.KS": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "tree"
+},
+"073240.KS": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "tree"
+},
+"007340.KS": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "tree"
+},
+"011210.KS": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "tree"
+},
+"161390.KS": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "tree"
+},
+"298020.KS": {
+"sic": "textile_manufacturing",
+"desc": "Textile Manufacturing",
+"ko": "섬유",
+"gics": "경기소비재",
+"src": "tree"
+},
+"005930.KS": {
+"sic": "consumer_electronics",
+"desc": "Consumer Electronics",
+"ko": "가전·전자기기",
+"gics": "정보기술",
+"src": "tree"
+},
+"003550.KS": {
+"sic": "consumer_electronics",
+"desc": "Consumer Electronics",
+"ko": "가전·전자기기",
+"gics": "정보기술",
+"src": "tree"
+},
+"066570.KS": {
+"sic": "consumer_electronics",
+"desc": "Consumer Electronics",
+"ko": "가전·전자기기",
+"gics": "정보기술",
+"src": "tree"
+},
+"140860.KQ": {
+"sic": "scientific_technical_instruments",
+"desc": "Scientific & Technical Instruments",
+"ko": "계측·정밀기기",
+"gics": "정보기술",
+"src": "tree"
+},
+"005300.KS": {
+"sic": "beverages_non_alcoholic",
+"desc": "Beverages - Non-Alcoholic",
+"ko": "음료(무알콜)",
+"gics": "필수소비재",
+"src": "tree"
+},
+"000080.KS": {
+"sic": "beverages_wineries_distilleries",
+"desc": "Beverages - Wineries & Distilleries",
+"ko": "주류",
+"gics": "필수소비재",
+"src": "tree"
+},
+"041510.KQ": {
+"sic": "entertainment",
+"desc": "Entertainment",
+"ko": "엔터테인먼트",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"035900.KQ": {
+"sic": "entertainment",
+"desc": "Entertainment",
+"ko": "엔터테인먼트",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"352820.KS": {
+"sic": "entertainment",
+"desc": "Entertainment",
+"ko": "엔터테인먼트",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"030610.KS": {
+"sic": "capital_markets",
+"desc": "Capital Markets",
+"ko": "증권",
+"gics": "금융",
+"src": "tree"
+},
+"023590.KS": {
+"sic": "capital_markets",
+"desc": "Capital Markets",
+"ko": "증권",
+"gics": "금융",
+"src": "tree"
+},
+"036460.KS": {
+"sic": "utilities_regulated_gas",
+"desc": "Utilities - Regulated Gas",
+"ko": "가스",
+"gics": "유틸리티",
+"src": "tree"
+},
+"103140.KS": {
+"sic": "metal_fabrication",
+"desc": "Metal Fabrication",
+"ko": "금속가공",
+"gics": "산업재",
+"src": "tree"
+},
+"271560.KS": {
+"sic": "confectioners",
+"desc": "Confectioners",
+"ko": "제과",
+"gics": "필수소비재",
+"src": "tree"
+},
+"001800.KS": {
+"sic": "confectioners",
+"desc": "Confectioners",
+"ko": "제과",
+"gics": "필수소비재",
+"src": "tree"
+},
+"004990.KS": {
+"sic": "confectioners",
+"desc": "Confectioners",
+"ko": "제과",
+"gics": "필수소비재",
+"src": "tree"
+},
+"280360.KS": {
+"sic": "confectioners",
+"desc": "Confectioners",
+"ko": "제과",
+"gics": "필수소비재",
+"src": "tree"
+},
+"251270.KS": {
+"sic": "electronic_gaming_multimedia",
+"desc": "Electronic Gaming & Multimedia",
+"ko": "게임·멀티미디어",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"462870.KS": {
+"sic": "electronic_gaming_multimedia",
+"desc": "Electronic Gaming & Multimedia",
+"ko": "게임·멀티미디어",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"192080.KS": {
+"sic": "electronic_gaming_multimedia",
+"desc": "Electronic Gaming & Multimedia",
+"ko": "게임·멀티미디어",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"259960.KS": {
+"sic": "electronic_gaming_multimedia",
+"desc": "Electronic Gaming & Multimedia",
+"ko": "게임·멀티미디어",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"293490.KQ": {
+"sic": "electronic_gaming_multimedia",
+"desc": "Electronic Gaming & Multimedia",
+"ko": "게임·멀티미디어",
+"gics": "커뮤니케이션",
+"src": "tree"
+},
+"267270.KS": {
+"sic": "farm_heavy_construction_machinery",
+"desc": "Farm & Heavy Construction Machinery",
+"ko": "건설·농업기계",
+"gics": "산업재",
+"src": "tree"
+},
+"241560.KS": {
+"sic": "farm_heavy_construction_machinery",
+"desc": "Farm & Heavy Construction Machinery",
+"ko": "건설·농업기계",
+"gics": "산업재",
+"src": "tree"
+},
+"011780.KS": {
+"sic": "specialty_chemicals",
+"desc": "Specialty Chemicals",
+"ko": "정밀화학",
+"gics": "소재",
+"src": "tree"
+},
+"000210.KS": {
+"sic": "specialty_chemicals",
+"desc": "Specialty Chemicals",
+"ko": "정밀화학",
+"gics": "소재",
+"src": "tree"
+},
+"005070.KS": {
+"sic": "specialty_chemicals",
+"desc": "Specialty Chemicals",
+"ko": "정밀화학",
+"gics": "소재",
+"src": "tree"
+},
+"028670.KS": {
+"sic": "marine_shipping",
+"desc": "Marine Shipping",
+"ko": "해운",
+"gics": "산업재",
+"src": "tree"
+},
+"011200.KS": {
+"sic": "marine_shipping",
+"desc": "Marine Shipping",
+"ko": "해운",
+"gics": "산업재",
+"src": "tree"
+},
+"000500.KS": {
+"sic": "communication_equipment",
+"desc": "Communication Equipment",
+"ko": "통신장비",
+"gics": "정보기술",
+"src": "tree"
+},
+"178320.KQ": {
+"sic": "communication_equipment",
+"desc": "Communication Equipment",
+"ko": "통신장비",
+"gics": "정보기술",
+"src": "tree"
+},
+"005380.KS": {
+"sic": "auto_manufacturers",
+"desc": "Auto Manufacturers",
+"ko": "완성차",
+"gics": "경기소비재",
+"src": "tree"
+},
+"000270.KS": {
+"sic": "auto_manufacturers",
+"desc": "Auto Manufacturers",
+"ko": "완성차",
+"gics": "경기소비재",
+"src": "tree"
+},
+"300720.KS": {
+"sic": "building_materials",
+"desc": "Building Materials",
+"ko": "건축자재",
+"gics": "소재",
+"src": "tree"
+},
+"319400.KQ": {
+"sic": "shell_companies",
+"desc": "Shell Companies",
+"ko": "지주·기타",
+"gics": "금융",
+"src": "tree"
+},
+"347700.KQ": {
+"sic": "health_information_services",
+"desc": "Health Information Services",
+"ko": "Health Information Services",
+"gics": "헬스케어",
+"src": "tree"
+},
+"010060.KS": {
+"sic": "asset_management",
+"desc": "Asset Management",
+"ko": "자산운용",
+"gics": "금융",
+"src": "tree"
+},
+"180640.KS": {
+"sic": "real_estate_services",
+"desc": "Real Estate Services",
+"ko": "부동산 서비스",
+"gics": "부동산",
+"src": "tree"
+},
+"003490.KS": {
+"sic": "airlines",
+"desc": "Airlines",
+"ko": "항공",
+"gics": "산업재",
+"src": "tree"
+},
+"020560.KS": {
+"sic": "airlines",
+"desc": "Airlines",
+"ko": "항공",
+"gics": "산업재",
+"src": "tree"
+},
+"000070.KS": {
+"sic": "conglomerates",
+"desc": "Conglomerates",
+"ko": "복합기업",
+"gics": "산업재",
+"src": "yahoo"
+},
+"000400.KS": {
+"sic": "insurance_property_casualty",
+"desc": "Insurance - Property & Casualty",
+"ko": "손해보험",
+"gics": "금융",
+"src": "yahoo"
+},
+"000430.KS": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"000540.KS": {
+"sic": "insurance_property_casualty",
+"desc": "Insurance - Property & Casualty",
+"ko": "손해보험",
+"gics": "금융",
+"src": "yahoo"
+},
+"000640.KS": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"000670.KS": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"000680.KS": {
+"sic": "specialty_retail",
+"desc": "Specialty Retail",
+"ko": "전문소매",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"000720.KS": {
+"sic": "engineering_construction",
+"desc": "Engineering & Construction",
+"ko": "건설·엔지니어링",
+"gics": "산업재",
+"src": "yahoo"
+},
+"001060.KS": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"001200.KS": {
+"sic": "capital_markets",
+"desc": "Capital Markets",
+"ko": "증권",
+"gics": "금융",
+"src": "yahoo"
+},
+"001230.KS": {
+"sic": "steel",
+"desc": "Steel",
+"ko": "철강",
+"gics": "소재",
+"src": "yahoo"
+},
+"001270.KS": {
+"sic": "capital_markets",
+"desc": "Capital Markets",
+"ko": "증권",
+"gics": "금융",
+"src": "yahoo"
+},
+"001390.KS": {
+"sic": "conglomerates",
+"desc": "Conglomerates",
+"ko": "복합기업",
+"gics": "산업재",
+"src": "yahoo"
+},
+"001460.KS": {
+"sic": "apparel_manufacturing",
+"desc": "Apparel Manufacturing",
+"ko": "의류 제조",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"001500.KS": {
+"sic": "capital_markets",
+"desc": "Capital Markets",
+"ko": "증권",
+"gics": "금융",
+"src": "yahoo"
+},
+"001510.KS": {
+"sic": "capital_markets",
+"desc": "Capital Markets",
+"ko": "증권",
+"gics": "금융",
+"src": "yahoo"
+},
+"001530.KS": {
+"sic": "textile_manufacturing",
+"desc": "Textile Manufacturing",
+"ko": "섬유",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"001680.KS": {
+"sic": "packaged_foods",
+"desc": "Packaged Foods",
+"ko": "가공식품",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"001720.KS": {
+"sic": "capital_markets",
+"desc": "Capital Markets",
+"ko": "증권",
+"gics": "금융",
+"src": "yahoo"
+},
+"001750.KS": {
+"sic": "capital_markets",
+"desc": "Capital Markets",
+"ko": "증권",
+"gics": "금융",
+"src": "yahoo"
+},
+"001790.KS": {
+"sic": "confectioners",
+"desc": "Confectioners",
+"ko": "제과",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"001940.KS": {
+"sic": "steel",
+"desc": "Steel",
+"ko": "철강",
+"gics": "소재",
+"src": "yahoo"
+},
+"002020.KS": {
+"sic": "conglomerates",
+"desc": "Conglomerates",
+"ko": "복합기업",
+"gics": "산업재",
+"src": "yahoo"
+},
+"002030.KS": {
+"sic": "building_materials",
+"desc": "Building Materials",
+"ko": "건축자재",
+"gics": "소재",
+"src": "yahoo"
+},
+"002240.KS": {
+"sic": "steel",
+"desc": "Steel",
+"ko": "철강",
+"gics": "소재",
+"src": "yahoo"
+},
+"002310.KS": {
+"sic": "paper_paper_products",
+"desc": "Paper & Paper Products",
+"ko": "제지",
+"gics": "소재",
+"src": "yahoo"
+},
+"002320.KS": {
+"sic": "integrated_freight_logistics",
+"desc": "Integrated Freight & Logistics",
+"ko": "물류",
+"gics": "산업재",
+"src": "yahoo"
+},
+"002350.KS": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"002710.KS": {
+"sic": "steel",
+"desc": "Steel",
+"ko": "철강",
+"gics": "소재",
+"src": "yahoo"
+},
+"002810.KS": {
+"sic": "industrial_distribution",
+"desc": "Industrial Distribution",
+"ko": "산업재 유통",
+"gics": "산업재",
+"src": "yahoo"
+},
+"002840.KS": {
+"sic": "chemicals",
+"desc": "Chemicals",
+"ko": "화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"002900.KS": {
+"sic": "farm_heavy_construction_machinery",
+"desc": "Farm & Heavy Construction Machinery",
+"ko": "건설·농업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"002960.KS": {
+"sic": "oil_gas_refining_marketing",
+"desc": "Oil & Gas Refining & Marketing",
+"ko": "정유",
+"gics": "에너지",
+"src": "yahoo"
+},
+"002990.KS": {
+"sic": "engineering_construction",
+"desc": "Engineering & Construction",
+"ko": "건설·엔지니어링",
+"gics": "산업재",
+"src": "yahoo"
+},
+"003000.KS": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"003030.KS": {
+"sic": "steel",
+"desc": "Steel",
+"ko": "철강",
+"gics": "소재",
+"src": "yahoo"
+},
+"003070.KS": {
+"sic": "engineering_construction",
+"desc": "Engineering & Construction",
+"ko": "건설·엔지니어링",
+"gics": "산업재",
+"src": "yahoo"
+},
+"003090.KS": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"003160.KS": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"003200.KS": {
+"sic": "textile_manufacturing",
+"desc": "Textile Manufacturing",
+"ko": "섬유",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"003240.KS": {
+"sic": "chemicals",
+"desc": "Chemicals",
+"ko": "화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"003280.KS": {
+"sic": "marine_shipping",
+"desc": "Marine Shipping",
+"ko": "해운",
+"gics": "산업재",
+"src": "yahoo"
+},
+"003300.KS": {
+"sic": "building_materials",
+"desc": "Building Materials",
+"ko": "건축자재",
+"gics": "소재",
+"src": "yahoo"
+},
+"003350.KS": {
+"sic": "household_personal_products",
+"desc": "Household & Personal Products",
+"ko": "생활용품·화장품",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"003470.KS": {
+"sic": "capital_markets",
+"desc": "Capital Markets",
+"ko": "증권",
+"gics": "금융",
+"src": "yahoo"
+},
+"003530.KS": {
+"sic": "capital_markets",
+"desc": "Capital Markets",
+"ko": "증권",
+"gics": "금융",
+"src": "yahoo"
+},
+"003540.KS": {
+"sic": "capital_markets",
+"desc": "Capital Markets",
+"ko": "증권",
+"gics": "금융",
+"src": "yahoo"
+},
+"003570.KS": {
+"sic": "aerospace_defense",
+"desc": "Aerospace & Defense",
+"ko": "항공우주·방산",
+"gics": "산업재",
+"src": "yahoo"
+},
+"003620.KS": {
+"sic": "auto_manufacturers",
+"desc": "Auto Manufacturers",
+"ko": "완성차",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"003670.KS": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "yahoo"
+},
+"003720.KS": {
+"sic": "packaging_containers",
+"desc": "Packaging & Containers",
+"ko": "포장재",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"003800.KQ": {
+"sic": "furnishings_fixtures_appliances",
+"desc": "Furnishings, Fixtures & Appliances",
+"ko": "가구·인테리어",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"003850.KS": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"003920.KS": {
+"sic": "packaged_foods",
+"desc": "Packaged Foods",
+"ko": "가공식품",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"003960.KS": {
+"sic": "packaged_foods",
+"desc": "Packaged Foods",
+"ko": "가공식품",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"004310.KS": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"004360.KS": {
+"sic": "integrated_freight_logistics",
+"desc": "Integrated Freight & Logistics",
+"ko": "물류",
+"gics": "산업재",
+"src": "yahoo"
+},
+"004430.KS": {
+"sic": "specialty_chemicals",
+"desc": "Specialty Chemicals",
+"ko": "정밀화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"004490.KS": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "yahoo"
+},
+"004690.KS": {
+"sic": "utilities_regulated_gas",
+"desc": "Utilities - Regulated Gas",
+"ko": "가스",
+"gics": "유틸리티",
+"src": "yahoo"
+},
+"004700.KS": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"004710.KS": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"005010.KS": {
+"sic": "steel",
+"desc": "Steel",
+"ko": "철강",
+"gics": "소재",
+"src": "yahoo"
+},
+"005090.KS": {
+"sic": "engineering_construction",
+"desc": "Engineering & Construction",
+"ko": "건설·엔지니어링",
+"gics": "산업재",
+"src": "yahoo"
+},
+"005180.KS": {
+"sic": "packaged_foods",
+"desc": "Packaged Foods",
+"ko": "가공식품",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"005250.KS": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"005420.KS": {
+"sic": "specialty_chemicals",
+"desc": "Specialty Chemicals",
+"ko": "정밀화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"005430.KS": {
+"sic": "airports_air_services",
+"desc": "Airports & Air Services",
+"ko": "Airports & Air Services",
+"gics": "산업재",
+"src": "yahoo"
+},
+"005500.KS": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"005610.KS": {
+"sic": "packaged_foods",
+"desc": "Packaged Foods",
+"ko": "가공식품",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"005680.KS": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"005690.KS": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"005720.KS": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"005810.KS": {
+"sic": "copper",
+"desc": "Copper",
+"ko": "구리",
+"gics": "소재",
+"src": "yahoo"
+},
+"005880.KS": {
+"sic": "marine_shipping",
+"desc": "Marine Shipping",
+"ko": "해운",
+"gics": "산업재",
+"src": "yahoo"
+},
+"005940.KS": {
+"sic": "capital_markets",
+"desc": "Capital Markets",
+"ko": "증권",
+"gics": "금융",
+"src": "yahoo"
+},
+"005950.KS": {
+"sic": "chemicals",
+"desc": "Chemicals",
+"ko": "화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"006110.KS": {
+"sic": "aluminum",
+"desc": "Aluminum",
+"ko": "Aluminum",
+"gics": "소재",
+"src": "yahoo"
+},
+"006220.KS": {
+"sic": "banks_regional",
+"desc": "Banks - Regional",
+"ko": "지방은행",
+"gics": "금융",
+"src": "yahoo"
+},
+"006400.KS": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "yahoo"
+},
+"006650.KS": {
+"sic": "chemicals",
+"desc": "Chemicals",
+"ko": "화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"006730.KQ": {
+"sic": "lodging",
+"desc": "Lodging",
+"ko": "호텔",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"006800.KS": {
+"sic": "capital_markets",
+"desc": "Capital Markets",
+"ko": "증권",
+"gics": "금융",
+"src": "yahoo"
+},
+"007160.KS": {
+"sic": "packaged_foods",
+"desc": "Packaged Foods",
+"ko": "가공식품",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"007690.KS": {
+"sic": "specialty_chemicals",
+"desc": "Specialty Chemicals",
+"ko": "정밀화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"007700.KS": {
+"sic": "apparel_manufacturing",
+"desc": "Apparel Manufacturing",
+"ko": "의류 제조",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"007810.KS": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"008060.KS": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"008490.KS": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"008730.KS": {
+"sic": "packaging_containers",
+"desc": "Packaging & Containers",
+"ko": "포장재",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"008770.KS": {
+"sic": "specialty_retail",
+"desc": "Specialty Retail",
+"ko": "전문소매",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"009160.KS": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"009240.KS": {
+"sic": "furnishings_fixtures_appliances",
+"desc": "Furnishings, Fixtures & Appliances",
+"ko": "가구·인테리어",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"009290.KS": {
+"sic": "packaged_foods",
+"desc": "Packaged Foods",
+"ko": "가공식품",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"009410.KS": {
+"sic": "engineering_construction",
+"desc": "Engineering & Construction",
+"ko": "건설·엔지니어링",
+"gics": "산업재",
+"src": "yahoo"
+},
+"009420.KS": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"009680.KS": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"009830.KS": {
+"sic": "solar",
+"desc": "Solar",
+"ko": "태양광",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"009900.KS": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"010170.KQ": {
+"sic": "communication_equipment",
+"desc": "Communication Equipment",
+"ko": "통신장비",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"010580.KS": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"010690.KS": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"010780.KS": {
+"sic": "engineering_construction",
+"desc": "Engineering & Construction",
+"ko": "건설·엔지니어링",
+"gics": "산업재",
+"src": "yahoo"
+},
+"010820.KS": {
+"sic": "aerospace_defense",
+"desc": "Aerospace & Defense",
+"ko": "항공우주·방산",
+"gics": "산업재",
+"src": "yahoo"
+},
+"011170.KS": {
+"sic": "chemicals",
+"desc": "Chemicals",
+"ko": "화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"011560.KQ": {
+"sic": "engineering_construction",
+"desc": "Engineering & Construction",
+"ko": "건설·엔지니어링",
+"gics": "산업재",
+"src": "yahoo"
+},
+"011760.KS": {
+"sic": "industrial_distribution",
+"desc": "Industrial Distribution",
+"ko": "산업재 유통",
+"gics": "산업재",
+"src": "yahoo"
+},
+"011790.KS": {
+"sic": "specialty_chemicals",
+"desc": "Specialty Chemicals",
+"ko": "정밀화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"011930.KS": {
+"sic": "building_products_equipment",
+"desc": "Building Products & Equipment",
+"ko": "건자재",
+"gics": "산업재",
+"src": "yahoo"
+},
+"012030.KS": {
+"sic": "information_technology_services",
+"desc": "Information Technology Services",
+"ko": "IT 서비스",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"012210.KQ": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"013030.KQ": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"014620.KQ": {
+"sic": "metal_fabrication",
+"desc": "Metal Fabrication",
+"ko": "금속가공",
+"gics": "산업재",
+"src": "yahoo"
+},
+"014820.KS": {
+"sic": "packaging_containers",
+"desc": "Packaging & Containers",
+"ko": "포장재",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"014830.KS": {
+"sic": "chemicals",
+"desc": "Chemicals",
+"ko": "화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"015360.KS": {
+"sic": "utilities_regulated_gas",
+"desc": "Utilities - Regulated Gas",
+"ko": "가스",
+"gics": "유틸리티",
+"src": "yahoo"
+},
+"015750.KQ": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"015860.KS": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "yahoo"
+},
+"016360.KS": {
+"sic": "capital_markets",
+"desc": "Capital Markets",
+"ko": "증권",
+"gics": "금융",
+"src": "yahoo"
+},
+"016380.KS": {
+"sic": "steel",
+"desc": "Steel",
+"ko": "철강",
+"gics": "소재",
+"src": "yahoo"
+},
+"016590.KS": {
+"sic": "paper_paper_products",
+"desc": "Paper & Paper Products",
+"ko": "제지",
+"gics": "소재",
+"src": "yahoo"
+},
+"016610.KS": {
+"sic": "capital_markets",
+"desc": "Capital Markets",
+"ko": "증권",
+"gics": "금융",
+"src": "yahoo"
+},
+"016800.KS": {
+"sic": "furnishings_fixtures_appliances",
+"desc": "Furnishings, Fixtures & Appliances",
+"ko": "가구·인테리어",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"017390.KS": {
+"sic": "utilities_regulated_gas",
+"desc": "Utilities - Regulated Gas",
+"ko": "가스",
+"gics": "유틸리티",
+"src": "yahoo"
+},
+"017810.KS": {
+"sic": "packaged_foods",
+"desc": "Packaged Foods",
+"ko": "가공식품",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"017890.KQ": {
+"sic": "chemicals",
+"desc": "Chemicals",
+"ko": "화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"017900.KS": {
+"sic": "semiconductors",
+"desc": "Semiconductors",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"017940.KS": {
+"sic": "oil_gas_refining_marketing",
+"desc": "Oil & Gas Refining & Marketing",
+"ko": "정유",
+"gics": "에너지",
+"src": "yahoo"
+},
+"018000.KQ": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"018250.KS": {
+"sic": "household_personal_products",
+"desc": "Household & Personal Products",
+"ko": "생활용품·화장품",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"018290.KQ": {
+"sic": "business_equipment_supplies",
+"desc": "Business Equipment & Supplies",
+"ko": "사무기기",
+"gics": "산업재",
+"src": "yahoo"
+},
+"019170.KS": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"019210.KQ": {
+"sic": "tools_accessories",
+"desc": "Tools & Accessories",
+"ko": "공구",
+"gics": "산업재",
+"src": "yahoo"
+},
+"020000.KS": {
+"sic": "apparel_manufacturing",
+"desc": "Apparel Manufacturing",
+"ko": "의류 제조",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"020120.KS": {
+"sic": "internet_content_information",
+"desc": "Internet Content & Information",
+"ko": "인터넷 콘텐츠",
+"gics": "커뮤니케이션",
+"src": "yahoo"
+},
+"020150.KS": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "yahoo"
+},
+"023410.KQ": {
+"sic": "capital_markets",
+"desc": "Capital Markets",
+"ko": "증권",
+"gics": "금융",
+"src": "yahoo"
+},
+"024110.KS": {
+"sic": "banks_regional",
+"desc": "Banks - Regional",
+"ko": "지방은행",
+"gics": "금융",
+"src": "yahoo"
+},
+"024720.KS": {
+"sic": "household_personal_products",
+"desc": "Household & Personal Products",
+"ko": "생활용품·화장품",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"024840.KQ": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"024850.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"025000.KS": {
+"sic": "chemicals",
+"desc": "Chemicals",
+"ko": "화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"025320.KQ": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"025540.KS": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "yahoo"
+},
+"025770.KQ": {
+"sic": "business_equipment_supplies",
+"desc": "Business Equipment & Supplies",
+"ko": "사무기기",
+"gics": "산업재",
+"src": "yahoo"
+},
+"025860.KS": {
+"sic": "agricultural_inputs",
+"desc": "Agricultural Inputs",
+"ko": "농업자재",
+"gics": "소재",
+"src": "yahoo"
+},
+"025900.KQ": {
+"sic": "lumber_wood_production",
+"desc": "Lumber & Wood Production",
+"ko": "Lumber & Wood Production",
+"gics": "소재",
+"src": "yahoo"
+},
+"026890.KS": {
+"sic": "asset_management",
+"desc": "Asset Management",
+"ko": "자산운용",
+"gics": "금융",
+"src": "yahoo"
+},
+"027410.KS": {
+"sic": "specialty_chemicals",
+"desc": "Specialty Chemicals",
+"ko": "정밀화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"028100.KS": {
+"sic": "engineering_construction",
+"desc": "Engineering & Construction",
+"ko": "건설·엔지니어링",
+"gics": "산업재",
+"src": "yahoo"
+},
+"028300.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"029460.KS": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"029530.KS": {
+"sic": "business_equipment_supplies",
+"desc": "Business Equipment & Supplies",
+"ko": "사무기기",
+"gics": "산업재",
+"src": "yahoo"
+},
+"029780.KS": {
+"sic": "credit_services",
+"desc": "Credit Services",
+"ko": "여신·카드",
+"gics": "금융",
+"src": "yahoo"
+},
+"030210.KS": {
+"sic": "capital_markets",
+"desc": "Capital Markets",
+"ko": "증권",
+"gics": "금융",
+"src": "yahoo"
+},
+"031430.KS": {
+"sic": "apparel_manufacturing",
+"desc": "Apparel Manufacturing",
+"ko": "의류 제조",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"032190.KQ": {
+"sic": "information_technology_services",
+"desc": "Information Technology Services",
+"ko": "IT 서비스",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"032500.KQ": {
+"sic": "communication_equipment",
+"desc": "Communication Equipment",
+"ko": "통신장비",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"033100.KQ": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"033160.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"033240.KS": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"033270.KS": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"033640.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"033790.KQ": {
+"sic": "communication_equipment",
+"desc": "Communication Equipment",
+"ko": "통신장비",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"034120.KS": {
+"sic": "entertainment",
+"desc": "Entertainment",
+"ko": "엔터테인먼트",
+"gics": "커뮤니케이션",
+"src": "yahoo"
+},
+"034220.KS": {
+"sic": "consumer_electronics",
+"desc": "Consumer Electronics",
+"ko": "가전·전자기기",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"034230.KS": {
+"sic": "resorts_casinos",
+"desc": "Resorts & Casinos",
+"ko": "리조트·카지노",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"034310.KS": {
+"sic": "financial_data_stock_exchanges",
+"desc": "Financial Data & Stock Exchanges",
+"ko": "금융데이터·거래소",
+"gics": "금융",
+"src": "yahoo"
+},
+"034830.KS": {
+"sic": "reit_diversified",
+"desc": "REIT - Diversified",
+"ko": "리츠",
+"gics": "부동산",
+"src": "yahoo"
+},
+"034950.KQ": {
+"sic": "capital_markets",
+"desc": "Capital Markets",
+"ko": "증권",
+"gics": "금융",
+"src": "yahoo"
+},
+"035600.KQ": {
+"sic": "software_infrastructure",
+"desc": "Software - Infrastructure",
+"ko": "인프라 소프트웨어",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"035760.KQ": {
+"sic": "entertainment",
+"desc": "Entertainment",
+"ko": "엔터테인먼트",
+"gics": "커뮤니케이션",
+"src": "yahoo"
+},
+"035810.KQ": {
+"sic": "packaged_foods",
+"desc": "Packaged Foods",
+"ko": "가공식품",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"035890.KQ": {
+"sic": "engineering_construction",
+"desc": "Engineering & Construction",
+"ko": "건설·엔지니어링",
+"gics": "산업재",
+"src": "yahoo"
+},
+"036030.KQ": {
+"sic": "internet_content_information",
+"desc": "Internet Content & Information",
+"ko": "인터넷 콘텐츠",
+"gics": "커뮤니케이션",
+"src": "yahoo"
+},
+"036530.KS": {
+"sic": "conglomerates",
+"desc": "Conglomerates",
+"ko": "복합기업",
+"gics": "산업재",
+"src": "yahoo"
+},
+"036540.KQ": {
+"sic": "semiconductors",
+"desc": "Semiconductors",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"036570.KS": {
+"sic": "electronic_gaming_multimedia",
+"desc": "Electronic Gaming & Multimedia",
+"ko": "게임·멀티미디어",
+"gics": "커뮤니케이션",
+"src": "yahoo"
+},
+"036800.KQ": {
+"sic": "software_infrastructure",
+"desc": "Software - Infrastructure",
+"ko": "인프라 소프트웨어",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"036810.KQ": {
+"sic": "semiconductors",
+"desc": "Semiconductors",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"036830.KQ": {
+"sic": "chemicals",
+"desc": "Chemicals",
+"ko": "화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"036890.KQ": {
+"sic": "farm_heavy_construction_machinery",
+"desc": "Farm & Heavy Construction Machinery",
+"ko": "건설·농업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"037460.KQ": {
+"sic": "communication_equipment",
+"desc": "Communication Equipment",
+"ko": "통신장비",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"037710.KS": {
+"sic": "department_stores",
+"desc": "Department Stores",
+"ko": "백화점",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"038500.KQ": {
+"sic": "building_materials",
+"desc": "Building Materials",
+"ko": "건축자재",
+"gics": "소재",
+"src": "yahoo"
+},
+"039130.KS": {
+"sic": "travel_services",
+"desc": "Travel Services",
+"ko": "여행",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"039440.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"039490.KS": {
+"sic": "capital_markets",
+"desc": "Capital Markets",
+"ko": "증권",
+"gics": "금융",
+"src": "yahoo"
+},
+"041190.KQ": {
+"sic": "asset_management",
+"desc": "Asset Management",
+"ko": "자산운용",
+"gics": "금융",
+"src": "yahoo"
+},
+"042000.KQ": {
+"sic": "software_infrastructure",
+"desc": "Software - Infrastructure",
+"ko": "인프라 소프트웨어",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"042370.KQ": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "yahoo"
+},
+"042520.KQ": {
+"sic": "medical_devices",
+"desc": "Medical Devices",
+"ko": "의료기기",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"043370.KQ": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"044450.KS": {
+"sic": "marine_shipping",
+"desc": "Marine Shipping",
+"ko": "해운",
+"gics": "산업재",
+"src": "yahoo"
+},
+"044490.KQ": {
+"sic": "metal_fabrication",
+"desc": "Metal Fabrication",
+"ko": "금속가공",
+"gics": "산업재",
+"src": "yahoo"
+},
+"044820.KS": {
+"sic": "packaged_foods",
+"desc": "Packaged Foods",
+"ko": "가공식품",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"046890.KQ": {
+"sic": "semiconductors",
+"desc": "Semiconductors",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"046970.KQ": {
+"sic": "communication_equipment",
+"desc": "Communication Equipment",
+"ko": "통신장비",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"047040.KS": {
+"sic": "engineering_construction",
+"desc": "Engineering & Construction",
+"ko": "건설·엔지니어링",
+"gics": "산업재",
+"src": "yahoo"
+},
+"047920.KQ": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"048410.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"049070.KQ": {
+"sic": "consumer_electronics",
+"desc": "Consumer Electronics",
+"ko": "가전·전자기기",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"051500.KQ": {
+"sic": "food_distribution",
+"desc": "Food Distribution",
+"ko": "식품 유통",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"052400.KQ": {
+"sic": "semiconductors",
+"desc": "Semiconductors",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"053610.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"053690.KS": {
+"sic": "engineering_construction",
+"desc": "Engineering & Construction",
+"ko": "건설·엔지니어링",
+"gics": "산업재",
+"src": "yahoo"
+},
+"053800.KQ": {
+"sic": "software_infrastructure",
+"desc": "Software - Infrastructure",
+"ko": "인프라 소프트웨어",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"054950.KQ": {
+"sic": "medical_devices",
+"desc": "Medical Devices",
+"ko": "의료기기",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"055550.KS": {
+"sic": "banks_regional",
+"desc": "Banks - Regional",
+"ko": "지방은행",
+"gics": "금융",
+"src": "yahoo"
+},
+"056190.KQ": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"058430.KS": {
+"sic": "metal_fabrication",
+"desc": "Metal Fabrication",
+"ko": "금속가공",
+"gics": "산업재",
+"src": "yahoo"
+},
+"058650.KS": {
+"sic": "steel",
+"desc": "Steel",
+"ko": "철강",
+"gics": "소재",
+"src": "yahoo"
+},
+"059090.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"060250.KQ": {
+"sic": "software_infrastructure",
+"desc": "Software - Infrastructure",
+"ko": "인프라 소프트웨어",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"060980.KS": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"061970.KQ": {
+"sic": "semiconductors",
+"desc": "Semiconductors",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"064260.KQ": {
+"sic": "software_infrastructure",
+"desc": "Software - Infrastructure",
+"ko": "인프라 소프트웨어",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"064290.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"064960.KS": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"065350.KQ": {
+"sic": "furnishings_fixtures_appliances",
+"desc": "Furnishings, Fixtures & Appliances",
+"ko": "가구·인테리어",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"065710.KQ": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"068930.KQ": {
+"sic": "education_training_services",
+"desc": "Education & Training Services",
+"ko": "교육",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"069260.KS": {
+"sic": "chemicals",
+"desc": "Chemicals",
+"ko": "화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"069540.KQ": {
+"sic": "communication_equipment",
+"desc": "Communication Equipment",
+"ko": "통신장비",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"071050.KS": {
+"sic": "capital_markets",
+"desc": "Capital Markets",
+"ko": "증권",
+"gics": "금융",
+"src": "yahoo"
+},
+"071320.KS": {
+"sic": "utilities_renewable",
+"desc": "Utilities - Renewable",
+"ko": "Utilities - Renewable",
+"gics": "유틸리티",
+"src": "yahoo"
+},
+"072710.KS": {
+"sic": "packaged_foods",
+"desc": "Packaged Foods",
+"ko": "가공식품",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"074600.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"075580.KS": {
+"sic": "marine_shipping",
+"desc": "Marine Shipping",
+"ko": "해운",
+"gics": "산업재",
+"src": "yahoo"
+},
+"078340.KQ": {
+"sic": "electronic_gaming_multimedia",
+"desc": "Electronic Gaming & Multimedia",
+"ko": "게임·멀티미디어",
+"gics": "커뮤니케이션",
+"src": "yahoo"
+},
+"078520.KS": {
+"sic": "household_personal_products",
+"desc": "Household & Personal Products",
+"ko": "생활용품·화장품",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"079160.KS": {
+"sic": "entertainment",
+"desc": "Entertainment",
+"ko": "엔터테인먼트",
+"gics": "커뮤니케이션",
+"src": "yahoo"
+},
+"079900.KS": {
+"sic": "farm_heavy_construction_machinery",
+"desc": "Farm & Heavy Construction Machinery",
+"ko": "건설·농업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"080580.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"084010.KS": {
+"sic": "steel",
+"desc": "Steel",
+"ko": "철강",
+"gics": "소재",
+"src": "yahoo"
+},
+"084690.KS": {
+"sic": "packaged_foods",
+"desc": "Packaged Foods",
+"ko": "가공식품",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"085660.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"086790.KS": {
+"sic": "banks_regional",
+"desc": "Banks - Regional",
+"ko": "지방은행",
+"gics": "금융",
+"src": "yahoo"
+},
+"086900.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"089590.KS": {
+"sic": "airlines",
+"desc": "Airlines",
+"ko": "항공",
+"gics": "산업재",
+"src": "yahoo"
+},
+"089970.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"089980.KQ": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"090360.KQ": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"090460.KS": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"091580.KQ": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "yahoo"
+},
+"091810.KS": {
+"sic": "airlines",
+"desc": "Airlines",
+"ko": "항공",
+"gics": "산업재",
+"src": "yahoo"
+},
+"092190.KQ": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"092230.KS": {
+"sic": "conglomerates",
+"desc": "Conglomerates",
+"ko": "복합기업",
+"gics": "산업재",
+"src": "yahoo"
+},
+"092790.KS": {
+"sic": "metal_fabrication",
+"desc": "Metal Fabrication",
+"ko": "금속가공",
+"gics": "산업재",
+"src": "yahoo"
+},
+"093050.KS": {
+"sic": "apparel_manufacturing",
+"desc": "Apparel Manufacturing",
+"ko": "의류 제조",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"093370.KS": {
+"sic": "specialty_chemicals",
+"desc": "Specialty Chemicals",
+"ko": "정밀화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"094170.KQ": {
+"sic": "semiconductors",
+"desc": "Semiconductors",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"096530.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"096760.KS": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"097230.KS": {
+"sic": "engineering_construction",
+"desc": "Engineering & Construction",
+"ko": "건설·엔지니어링",
+"gics": "산업재",
+"src": "yahoo"
+},
+"097520.KS": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"098070.KQ": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"099440.KQ": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"100090.KS": {
+"sic": "aerospace_defense",
+"desc": "Aerospace & Defense",
+"ko": "항공우주·방산",
+"gics": "산업재",
+"src": "yahoo"
+},
+"100840.KS": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"101930.KQ": {
+"sic": "aerospace_defense",
+"desc": "Aerospace & Defense",
+"ko": "항공우주·방산",
+"gics": "산업재",
+"src": "yahoo"
+},
+"104700.KS": {
+"sic": "steel",
+"desc": "Steel",
+"ko": "철강",
+"gics": "소재",
+"src": "yahoo"
+},
+"104830.KQ": {
+"sic": "specialty_chemicals",
+"desc": "Specialty Chemicals",
+"ko": "정밀화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"105560.KS": {
+"sic": "banks_regional",
+"desc": "Banks - Regional",
+"ko": "지방은행",
+"gics": "금융",
+"src": "yahoo"
+},
+"105630.KS": {
+"sic": "apparel_manufacturing",
+"desc": "Apparel Manufacturing",
+"ko": "의류 제조",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"105840.KS": {
+"sic": "scientific_technical_instruments",
+"desc": "Scientific & Technical Instruments",
+"ko": "계측·정밀기기",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"107640.KQ": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"108320.KS": {
+"sic": "semiconductors",
+"desc": "Semiconductors",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"108490.KQ": {
+"sic": "computer_hardware",
+"desc": "Computer Hardware",
+"ko": "컴퓨터 하드웨어",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"108670.KS": {
+"sic": "building_products_equipment",
+"desc": "Building Products & Equipment",
+"ko": "건자재",
+"gics": "산업재",
+"src": "yahoo"
+},
+"108860.KQ": {
+"sic": "software_application",
+"desc": "Software - Application",
+"ko": "응용 소프트웨어",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"110990.KQ": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"114090.KS": {
+"sic": "resorts_casinos",
+"desc": "Resorts & Casinos",
+"ko": "리조트·카지노",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"114190.KQ": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"114810.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"115180.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"117730.KQ": {
+"sic": "computer_hardware",
+"desc": "Computer Hardware",
+"ko": "컴퓨터 하드웨어",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"119850.KQ": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"121600.KQ": {
+"sic": "specialty_chemicals",
+"desc": "Specialty Chemicals",
+"ko": "정밀화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"122640.KQ": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"122870.KQ": {
+"sic": "entertainment",
+"desc": "Entertainment",
+"ko": "엔터테인먼트",
+"gics": "커뮤니케이션",
+"src": "yahoo"
+},
+"122900.KS": {
+"sic": "specialty_business_services",
+"desc": "Specialty Business Services",
+"ko": "기업서비스",
+"gics": "산업재",
+"src": "yahoo"
+},
+"123890.KS": {
+"sic": "reit_diversified",
+"desc": "REIT - Diversified",
+"ko": "리츠",
+"gics": "부동산",
+"src": "yahoo"
+},
+"124500.KQ": {
+"sic": "information_technology_services",
+"desc": "Information Technology Services",
+"ko": "IT 서비스",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"125490.KQ": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "yahoo"
+},
+"126560.KS": {
+"sic": "conglomerates",
+"desc": "Conglomerates",
+"ko": "복합기업",
+"gics": "산업재",
+"src": "yahoo"
+},
+"126720.KS": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"127120.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"130660.KS": {
+"sic": "utilities_regulated_electric",
+"desc": "Utilities - Regulated Electric",
+"ko": "전력",
+"gics": "유틸리티",
+"src": "yahoo"
+},
+"136480.KQ": {
+"sic": "packaged_foods",
+"desc": "Packaged Foods",
+"ko": "가공식품",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"136490.KS": {
+"sic": "farm_products",
+"desc": "Farm Products",
+"ko": "농축산",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"137310.KS": {
+"sic": "medical_devices",
+"desc": "Medical Devices",
+"ko": "의료기기",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"137400.KQ": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"138040.KS": {
+"sic": "capital_markets",
+"desc": "Capital Markets",
+"ko": "증권",
+"gics": "금융",
+"src": "yahoo"
+},
+"138930.KS": {
+"sic": "banks_regional",
+"desc": "Banks - Regional",
+"ko": "지방은행",
+"gics": "금융",
+"src": "yahoo"
+},
+"139130.KS": {
+"sic": "banks_regional",
+"desc": "Banks - Regional",
+"ko": "지방은행",
+"gics": "금융",
+"src": "yahoo"
+},
+"139480.KS": {
+"sic": "discount_stores",
+"desc": "Discount Stores",
+"ko": "할인점",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"141080.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"144960.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"145720.KS": {
+"sic": "medical_instruments_supplies",
+"desc": "Medical Instruments & Supplies",
+"ko": "의료용품",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"145990.KS": {
+"sic": "packaged_foods",
+"desc": "Packaged Foods",
+"ko": "가공식품",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"151860.KQ": {
+"sic": "auto_manufacturers",
+"desc": "Auto Manufacturers",
+"ko": "완성차",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"159010.KQ": {
+"sic": "tools_accessories",
+"desc": "Tools & Accessories",
+"ko": "공구",
+"gics": "산업재",
+"src": "yahoo"
+},
+"160190.KQ": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"160980.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"161000.KS": {
+"sic": "specialty_chemicals",
+"desc": "Specialty Chemicals",
+"ko": "정밀화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"161580.KQ": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"168360.KQ": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"170900.KS": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"170920.KQ": {
+"sic": "specialty_chemicals",
+"desc": "Specialty Chemicals",
+"ko": "정밀화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"171090.KQ": {
+"sic": "semiconductors",
+"desc": "Semiconductors",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"174900.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"175330.KS": {
+"sic": "banks_regional",
+"desc": "Banks - Regional",
+"ko": "지방은행",
+"gics": "금융",
+"src": "yahoo"
+},
+"178920.KS": {
+"sic": "specialty_chemicals",
+"desc": "Specialty Chemicals",
+"ko": "정밀화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"180400.KQ": {
+"sic": "diagnostics_research",
+"desc": "Diagnostics & Research",
+"ko": "진단·연구",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"181710.KS": {
+"sic": "electronic_gaming_multimedia",
+"desc": "Electronic Gaming & Multimedia",
+"ko": "게임·멀티미디어",
+"gics": "커뮤니케이션",
+"src": "yahoo"
+},
+"183190.KS": {
+"sic": "building_materials",
+"desc": "Building Materials",
+"ko": "건축자재",
+"gics": "소재",
+"src": "yahoo"
+},
+"185750.KS": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"187660.KQ": {
+"sic": "medical_care_facilities",
+"desc": "Medical Care Facilities",
+"ko": "의료시설",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"192400.KS": {
+"sic": "furnishings_fixtures_appliances",
+"desc": "Furnishings, Fixtures & Appliances",
+"ko": "가구·인테리어",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"192650.KS": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"194370.KS": {
+"sic": "footwear_accessories",
+"desc": "Footwear & Accessories",
+"ko": "신발·액세서리",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"199800.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"200130.KQ": {
+"sic": "packaged_foods",
+"desc": "Packaged Foods",
+"ko": "가공식품",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"200470.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"200670.KQ": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"200880.KS": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"203650.KQ": {
+"sic": "software_infrastructure",
+"desc": "Software - Infrastructure",
+"ko": "인프라 소프트웨어",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"204270.KQ": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"204320.KS": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"204620.KQ": {
+"sic": "specialty_business_services",
+"desc": "Specialty Business Services",
+"ko": "기업서비스",
+"gics": "산업재",
+"src": "yahoo"
+},
+"206650.KQ": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"211050.KQ": {
+"sic": "financial_conglomerates",
+"desc": "Financial Conglomerates",
+"ko": "Financial Conglomerates",
+"gics": "금융",
+"src": "yahoo"
+},
+"213420.KQ": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"214320.KS": {
+"sic": "advertising_agencies",
+"desc": "Advertising Agencies",
+"ko": "광고",
+"gics": "커뮤니케이션",
+"src": "yahoo"
+},
+"214430.KQ": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"215200.KQ": {
+"sic": "education_training_services",
+"desc": "Education & Training Services",
+"ko": "교육",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"215600.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"216080.KQ": {
+"sic": "medical_instruments_supplies",
+"desc": "Medical Instruments & Supplies",
+"ko": "의료용품",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"217590.KS": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "yahoo"
+},
+"222080.KQ": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"222800.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"225570.KQ": {
+"sic": "electronic_gaming_multimedia",
+"desc": "Electronic Gaming & Multimedia",
+"ko": "게임·멀티미디어",
+"gics": "커뮤니케이션",
+"src": "yahoo"
+},
+"226950.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"228760.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"234340.KQ": {
+"sic": "software_infrastructure",
+"desc": "Software - Infrastructure",
+"ko": "인프라 소프트웨어",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"236200.KQ": {
+"sic": "security_protection_services",
+"desc": "Security & Protection Services",
+"ko": "보안서비스",
+"gics": "산업재",
+"src": "yahoo"
+},
+"240810.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"241770.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"243070.KQ": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"244920.KS": {
+"sic": "insurance_diversified",
+"desc": "Insurance - Diversified",
+"ko": "종합보험",
+"gics": "금융",
+"src": "yahoo"
+},
+"247540.KQ": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "yahoo"
+},
+"248070.KS": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"249420.KS": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"251970.KQ": {
+"sic": "packaging_containers",
+"desc": "Packaging & Containers",
+"ko": "포장재",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"253450.KQ": {
+"sic": "entertainment",
+"desc": "Entertainment",
+"ko": "엔터테인먼트",
+"gics": "커뮤니케이션",
+"src": "yahoo"
+},
+"253590.KQ": {
+"sic": "semiconductors",
+"desc": "Semiconductors",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"254490.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"263750.KQ": {
+"sic": "electronic_gaming_multimedia",
+"desc": "Electronic Gaming & Multimedia",
+"ko": "게임·멀티미디어",
+"gics": "커뮤니케이션",
+"src": "yahoo"
+},
+"265520.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"267980.KQ": {
+"sic": "packaged_foods",
+"desc": "Packaged Foods",
+"ko": "가공식품",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"268280.KS": {
+"sic": "chemicals",
+"desc": "Chemicals",
+"ko": "화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"271940.KS": {
+"sic": "auto_parts",
+"desc": "Auto Parts",
+"ko": "자동차 부품",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"272290.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"272450.KS": {
+"sic": "airlines",
+"desc": "Airlines",
+"ko": "항공",
+"gics": "산업재",
+"src": "yahoo"
+},
+"277810.KQ": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"278280.KQ": {
+"sic": "chemicals",
+"desc": "Chemicals",
+"ko": "화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"279570.KS": {
+"sic": "banks_regional",
+"desc": "Banks - Regional",
+"ko": "지방은행",
+"gics": "금융",
+"src": "yahoo"
+},
+"281740.KQ": {
+"sic": "specialty_chemicals",
+"desc": "Specialty Chemicals",
+"ko": "정밀화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"284740.KS": {
+"sic": "rental_leasing_services",
+"desc": "Rental & Leasing Services",
+"ko": "렌탈·리스",
+"gics": "산업재",
+"src": "yahoo"
+},
+"285130.KS": {
+"sic": "specialty_chemicals",
+"desc": "Specialty Chemicals",
+"ko": "정밀화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"286940.KS": {
+"sic": "information_technology_services",
+"desc": "Information Technology Services",
+"ko": "IT 서비스",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"287840.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"290550.KQ": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"293940.KS": {
+"sic": "reit_office",
+"desc": "REIT - Office",
+"ko": "REIT - Office",
+"gics": "부동산",
+"src": "yahoo"
+},
+"294570.KQ": {
+"sic": "information_technology_services",
+"desc": "Information Technology Services",
+"ko": "IT 서비스",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"295310.KQ": {
+"sic": "other_industrial_metals_mining",
+"desc": "Other Industrial Metals & Mining",
+"ko": "비철금속",
+"gics": "소재",
+"src": "yahoo"
+},
+"298050.KS": {
+"sic": "textile_manufacturing",
+"desc": "Textile Manufacturing",
+"ko": "섬유",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"298380.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"298690.KS": {
+"sic": "airlines",
+"desc": "Airlines",
+"ko": "항공",
+"gics": "산업재",
+"src": "yahoo"
+},
+"298830.KQ": {
+"sic": "software_application",
+"desc": "Software - Application",
+"ko": "응용 소프트웨어",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"302440.KS": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"304360.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"306200.KS": {
+"sic": "steel",
+"desc": "Steel",
+"ko": "철강",
+"gics": "소재",
+"src": "yahoo"
+},
+"310210.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"316140.KS": {
+"sic": "banks_regional",
+"desc": "Banks - Regional",
+"ko": "지방은행",
+"gics": "금융",
+"src": "yahoo"
+},
+"317330.KQ": {
+"sic": "semiconductors",
+"desc": "Semiconductors",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"317400.KS": {
+"sic": "real_estate_diversified",
+"desc": "Real Estate - Diversified",
+"ko": "Real Estate - Diversified",
+"gics": "부동산",
+"src": "yahoo"
+},
+"317450.KS": {
+"sic": "drug_manufacturers_general",
+"desc": "Drug Manufacturers - General",
+"ko": "종합제약",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"322000.KS": {
+"sic": "solar",
+"desc": "Solar",
+"ko": "태양광",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"323410.KS": {
+"sic": "banks_regional",
+"desc": "Banks - Regional",
+"ko": "지방은행",
+"gics": "금융",
+"src": "yahoo"
+},
+"327260.KQ": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"328130.KQ": {
+"sic": "health_information_services",
+"desc": "Health Information Services",
+"ko": "Health Information Services",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"330860.KQ": {
+"sic": "semiconductors",
+"desc": "Semiconductors",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"332570.KQ": {
+"sic": "communication_equipment",
+"desc": "Communication Equipment",
+"ko": "통신장비",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"336260.KS": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "yahoo"
+},
+"336370.KS": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"336570.KQ": {
+"sic": "medical_devices",
+"desc": "Medical Devices",
+"ko": "의료기기",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"340570.KQ": {
+"sic": "medical_devices",
+"desc": "Medical Devices",
+"ko": "의료기기",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"344820.KS": {
+"sic": "building_products_equipment",
+"desc": "Building Products & Equipment",
+"ko": "건자재",
+"gics": "산업재",
+"src": "yahoo"
+},
+"347850.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"348210.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"348340.KQ": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"348370.KQ": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "yahoo"
+},
+"352480.KQ": {
+"sic": "household_personal_products",
+"desc": "Household & Personal Products",
+"ko": "생활용품·화장품",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"356680.KQ": {
+"sic": "software_application",
+"desc": "Software - Application",
+"ko": "응용 소프트웨어",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"356860.KQ": {
+"sic": "semiconductors",
+"desc": "Semiconductors",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"357120.KS": {
+"sic": "reit_diversified",
+"desc": "REIT - Diversified",
+"ko": "리츠",
+"gics": "부동산",
+"src": "yahoo"
+},
+"361610.KS": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"365340.KQ": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "yahoo"
+},
+"365550.KS": {
+"sic": "reit_industrial",
+"desc": "REIT - Industrial",
+"ko": "REIT - Industrial",
+"gics": "부동산",
+"src": "yahoo"
+},
+"368770.KQ": {
+"sic": "scientific_technical_instruments",
+"desc": "Scientific & Technical Instruments",
+"ko": "계측·정밀기기",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"372320.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"376270.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"376300.KQ": {
+"sic": "software_application",
+"desc": "Software - Application",
+"ko": "응용 소프트웨어",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"376900.KQ": {
+"sic": "medical_care_facilities",
+"desc": "Medical Care Facilities",
+"ko": "의료시설",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"377300.KS": {
+"sic": "software_infrastructure",
+"desc": "Software - Infrastructure",
+"ko": "인프라 소프트웨어",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"377450.KQ": {
+"sic": "real_estate_services",
+"desc": "Real Estate Services",
+"ko": "부동산 서비스",
+"gics": "부동산",
+"src": "yahoo"
+},
+"377740.KS": {
+"sic": "medical_devices",
+"desc": "Medical Devices",
+"ko": "의료기기",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"381970.KS": {
+"sic": "auto_truck_dealerships",
+"desc": "Auto & Truck Dealerships",
+"ko": "자동차 판매",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"383310.KQ": {
+"sic": "pollution_treatment_controls",
+"desc": "Pollution & Treatment Controls",
+"ko": "환경설비",
+"gics": "산업재",
+"src": "yahoo"
+},
+"383800.KS": {
+"sic": "financial_conglomerates",
+"desc": "Financial Conglomerates",
+"ko": "Financial Conglomerates",
+"gics": "금융",
+"src": "yahoo"
+},
+"388210.KQ": {
+"sic": "semiconductors",
+"desc": "Semiconductors",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"389260.KQ": {
+"sic": "utilities_renewable",
+"desc": "Utilities - Renewable",
+"ko": "Utilities - Renewable",
+"gics": "유틸리티",
+"src": "yahoo"
+},
+"389470.KQ": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"389500.KQ": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"389650.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"393890.KQ": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "yahoo"
+},
+"397030.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"399720.KQ": {
+"sic": "semiconductors",
+"desc": "Semiconductors",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"403550.KS": {
+"sic": "software_application",
+"desc": "Software - Application",
+"ko": "응용 소프트웨어",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"404990.KS": {
+"sic": "reit_diversified",
+"desc": "REIT - Diversified",
+"ko": "리츠",
+"gics": "부동산",
+"src": "yahoo"
+},
+"417200.KQ": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "yahoo"
+},
+"417840.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"420770.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"424870.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"425420.KQ": {
+"sic": "semiconductors",
+"desc": "Semiconductors",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"439090.KQ": {
+"sic": "household_personal_products",
+"desc": "Household & Personal Products",
+"ko": "생활용품·화장품",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"439960.KQ": {
+"sic": "computer_hardware",
+"desc": "Computer Hardware",
+"ko": "컴퓨터 하드웨어",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"440110.KQ": {
+"sic": "semiconductors",
+"desc": "Semiconductors",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"445090.KQ": {
+"sic": "semiconductors",
+"desc": "Semiconductors",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"446540.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"448280.KQ": {
+"sic": "conglomerates",
+"desc": "Conglomerates",
+"ko": "복합기업",
+"gics": "산업재",
+"src": "yahoo"
+},
+"448730.KS": {
+"sic": "reit_office",
+"desc": "REIT - Office",
+"ko": "REIT - Office",
+"gics": "부동산",
+"src": "yahoo"
+},
+"448900.KQ": {
+"sic": "metal_fabrication",
+"desc": "Metal Fabrication",
+"ko": "금속가공",
+"gics": "산업재",
+"src": "yahoo"
+},
+"450080.KS": {
+"sic": "electrical_equipment_parts",
+"desc": "Electrical Equipment & Parts",
+"ko": "전기장비·부품",
+"gics": "산업재",
+"src": "yahoo"
+},
+"452260.KS": {
+"sic": "department_stores",
+"desc": "Department Stores",
+"ko": "백화점",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"452280.KQ": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"452430.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"453340.KS": {
+"sic": "specialty_business_services",
+"desc": "Specialty Business Services",
+"ko": "기업서비스",
+"gics": "산업재",
+"src": "yahoo"
+},
+"454910.KS": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"455900.KQ": {
+"sic": "computer_hardware",
+"desc": "Computer Hardware",
+"ko": "컴퓨터 하드웨어",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"456010.KQ": {
+"sic": "semiconductors",
+"desc": "Semiconductors",
+"ko": "반도체",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"456040.KS": {
+"sic": "specialty_chemicals",
+"desc": "Specialty Chemicals",
+"ko": "정밀화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"456160.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"458870.KQ": {
+"sic": "medical_devices",
+"desc": "Medical Devices",
+"ko": "의료기기",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"460860.KS": {
+"sic": "steel",
+"desc": "Steel",
+"ko": "철강",
+"gics": "소재",
+"src": "yahoo"
+},
+"460930.KQ": {
+"sic": "aerospace_defense",
+"desc": "Aerospace & Defense",
+"ko": "항공우주·방산",
+"gics": "산업재",
+"src": "yahoo"
+},
+"461300.KQ": {
+"sic": "education_training_services",
+"desc": "Education & Training Services",
+"ko": "교육",
+"gics": "필수소비재",
+"src": "yahoo"
+},
+"462350.KQ": {
+"sic": "aerospace_defense",
+"desc": "Aerospace & Defense",
+"ko": "항공우주·방산",
+"gics": "산업재",
+"src": "yahoo"
+},
+"466100.KQ": {
+"sic": "software_infrastructure",
+"desc": "Software - Infrastructure",
+"ko": "인프라 소프트웨어",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"468530.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"472850.KQ": {
+"sic": "apparel_retail",
+"desc": "Apparel Retail",
+"ko": "의류 소매",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"475400.KQ": {
+"sic": "computer_hardware",
+"desc": "Computer Hardware",
+"ko": "컴퓨터 하드웨어",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"475830.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"475960.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"476060.KQ": {
+"sic": "drug_manufacturers_specialty_generic",
+"desc": "Drug Manufacturers - Specialty & Generic",
+"ko": "제약(제네릭·특수)",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"476830.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"477850.KQ": {
+"sic": "software_application",
+"desc": "Software - Application",
+"ko": "응용 소프트웨어",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"481070.KQ": {
+"sic": "footwear_accessories",
+"desc": "Footwear & Accessories",
+"ko": "신발·액세서리",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"482630.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"484120.KQ": {
+"sic": "electronic_components",
+"desc": "Electronic Components",
+"ko": "전자부품",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"484590.KQ": {
+"sic": "aerospace_defense",
+"desc": "Aerospace & Defense",
+"ko": "항공우주·방산",
+"gics": "산업재",
+"src": "yahoo"
+},
+"484870.KS": {
+"sic": "aerospace_defense",
+"desc": "Aerospace & Defense",
+"ko": "항공우주·방산",
+"gics": "산업재",
+"src": "yahoo"
+},
+"486990.KQ": {
+"sic": "software_application",
+"desc": "Software - Application",
+"ko": "응용 소프트웨어",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"488900.KQ": {
+"sic": "specialty_industrial_machinery",
+"desc": "Specialty Industrial Machinery",
+"ko": "산업기계",
+"gics": "산업재",
+"src": "yahoo"
+},
+"489790.KS": {
+"sic": "security_protection_services",
+"desc": "Security & Protection Services",
+"ko": "보안서비스",
+"gics": "산업재",
+"src": "yahoo"
+},
+"490470.KQ": {
+"sic": "semiconductor_equipment_materials",
+"desc": "Semiconductor Equipment & Materials",
+"ko": "반도체 장비·소재",
+"gics": "정보기술",
+"src": "yahoo"
+},
+"491000.KQ": {
+"sic": "medical_devices",
+"desc": "Medical Devices",
+"ko": "의료기기",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"493280.KQ": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+},
+"499790.KS": {
+"sic": "lodging",
+"desc": "Lodging",
+"ko": "호텔",
+"gics": "경기소비재",
+"src": "yahoo"
+},
+"900290.KQ": {
+"sic": "specialty_chemicals",
+"desc": "Specialty Chemicals",
+"ko": "정밀화학",
+"gics": "소재",
+"src": "yahoo"
+},
+"950210.KS": {
+"sic": "biotechnology",
+"desc": "Biotechnology",
+"ko": "바이오",
+"gics": "헬스케어",
+"src": "yahoo"
+}
+}
+}
