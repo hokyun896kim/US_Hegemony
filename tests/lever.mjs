@@ -232,8 +232,26 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
   const P = w.document.getElementById('radarPanel');
   const secs = [...P.querySelectorAll('.radar-sec')].map(e => e.textContent);
   const at = s => secs.findIndex(x => x.includes(s));
-  t(at('① 깨어나는') === 0 && at('② 안 믿는') === 1 && at('흑자전환') === 2 && at('산업') === 3,
-    `순서 — ① → ② → 흑자전환 → 산업 (${secs.map(s => s.slice(0, 8)).join(' / ')})`);
+  // 2026-09-24 '산업 → 주도기업' 재구성: 주목 산업이 맨 위, 종목 목록은 '산업과 별개인
+  // 개별 종목' 머리 아래로 내려간다(docs/backtest-leaders.md 판정 규칙 3 — 순서는 결과와 무관).
+  t(at('주목 산업') === 0 && at('① 깨어나는') === 1 && at('② 안 믿는') === 2 && at('흑자전환') === 3,
+    `순서 — 주목 산업 → ① → ② → 흑자전환 (${secs.map(s => s.slice(0, 8)).join(' / ')})`);
+  {
+    const grp = P.querySelector('.radar-grp'), kids = [...P.children];
+    const iSec = sel => kids.findIndex(e => e.classList.contains('radar-sec') && e.textContent.includes(sel));
+    t(!!grp && kids.indexOf(grp) > iSec('주목 산업') && kids.indexOf(grp) < iSec('① 깨어나는')
+      && /산업과 별개인 개별 종목/.test(grp.textContent), "①·②·흑자전환은 '산업과 별개인 개별 종목' 머리 아래");
+    // ① 카드의 '주목 산업 안' — 주목 산업 구성 종목인지 사실대로, 근거 문구는 시장별(F2)
+    const FT = new Set(w.eval('[...FOCUS_TK]')), f2 = w.eval('IND_EVID.f2');
+    const wc = [...P.querySelectorAll(':scope > .rc:not(.warn), :scope > details.radar-more > .rc:not(.warn)')]
+      .filter(c => L.wake.some(m => c.getAttribute('onclick').includes(`'${m.tk}'`)));
+    const bad = wc.filter(c => { const tk = c.querySelector('.rc-tk').textContent, tag = c.querySelector('.rc-foc');
+      return FT.has(tk) !== !!tag || (tag && tag.getAttribute('title') !== f2); });
+    t(wc.length === L.wake.length && bad.length === 0,
+      `① 카드 '주목 산업 안' 표시 = 주목 산업 구성 여부 (${wc.length - bad.length}/${wc.length} · 표시 ${wc.filter(c => c.querySelector('.rc-foc')).length})`);
+    t(bench === '코스피' ? /\+3\.9p/.test(f2) : /−2\.3p/.test(f2) && !/나았/.test(f2),
+      "표시 근거가 판정 규칙 4 대로 — 한국 +3.9p · 미국은 사실만(과거에 나빴다)");
+  }
   const old = P.querySelector('details.radar-old');
   t(!!old && !old.open, '구 레이더는 접힌 채로 남는다(지우지 않는다)');
   t(!!old && old.querySelector('.radar-sec')?.textContent.includes('선취매 권역'), '구 레이더 안에 예전 목록이 그대로 있다');
@@ -260,6 +278,17 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
   const pr = E(`buildPrompt('${wk}')`);
   t(pr.includes('실적 반응:') && pr.includes('선취매 레이더 판정: ① 깨어나는 레버리지'), 'GPT 프롬프트에 실적 반응·판정');
   t(pr.includes(`${bench === '코스피' ? '코스피' : 'S&P500'} 대비`), '프롬프트의 기준 지수도 시장에 맞다');
+  // 산업 맥락 — 주목 산업 안인지 · 주도기업 후보 몇 위인지(검증된 순서가 아님)를 싣는다
+  {
+    const ctx = (pr.match(/- 산업 맥락: (.*)/) || [])[1] || '';
+    const inF = w.eval(`FOCUS_TK.has('${wk}')`);
+    t(inF ? /^주목 산업 .+\((안 깨움|막 감지|안 깨움 \+ 막 감지)\) · 주도기업 후보 /.test(ctx) && /검증된 순서가 아니다/.test(ctx)
+            && ctx.includes(w.eval('IND_EVID.f2'))
+          : /^주목 산업 아님/.test(ctx),
+      `GPT 프롬프트에 산업 맥락 (${ctx.slice(0, 50)})`);
+    const out = [...w.eval('D').subs].flatMap(s => s.members).find(m => !w.eval(`FOCUS_TK.has('${m.tk}')`));
+    t(!out || /- 산업 맥락: 주목 산업 아님/.test(E(`buildPrompt('${out.tk}')`)), '주목 산업 밖 종목은 "주목 산업 아님"');
+  }
 
   // 주간 변화 — 지난 회차에 새 목록이 없었으면 '비교 불가'
   E(`CHANGES={kind:'x',from:'2026-09-15',to:'2026-09-22',top5:{in:[],out:[]},radar:{in:[],out:[]},wake:null}; renderChanges()`);

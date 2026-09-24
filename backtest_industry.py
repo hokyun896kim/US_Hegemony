@@ -147,6 +147,10 @@ def judge(market: str, log=print):
                 for m in s["members"]:
                     e = BX.event_at(evs.get(m["tk"], []), t)
                     m["ear"] = round(e[0], 2) if e and e[0] is not None else None
+                    # 화면 트리의 qs 와 같은 모양(최신 먼저 [분기말, 매출, 영업이익]) — T 에
+                    # 알려진 분기만. 주도기업 규칙 '규모'(ttmRev)가 읽는다.
+                    st_ = cache["stocks"].get(m["tk"]) or {}
+                    m["qs"] = [[q["q_end"], q["rev"], q["op"]] for q in reversed(R.known_at(st_, t))][:8]
             f = Path(tmp) / f"{t}.json"
             f.write_text(json.dumps(tree, ensure_ascii=False), encoding="utf-8")
             files.append(str(f))
