@@ -44,6 +44,11 @@ UA = {"User-Agent": "Mozilla/5.0"}
 # 쪽이 맞았는지 가르는 것이 이 표의 일이다(docs/backtest-earnings-reaction.md).
 LISTS = (("old", "구 레이더"), ("wake", "① 깨어나는 레버리지"),
          ("doubt", "② 안 믿는 레버리지"), ("flip", "흑자전환(관찰)"))
+# 주목 산업 성적표 — 2026-09-24 '산업 → 주도기업' 재구성부터 박제에 focus 가 실린다.
+# 한국 백테스트에서 ① ∩ 주목 산업이 ① 밖보다 6개월 +3.9p 나았다(미국 −2.3p,
+# docs/backtest-leaders.md F2). 그게 표본 밖에서도 되는지를 이 표가 잰다.
+FOCUS_LISTS = (("fwake", "① ∩ 주목 산업"), ("owake", "① — 주목 산업 밖"),
+               ("lead", "주도기업 후보(산업별 상위 3)"), ("fall", "주목 산업 전 종목"))
 # 합산에 넣을 회차 수. 6개월 칸이 차려면 반년이 걸리니 1년치를 본다.
 AGG_LIMIT = 52
 
@@ -91,6 +96,30 @@ def members_of(s, key):
     return [p["tk"] for p in lv.get(key) or []]
 
 
+def focus_members_of(s, key):
+    """주목 산업 성적표의 한 목록. focus·lever 가 박제되지 않은 회차면 None."""
+    f, lv = s.get("focus"), s.get("lever")
+    if not f or not lv:
+        return None
+    ft = {tk for x in f.get("list") or [] for tk in x.get("members") or []}
+    wake = [p["tk"] for p in lv.get("wake") or []]
+    if key == "fwake":
+        return [tk for tk in wake if tk in ft]
+    if key == "owake":
+        return [tk for tk in wake if tk not in ft]
+    if key == "lead":
+        return list(dict.fromkeys(tk for x in f.get("list") or [] for tk in x.get("lead") or []))
+    if key == "fall":
+        return sorted(ft)
+    return None
+
+
+def focus_rounds(snaps, agg=AGG_LIMIT):
+    """주목 산업 성적표에 쓸 회차 — focus 가 박제된 회차만, 최신부터 agg 개."""
+    return [s for s in sorted(snaps, key=lambda x: x["date"], reverse=True)[:agg]
+            if s.get("focus") and s.get("lever")]
+
+
 def agg_rounds(snaps, agg=AGG_LIMIT):
     """목록 비교에 쓸 회차 — 새 목록이 박제된 회차만, 최신부터 agg 개."""
     return [s for s in sorted(snaps, key=lambda x: x["date"], reverse=True)[:agg]
@@ -107,6 +136,9 @@ def tickers_of(snaps, limit, agg=AGG_LIMIT):
     for s in agg_rounds(snaps, agg):
         for key, _ in LISTS:
             out.update(members_of(s, key) or [])
+    for s in focus_rounds(snaps, agg):
+        for key, _ in FOCUS_LISTS:
+            out.update(focus_members_of(s, key) or [])
     return out
 
 
@@ -186,14 +218,22 @@ def list_summary(snaps, prices, bench, today: str, agg=AGG_LIMIT):
     기록이다. 화면에도 그렇게 적는다. 가격이 없는 종목은 관측에서 빠지는데,
     그 수(members − 관측)를 함께 남겨 상장폐지가 숨지 않게 한다.
     """
-    rounds = agg_rounds(snaps, agg)
+    return summarize(agg_rounds(snaps, agg), LISTS, members_of, prices, bench, today)
+
+
+def focus_summary(snaps, prices, bench, today: str, agg=AGG_LIMIT):
+    """주목 산업 성적표 — list_summary 와 같은 방식, focus 가 박제된 회차로만."""
+    return summarize(focus_rounds(snaps, agg), FOCUS_LISTS, focus_members_of, prices, bench, today)
+
+
+def summarize(rounds, defs, members_fn, prices, bench, today: str):
     out = {"rounds": len(rounds),
            "since": min((s["date"] for s in rounds), default=None), "lists": []}
-    for key, label in LISTS:
+    for key, label in defs:
         vals = {n: [] for n in SPANS}
         members = 0
         for s in rounds:
-            for tk in members_of(s, key) or []:
+            for tk in members_fn(s, key) or []:
                 members += 1
                 for o in outcome(tk, s["date"], prices, bench, today):
                     vals[o["span"]].append(o["excess"])
@@ -220,7 +260,8 @@ def build(kind, prices, bench, snaps, today: str, limit=8, agg=AGG_LIMIT):
                           "out": outcome(p["tk"], t, prices, bench, today)})
         rows.append({"date": t, "weights": s.get("weights"), "picks": picks})
     return {"kind": kind, "built": today, "spans": list(SPANS), "rows": rows,
-            "lists": list_summary(snaps, prices, bench, today, agg)}
+            "lists": list_summary(snaps, prices, bench, today, agg),
+            "focus": focus_summary(snaps, prices, bench, today, agg)}
 
 
 def selftest() -> int:
@@ -324,6 +365,35 @@ def selftest() -> int:
       f"받을 종목에 목록 종목이 들어가고, 합산 밖 회차(C)는 안 받는다 ({tickers_of(sn, 0)})")
     t("lists" in build("kr", {"A": pA}, bn, sn, "2026-10-25"), "build 산출물에 목록 비교가 실린다")
 
+    print("\n━━ 주목 산업 성적표 — focus 가 박제된 회차로만 ━━")
+    fs_ = [
+        # focus 이전 회차(lever 만) — 성적표에 들어가면 안 된다
+        {"date": "2026-09-18", "top5": [], "radar": [],
+         "lever": {"wake": [{"tk": "A"}], "doubt": [], "flip": []}},
+        {"date": "2026-09-25", "top5": [], "radar": [],
+         "lever": {"wake": [{"tk": "A"}, {"tk": "B"}], "doubt": [], "flip": []},
+         "focus": {"list": [{"members": ["A", "D"], "lead": ["D", "A"]},
+                            {"members": ["E"], "lead": ["E"]}]}},
+    ]
+    s2 = fs_[1]
+    t(focus_members_of(s2, "fwake") == ["A"] and focus_members_of(s2, "owake") == ["B"],
+      "① 을 주목 산업 안(A) · 밖(B) 으로 가른다")
+    t(focus_members_of(s2, "lead") == ["D", "A", "E"] and focus_members_of(s2, "fall") == ["A", "D", "E"],
+      "주도기업 후보(중복 없이 순서 유지) · 주목 산업 전 종목")
+    t(focus_members_of(fs_[0], "fwake") is None, "focus 가 없는 회차는 None")
+    pF = {"2026-09-25": 100.0, "2026-10-27": 110.0}
+    bF = {"2026-09-25": 100.0, "2026-10-27": 100.0}
+    FS = focus_summary(fs_, {"A": pF, "B": pB, "D": pF}, bF, "2026-11-01")
+    byf = {x["key"]: x for x in FS["lists"]}
+    t(FS["rounds"] == 1 and FS["since"] == "2026-09-25", f"focus 회차만 센다 ({FS['rounds']} · {FS['since']})")
+    t(byf["fwake"]["spans"]["1"]["med"] == 10.0 and byf["fwake"]["members"] == 1,
+      f"① ∩ 주목 산업 초과수익 ({byf['fwake']['spans']['1']})")
+    t(byf["lead"]["members"] == 3 and byf["lead"]["spans"]["1"]["n"] == 2,
+      "가격이 없는 종목(E)은 관측에서 빠지되 members 에는 남는다(숨기지 않는다)")
+    t([x["key"] for x in FS["lists"]] == ["fwake", "owake", "lead", "fall"], "순서 고정")
+    t(tickers_of(fs_, 0) >= {"A", "B", "D", "E"}, "받을 종목에 주목 산업 목록이 들어간다")
+    t("focus" in build("kr", {"A": pF}, bF, fs_, "2026-11-01"), "build 산출물에 주목 산업 성적표가 실린다")
+
     print("\n✅ 전부 통과" if ok[0] else "\n실패 있음")
     return 0 if ok[0] else 1
 
@@ -385,6 +455,12 @@ def main(argv=None):
         print(f"  목록 비교 {L['rounds']}회차({L['since']}~) · {cells}")
     else:
         print("  목록 비교 — 새 목록이 박제된 회차가 아직 없다")
+    F = out["focus"]
+    if F["rounds"]:
+        print(f"  주목 산업 성적표 {F['rounds']}회차({F['since']}~) · "
+              + " · ".join(f"{x['label']} {x['members']}건" for x in F["lists"]))
+    else:
+        print("  주목 산업 성적표 — focus 가 박제된 회차가 아직 없다")
     return 0
 
 

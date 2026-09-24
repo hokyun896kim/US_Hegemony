@@ -161,13 +161,65 @@ def report(market, stats, counts):
     return "\n".join(L), ok, s6s
 
 
+def window(stats, counts, lo=None, hi=None):
+    """[lo, hi) 구간의 시점만 남긴다 — 표본 밖 구간을 따로 판정할 때 쓴다."""
+    keep = lambda t: (lo is None or t >= lo) and (hi is None or t < hi)  # noqa: E731
+    st2 = {k: {h: {t: v for t, v in d.items() if keep(t)} for h, d in hs.items()}
+           for k, hs in stats.items()}
+    return st2, {t: v for t, v in counts.items() if keep(t)}
+
+
+MIN_OOS_T, MIN_OOS_FOC = 30, 20     # docs/backtest-kr-extended.md 판정 규칙 6
+
+
+def extended_rule(ok, counts):
+    """docs/backtest-kr-extended.md 판정 규칙 1~4·6 — 표본 밖 구간의 통과 여부 → 규칙 번호."""
+    if len(counts) < MIN_OOS_T or sum(1 for a, _, _ in counts.values() if a > 0) < MIN_OOS_FOC:
+        return 6
+    t1, f2 = ok.get("T1"), ok.get("F2")
+    return 1 if t1 and f2 else 2 if t1 else 3 if f2 else 4
+
+
+def main_split(a):
+    """한국 기간 연장 — 표본 밖(start~split) · 원래(split~) · 전 기간을 따로 판정한다."""
+    print(f"[{a.market}] 판정 · {a.start}~ · 경계 {a.split}")
+    res, pdict, bdict = BI.judge(a.market, start=a.start)
+    stats, counts = analyze(res, pdict, bdict)
+    parts, verdicts = [], {}
+    for name, lo, hi in (("표본 밖(가설을 세울 때 안 본 구간)", None, a.split),
+                         ("원래 구간(docs/backtest-leaders.md 와 대조)", a.split, None),
+                         ("전 기간", None, None)):
+        s2, c2 = window(stats, counts, lo, hi)
+        txt, ok, _ = report(a.market, s2, c2)
+        verdicts[name] = (ok, c2)
+        parts.append(f"### {name}\n\n" + txt)
+    ok, c2 = verdicts["표본 밖(가설을 세울 때 안 본 구간)"]
+    rule = extended_rule(ok, c2)
+    head = Path(a.doc).read_text(encoding="utf-8").split(MARK)[0].rstrip()
+    tail = ["", MARK, "", "# 결과", "",
+            f"**판정 규칙 {rule} 적용** — 표본 밖 구간 T1 {'✅' if ok.get('T1') else '—'} · "
+            f"F2 {'✅' if ok.get('F2') else '—'} (시점 {len(c2)} · 주목 산업이 있는 시점 "
+            f"{sum(1 for x, _, _ in c2.values() if x > 0)})", ""]
+    Path(a.doc).write_text(head + "\n" + "\n".join(tail) + "\n" + "\n\n".join(parts) + "\n", encoding="utf-8")
+    print("\n\n".join(parts))
+    print(f"판정 규칙 {rule} · 보고서 {a.doc}")
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--market", choices=["kr", "us", "both"], default="both")
+    ap.add_argument("--start", default=None, help="평가 창 시작(기본은 backtest_reaction.WINDOWS)")
+    ap.add_argument("--split", default=None, help="이 날짜 앞을 표본 밖 구간으로 따로 판정한다")
+    ap.add_argument("--doc", default="docs/backtest-kr-extended.md")
     ap.add_argument("--selftest", action="store_true")
     a = ap.parse_args(argv)
     if a.selftest:
         return selftest()
+    if a.split:
+        if a.market == "both":
+            ap.error("--split 은 시장 하나에만 쓴다")
+        return main_split(a)
     parts, oks, s6 = [], {}, {}
     for m in (("kr", "us") if a.market == "both" else (a.market,)):
         print(f"[{m}] 판정")
@@ -247,6 +299,24 @@ def selftest() -> int:
       "통과 시장이 많은 규칙이 먼저")
     t(choose({"kr": {"sp": F, "ear": F, "size": None}, "us": {"sp": F, "ear": None, "size": F}}) == ("sp", []),
       "어디서도 통과 못 하면 L1 스프레드 · 통과 시장 없음")
+
+    print("\n── 기간 연장(표본 밖 구간) ──")
+    stt = {"T1": {"ex6": {"2018-01-31": 1.0, "2023-01-31": 2.0}}}
+    cnt = {"2018-01-31": (3, 1, 5), "2023-01-31": (4, 2, 6)}
+    s_, c_ = window(stt, cnt, None, "2022-01-01")
+    t(list(c_) == ["2018-01-31"] and list(s_["T1"]["ex6"]) == ["2018-01-31"], "경계 앞 시점만 남긴다")
+    s_, c_ = window(stt, cnt, "2022-01-01", None)
+    t(list(c_) == ["2023-01-31"], "경계 뒤 시점만 남긴다(경계 당일 포함)")
+    many_c = {f"2018-{i:02d}-28": (2, 1, 5) for i in range(1, 13)}
+    many_c.update({f"2019-{i:02d}-28": (2, 1, 5) for i in range(1, 13)})
+    many_c.update({f"2020-{i:02d}-28": (1, 1, 5) for i in range(1, 13)})
+    t(extended_rule({"T1": True, "F2": True}, many_c) == 1 and extended_rule({"T1": True}, many_c) == 2
+      and extended_rule({"F2": True}, many_c) == 3 and extended_rule({}, many_c) == 4,
+      "판정 규칙 1~4 — T1·F2 통과 조합")
+    few = dict(list(many_c.items())[:20])
+    t(extended_rule({"T1": True, "F2": True}, few) == 6, f"시점이 {MIN_OOS_T} 미만이면 판정 불가(규칙 6)")
+    thin = {k: (0, 0, 5) for k in many_c}
+    t(extended_rule({"T1": True, "F2": True}, thin) == 6, f"주목 산업이 있는 시점이 {MIN_OOS_FOC} 미만이면 판정 불가")
 
     print("\n" + ("✅ 전부 통과" if ok[0] else "❌ 실패"))
     return 0 if ok[0] else 1

@@ -94,6 +94,18 @@ def load_prev(path: str):
 YEARS = 6
 
 
+def quota_hit(before: int) -> bool:
+    """이 종목을 받는 사이 DART 하루 요청 한도(020)에 걸렸는가.
+
+    한도에 걸리면 dart.statement 는 예외 없이 빈 값을 돌려준다 — fetch_one 은
+    '분기가 몇 개 빠진 종목' 을 정상처럼 내놓는다. 그걸 저장하면 다음 실행의
+    이어받기가 그 종목을 '이미 받음' 으로 건너뛰어, 과거 분기가 **조용히 영영
+    빠진다.** 기간을 늘려 받을 때(12년 · 종목당 약 50건)는 하루 한도 20,000건을
+    거의 반드시 넘으므로 이 경우가 실제로 생긴다.
+    """
+    return dart.STATUS.get("020", 0) > before
+
+
 def fetch_one(tk: str, corp: str, years: int = YEARS, log=print):
     """한 종목의 분기 재무 + 공시 달력."""
     code = tk.split(".")[0]
@@ -244,6 +256,7 @@ def main(argv=None):
 
     print("[2/2] 분기 재무 + 공시 달력")
     got = fail = skip = 0
+    quota = False
     for i, tk in enumerate(universe, 1):
         if tk in stocks:
             skip += 1
@@ -256,8 +269,16 @@ def main(argv=None):
         if not corp:
             fail += 1
             continue
+        lim0 = dart.STATUS.get("020", 0)
         try:
-            stocks[tk] = fetch_one(tk, corp, years=args.years)
+            one = fetch_one(tk, corp, years=args.years)
+            if quota_hit(lim0):
+                # 반쪽 종목을 싣지 않는다 — 싣는 순간 이어받기가 영영 건너뛴다
+                print(f"  ⛔ DART 하루 요청 한도(020) — {tk} 는 버리고 여기서 멈춘다. "
+                      f"받은 데까지 저장하고, 한도가 풀린 뒤 다시 돌리면 {tk} 부터 이어받는다.")
+                quota = True
+                break
+            stocks[tk] = one
             got += 1
         except Exception as exc:  # noqa: BLE001 — 한 종목 때문에 배치를 잃지 않는다
             print(f"  {tk} 실패({exc})")
@@ -287,6 +308,9 @@ def main(argv=None):
     print(f"\n  저장 {args.out}")
     print(f"  종목 {len(stocks)}/{len(universe)} (새로 {got} · 이어받음 {skip} · 실패 {fail})")
     print(f"  분기 {nq}개 · 공시 {nc}건 · {dart.status_report()}")
+    if quota:
+        print(f"  ⏸ 하루 한도로 멈춤 — 남은 {len(universe) - len([t for t in universe if t in stocks])}종목은 "
+              f"한도가 풀린 뒤(KST 자정 이후) 같은 입력으로 다시 돌리면 이어받는다.")
     if not dart.healthy():
         print("  ⚠️ DART 응답이 한 건도 정상(000)이 아닙니다 — 키나 URL 을 보세요.")
         return 1
@@ -330,6 +354,24 @@ def selftest() -> int:
         t(load_universe(q) == ["A.KS", "B.KQ"],
           "확대 유니버스 파일도 같은 함수가 받는다 — 호출부마다 분기하면 "
           "한쪽만 고치고 지나간다")
+
+    print("\n━━ 하루 요청 한도(020) ━━")
+    saved = dict(dart.STATUS)
+    try:
+        dart.STATUS.clear()
+        dart.STATUS["000"] = 5
+        b0 = dart.STATUS.get("020", 0)
+        t(not quota_hit(b0), "한도에 안 걸렸으면 그 종목을 싣는다")
+        dart.STATUS["020"] = 1
+        t(quota_hit(b0), "받는 사이 020 이 한 번이라도 나오면 한도 — 반쪽 종목을 싣지 않는다")
+        t(not quota_hit(dart.STATUS["020"]), "이전 종목에서 난 020 은 이 종목 탓이 아니다(기준점 이후만 센다)")
+    finally:
+        dart.STATUS.clear()
+        dart.STATUS.update(saved)
+    import inspect
+    src = inspect.getsource(main)
+    t("quota_hit(" in src and src.index("quota_hit(") < src.index("stocks[tk] = one"),
+      "main 이 싣기 전에 한도를 확인한다")
 
     print("\n━━ 조기 중단 문턱 ━━")
     # 실측 사고를 상수로 고정한다. 이 값이 커지면 다시 몇 시간을 태우게 된다.

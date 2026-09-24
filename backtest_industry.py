@@ -127,8 +127,11 @@ def skeleton_from(ind: dict, tickers) -> dict:
 
 
 # ── 2. 판정 ──────────────────────────────────────────────────────
-def judge(market: str, log=print):
-    """월말마다 트리를 되살려 화면 코드로 판정한다. → (판정, 시세 사전, 벤치 사전)"""
+def judge(market: str, log=print, start=None):
+    """월말마다 트리를 되살려 화면 코드로 판정한다. → (판정, 시세 사전, 벤치 사전)
+
+    start 를 주면 평가 창의 시작을 바꾼다(한국 기간 연장 — docs/backtest-kr-extended.md).
+    """
     cfg = BR.MARKETS[market]
     R.set_market(market)
     cache = json.loads(Path(cfg["quarters"]).read_text(encoding="utf-8"))
@@ -138,7 +141,8 @@ def judge(market: str, log=print):
     ser, bench = BX.series_of(px)
     evs = {tk: BX.events_of(s, ser.get(tk, []), bench)
            for tk, s in cache["stocks"].items() if ser.get(tk)}
-    dates = R.month_ends(*BX.WINDOWS[market])
+    lo, hi = BX.WINDOWS[market]
+    dates = R.month_ends(start or lo, hi)
     with tempfile.TemporaryDirectory() as tmp:
         files = []
         for i, t in enumerate(dates, 1):
