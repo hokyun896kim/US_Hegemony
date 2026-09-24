@@ -955,6 +955,31 @@ input,button,select,.search{font-family:"Pretendard Variable",Pretendard,-apple-
 :root[data-theme="dark"] .gq{background:rgba(143,179,232,.09)}
 :root[data-theme="dark"] .g2{background:rgba(138,146,158,.10)}
 
+/* ===== 모바일 팝업 압축 (2026-09-24) =====
+   트레이드 카드가 폰에서 세로 3,100px(화면 3.7장)이었다 — 머리글 129px, 넓은 여백,
+   16px 본문. 내용은 그대로 두고 여백·글자·타일만 줄인다. 스타일시트 맨 끝에 두어
+   위의 리포트 양식·다크 모드 규칙보다 뒤에서 이기게 한다. */
+@media (max-width:640px){
+  .modal-bg{padding:8px 6px}
+  .modal{border-radius:12px}
+  .modal-head{padding:11px 14px 9px;border-radius:12px 12px 0 0}
+  .modal-head .mk{font-size:10.5px;letter-spacing:.18em}
+  .modal-bg .modal .modal-head h2{font-size:16.5px;line-height:1.3;margin-top:3px;padding-right:40px}
+  .modal-close{top:9px;right:10px;width:32px;height:32px;font-size:18px}
+  .modal-body{padding:12px 13px 16px;font-size:14px;line-height:1.55}
+  .modal-body p{margin:0 0 8px}
+  .modal-body h3{font-size:14.5px;margin:14px 0 6px}
+  .modal-body .step{padding:9px 10px;gap:9px}
+  .modal-body .step .txt{font-size:13.5px}
+  .modal-foot{padding:10px 14px}
+  .tc-badges{gap:5px;margin:0 0 10px}
+  .tc-badge{padding:5px 8px;border-radius:8px;font-size:12px}
+  .tc-badge .bl{font-size:10px;letter-spacing:.03em}
+  .tc-badge .bv{font-size:14px;margin-top:1px}
+  .tc-case{font-size:13.5px;line-height:1.55;padding:10px 11px}
+  .tc-ai,.tc-news,.tc-calc{padding:11px;margin-top:10px}
+  .tc-qchart{margin-bottom:10px}
+}
 </style></head><body><div class="wrap">
 <div class="kicker" style="display:flex;align-items:center;gap:10px;justify-content:space-between"><span>도토리 · US Edition</span><a class="mkt-switch" href="./">🇰🇷 한국판 →</a></div>
 <h1>미국 헤게모니 트리 <span style="font-size:.5em;color:var(--mut);-webkit-text-fill-color:var(--mut)">v1.2</span></h1>
