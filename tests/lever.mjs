@@ -181,6 +181,13 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
     const pr = E2("buildPrompt('FL01')") || '';
     t(/흑자전환\(관찰\)/.test(pr), '프롬프트에 "흑자전환(관찰)" 판정이 실린다');
     t(E2("TKINDEX['FL01'] ? peakStatus(TKINDEX['FL01']).label : null") === '흑자전환', '관심종목 신호등은 "데이터 부족" 이 아니라 "흑자전환"');
+    // 분기 추이의 출처 — 미국판은 야후 5분기를 SEC 이력으로 8분기로 늘린다(buildlib.pick_quarters).
+    // 스프레드(야후 조정 영업이익)와 그래프(SEC 회계기준)가 다른 잣대면 그 사실을 적어야 한다.
+    const q8 = JSON.stringify(q([30, 20, 10, 5, -10, -20, -30, -40]));
+    const cSec = E2(`qChart({qs:${q8}, qs_src:'SEC', q_src:'yfinance'})`);
+    const cPlain = E2(`qChart({qs:${q8}})`);
+    t(/출처 SEC/.test(cSec) && /SEC 회계기준/.test(cSec) && !/출처/.test(cPlain) && !/SEC 회계기준/.test(cPlain),
+      '분기 추이에 출처(SEC)를 적고, 야후 스프레드와 잣대가 다르면 그렇다고 말한다 — 출처가 없으면 조용하다');
     w2.close();
   }
 

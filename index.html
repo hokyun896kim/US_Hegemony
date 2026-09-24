@@ -1755,14 +1755,15 @@ function qChart(m){
  const line=rows.map((r,i)=>`${(pad+i*bw+bw/2).toFixed(1)},${ry(r[1]).toFixed(1)}`).join(' ');
  const lab=d=>d.slice(2,7).replace('-','/');
  return `<div class="tc-badge tc-qchart">
-  <div class="bl">분기 추이 · ${rows.length}분기 (${lab(rows[0][0])} ~ ${lab(rows[n-1][0])})</div>
+  <div class="bl">분기 추이 · ${rows.length}분기 (${lab(rows[0][0])} ~ ${lab(rows[n-1][0])})${m.qs_src?` · 출처 ${m.qs_src}`:''}</div>
   <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="qc-svg" aria-hidden="true">
    ${bars}<polyline points="${line}" fill="none" stroke="var(--gold2)" stroke-width="1.6"/>
    ${rows.map((r,i)=>`<circle cx="${(pad+i*bw+bw/2).toFixed(1)}" cy="${ry(r[1]).toFixed(1)}" r="1.1" fill="var(--gold2)"/>`).join('')}
   </svg>
   <div class="qc-leg"><span class="qc-k qc-op"></span>영업이익<span class="qc-k qc-rev"></span>매출
    <span class="qc-note">각자의 범위로 그린 모양입니다 — 두 선의 높이를 서로 비교하지 마세요.
-   <b>영업이익 막대가 바닥에서 갑자기 솟았다면 기저효과를 의심하세요</b>(비율만 폭발한 경우입니다).</span></div>
+   <b>영업이익 막대가 바닥에서 갑자기 솟았다면 기저효과를 의심하세요</b>(비율만 폭발한 경우입니다).${m.qs_src&&m.q_src==='yfinance'
+     ?' 이 그래프의 영업이익은 <b>SEC 회계기준</b>이고, 스프레드는 야후의 조정 영업이익(일회성 제외)으로 냈습니다 — 두 숫자가 조금 다를 수 있습니다.':''}</span></div>
  </div>`;
 }
 function openTrade(tk){

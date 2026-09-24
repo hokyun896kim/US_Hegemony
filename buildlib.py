@@ -410,6 +410,121 @@ def quarter_rows(qrev, qop, n=8):
     return [[e, sig(r), sig(o)] for (e, r), (_, o) in zip(R[:n], O[:n])]
 
 
+# ── 분기 이력 잇기 (미국: 야후 최신 + SEC 과거) ───────────────────────
+# 미국판 실적층은 SEC 가 막히면(Actions 공유 출구 IP · 실측 최근 6회 전부) 야후로
+# 받는데, 야후는 분기를 5개까지만 준다. 흑자전환 판정(최근 4분기 vs 그 전 4분기)은
+# 8개가 있어야 해서 미국판은 한 종목도 판정하지 못했다. SEC 가 열렸던 회차에 받아
+# 둔 분기 이력(SEC_HIST)을 야후 분기 뒤에 이어 8개를 만든다.
+#
+# 두 출처가 같은 숫자인지부터 본다 — 겹치는 분기에서 매출·영업이익이 매출의 2%
+# 안으로 맞아야 잇는다. 정의가 다른 두 계열을 이으면 '최근 4분기 vs 그 전 4분기'
+# 가 서로 다른 잣대의 비교가 되어 흑자전환이 거짓으로 뜬다. 한국판이 네이버
+# 잠정을 DART 확정 위에 얹을 때 겹치는 분기로 단위를 대조하는 것과 같은 원칙이다.
+SEC_HIST = "data/sec_quarters_us.json"
+EXT_TOL = 0.02        # 겹치는 분기의 허용 차이 — 매출 대비
+EXT_MIN_OVERLAP = 2   # 우연히 한 분기만 맞는 것을 믿지 않는다
+
+
+def _days(a: str, b: str) -> int:
+    from datetime import date
+    return abs((date.fromisoformat(a[:10]) - date.fromisoformat(b[:10])).days)
+
+
+def extend_quarters(qs, hist, n=8):
+    """야후 분기(qs, 최신이 앞) 뒤에 SEC 과거 분기(hist, 오래된 것이 앞)를 잇는다.
+
+    반환 (새 qs, 이어 붙인 분기 수). 못 이으면 (qs, 0) — 원래 것을 그대로 둔다.
+    분기말은 52/53주 회계력 때문에 며칠씩 어긋나므로 ±10일 안이면 같은 분기로 본다.
+    """
+    if not qs or not hist or len(qs) >= n:
+        return qs, 0
+    hist = sorted((h for h in hist if h and h[1] is not None and h[2] is not None),
+                  key=lambda h: h[0])
+    pairs = []
+    for e, r, o in qs:
+        m = next((h for h in hist if _days(h[0], e) <= 10), None)
+        if m:
+            pairs.append(((e, r, o), m))
+    if len(pairs) < EXT_MIN_OVERLAP:
+        return qs, 0
+    for (e, r, o), (_, hr, ho) in pairs:
+        if r is None or o is None or not r or r <= 0:
+            return qs, 0
+        if abs(r - hr) > EXT_TOL * abs(r) or abs(o - ho) > EXT_TOL * abs(r):
+            return qs, 0
+    oldest = qs[-1][0]
+    older = [h for h in hist if h[0] < oldest and _days(h[0], oldest) > 10]
+    add = []
+    prev = oldest
+    for h in reversed(older):                       # 가까운 과거부터
+        if len(qs) + len(add) >= n:
+            break
+        gap = _days(h[0], prev)
+        if not 60 <= gap <= 120:                    # 한 분기씩 이어져야 한다
+            break
+        add.append([h[0], h[1], h[2]])
+        prev = h[0]
+    return (qs + add, len(add)) if add else (qs, 0)
+
+
+def pick_quarters(qs, hist, n=8):
+    """야후 분기(qs)와 SEC 이력(hist)으로 흑자전환 판정에 쓸 분기를 고른다.
+
+    → (분기, 출처) · 출처는 'SEC' / '야후+SEC' / None(야후 그대로)
+
+    1순위 SEC 8분기 — SEC 이력이 야후의 최신 분기까지 덮으면 전부 SEC 로 쓴다.
+      야후 영업이익은 일회성을 뺀 **자체 조정값**이고 SEC 는 GAAP 그대로라 두
+      계열은 정의가 다르다(실측: 329종목 중 156종목이 겹치는 분기에서 매출의 2%
+      넘게 어긋났다 — MPC 2025-06 야후 18.95억 vs SEC 21.97억 달러). 최근 4분기와
+      그 전 4분기를 **한 가지 정의**로 비교해야 흑자전환이 거짓으로 뜨지 않는다.
+      한국판(DART 회계기준 영업이익)과도 같은 잣대다. 매출은 두 출처가 같아야
+      하므로 최신 분기 매출이 2% 넘게 다르면 다른 회사로 보고 쓰지 않는다.
+    2순위 야후+SEC — SEC 이력이 오래돼 최신 분기가 없을 때. extend_quarters.
+    3순위 야후 그대로.
+    """
+    if not qs:
+        return qs, None
+    h = sorted((x for x in (hist or []) if x and x[1] is not None and x[2] is not None),
+               key=lambda x: x[0])
+    last = qs[0]
+    i = next((k for k in range(len(h) - 1, -1, -1) if _days(h[k][0], last[0]) <= 10), None)
+    if i is not None and i + 1 >= n and last[1] and h[i][1] \
+            and abs(h[i][1] - last[1]) <= EXT_TOL * abs(last[1]):
+        win = h[i + 1 - n:i + 1]
+        if all(60 <= _days(a[0], b[0]) <= 120 for a, b in zip(win, win[1:])):
+            return [[x[0], x[1], x[2]] for x in reversed(win)], "SEC"
+    ext, k = extend_quarters(qs, h, n)
+    return (ext, "야후+SEC") if k else (qs, None)
+
+
+def load_sec_hist(path=SEC_HIST) -> dict:
+    """{종목: [[분기말, 매출, 영업이익], ...]} — 없거나 깨졌으면 빈 dict."""
+    try:
+        d = json.loads(Path(path).read_text(encoding="utf-8"))
+        return d.get("stocks") or {}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def save_sec_hist(updates: dict, path=SEC_HIST, keep=12, today=None) -> int:
+    """SEC 분기를 이력 파일에 합친다. 같은 분기말은 새 값이 이긴다(정정 반영)."""
+    from datetime import date
+    cur = load_sec_hist(path)
+    for tk, rows in (updates or {}).items():
+        if not rows:
+            continue
+        m = {r[0]: r for r in cur.get(tk, [])}
+        for r in rows:
+            if r and r[1] is not None and r[2] is not None:
+                m[r[0]] = [r[0], r[1], r[2]]
+        cur[tk] = sorted(m.values(), key=lambda r: r[0])[-keep:]
+    Path(path).write_text(json.dumps(
+        {"kind": "sec_quarters", "built": (today or date.today().isoformat()),
+         "note": "SEC XBRL 분기(매출·영업이익). SEC 가 막힌 회차에 야후 분기 뒤에 잇는다(buildlib.extend_quarters).",
+         "stocks": cur}, ensure_ascii=False), encoding="utf-8")
+    return len(cur)
+
+
 # ── 자체 검증 (네트워크 없이) ────────────────────────────────────────
 def selftest() -> int:
     """공용 부품만 검증한다. 각 빌더의 --selftest 가 나머지를 본다."""
@@ -526,6 +641,58 @@ def selftest() -> int:
     check(quarter_rows(qr[:3], qo[:3]) is None, "4분기 미만이면 None")
     check(quarter_rows(qr, [(e, -v) for e, v in qo])[0][2] == -10.6,
           "적자 분기도 버리지 않는다 — 흑자전환 판정이 그걸 본다")
+
+    print("\n── 분기 이력 잇기 (미국: 야후 5분기 → 8분기) ──")
+    ends = ["2024-06-30", "2024-09-30", "2024-12-31", "2025-03-31", "2025-06-30",
+            "2025-09-30", "2025-12-31", "2026-03-31", "2026-06-30"]
+    sec = [[e, 1000.0 + 10 * i, 100.0 + i] for i, e in enumerate(ends)]          # 오래된 것이 앞
+    yq = [[e, r, o] for e, r, o in reversed(sec[-5:])]                           # 최신이 앞, 같은 숫자
+    q, src = pick_quarters(yq, sec)
+    check(src == "SEC" and len(q) == 8 and q[0][0] == "2026-06-30" and q[-1][0] == "2024-09-30",
+          f"SEC 이력이 최신 분기까지 덮으면 8분기 전부 SEC ({src} · {len(q)} · {q[-1][0]})")
+    # 야후 영업이익은 조정값이라 SEC(GAAP)와 다르다 — 그래도 SEC 8분기를 쓴다(한 가지 정의)
+    yadj = [[e, r, o + 30] for e, r, o in yq]
+    q2, src2 = pick_quarters(yadj, sec)
+    check(src2 == "SEC" and q2[0][2] == 108.0,
+          "야후 영업이익이 달라도 SEC 한 가지 정의로 8분기 — 섞지 않는다")
+    # 최신 분기 매출이 다르면 다른 회사(또는 잘못 짝지은 이력)다
+    q3, src3 = pick_quarters([[e, r * 1.5, o] for e, r, o in yq], sec)
+    check(src3 is None and q3 == [[e, r * 1.5, o] for e, r, o in yq],
+          "최신 분기 매출이 2% 넘게 다르면 SEC 를 쓰지 않는다")
+    # SEC 이력이 오래됐으면(최신 분기 없음) 겹치는 분기가 맞을 때만 뒤에 잇는다
+    stale = sec[:-1]
+    newer = [["2026-09-30", 1100.0, 120.0]] + yq[:4]
+    q4, src4 = pick_quarters(newer, stale)
+    check(src4 == "야후+SEC" and len(q4) == 8 and q4[0][0] == "2026-09-30"
+          and [r[0] for r in q4[5:]] == ["2025-06-30", "2025-03-31", "2024-12-31"],
+          f"SEC 가 오래됐으면 야후 최신 + SEC 과거로 잇는다 ({src4} · {[r[0] for r in q4]})")
+    q5, src5 = pick_quarters([newer[0]] + [[e, r, o + 30] for e, r, o in newer[1:]], stale)
+    check(src5 is None and len(q5) == 5, "겹치는 분기 영업이익이 2% 넘게 다르면 잇지 않는다(정의가 다르다)")
+    q6, k6 = extend_quarters(newer[:2], stale)
+    check(k6 == 0, "겹치는 분기가 1개뿐이면 우연일 수 있어 잇지 않는다")
+    gap = [x for x in stale if x[0] != "2025-03-31"]
+    q7, k7 = extend_quarters(newer, gap)
+    check(k7 == 1 and q7[-1][0] == "2025-06-30",
+          f"이력 중간이 빠지면 거기서 멈춘다 — '1년 전' 이 1년 전이 아니게 된다 ({[r[0] for r in q7]})")
+    wk = [[e[:8] + ("28" if e.endswith("31") or e.endswith("30") else e[8:]), r, o] for e, r, o in sec]
+    q8, src8 = pick_quarters(yq, wk)
+    check(src8 == "SEC", "52/53주 회계력이라 분기말이 며칠 어긋나도 같은 분기로 본다")
+    check(pick_quarters(None, sec) == (None, None) and pick_quarters(yq, None) == (yq, None),
+          "야후 분기가 없거나 이력이 없으면 그대로")
+
+    import tempfile
+    with tempfile.TemporaryDirectory() as td:
+        hp = f"{td}/h.json"
+        check(load_sec_hist(hp) == {}, "이력 파일이 없으면 빈 dict — 빌드가 죽지 않는다")
+        save_sec_hist({"A": [["2026-03-31", 1, 2]]}, hp)
+        save_sec_hist({"A": [["2026-03-31", 1, 3], ["2026-06-30", 4, 5]], "B": None}, hp)
+        h = load_sec_hist(hp)
+        check(h == {"A": [["2026-03-31", 1, 3], ["2026-06-30", 4, 5]]},
+              f"합칠 때 같은 분기는 새 값(정정)이 이기고, 빈 종목은 건드리지 않는다 ({h})")
+        save_sec_hist({"A": [[f"20{y}-0{q}-30", 1, 1] for y in range(10, 20) for q in (3, 6)]}, hp, keep=12)
+        check(len(load_sec_hist(hp)["A"]) == 12, "종목당 최근 12분기만 남긴다")
+        Path(hp).write_text("{깨짐", encoding="utf-8")
+        check(load_sec_hist(hp) == {}, "깨진 파일은 빈 dict")
 
     print("\n" + ("✅ 전부 통과" if ok else "❌ 실패"))
     return 0 if ok else 1

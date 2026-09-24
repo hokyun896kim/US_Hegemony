@@ -69,7 +69,7 @@ def _pct(new, old):
     return (new - old) / abs(old) * 100.0
 
 
-def yf_fund(tk, statements=None):
+def yf_fund(tk, statements=None, hist=None):
     """yfinance 손익계산서 → 연간 YoY + 분기 TTM + 최신 분기 YoY.
 
     왜 필요한가 — 미국 펀더멘털은 SEC 한 곳에만 매여 있었다. 그런데 Actions
@@ -83,6 +83,7 @@ def yf_fund(tk, statements=None):
     SEC 인지 야후인지 구분해 보여준다.
 
     statements 를 넣으면 야후 대신 그걸 쓴다 — 오프라인 자가진단용.
+    hist 는 이 종목의 SEC 분기 이력(buildlib.SEC_HIST) — 흑자전환 판정용 8분기를 만든다.
     """
     if statements is None:
         import yfinance as yf
@@ -127,6 +128,10 @@ def yf_fund(tk, statements=None):
     # SEC 경로(build_data.quarter_series)만 이 값을 냈는데 그 경로가 몇 주째
     # 막혀 있어 미국판은 한 종목도 이 값을 가진 적이 없다(실측 0/383).
     out["qs"] = buildlib.quarter_rows(qrev, qop)
+    # 야후는 분기를 5개까지만 준다 — 흑자전환 판정(8분기)을 못 한다. SEC 가 열렸던
+    # 회차에 받아 둔 이력으로 8분기를 만든다(출처는 qs_src, 규칙은 pick_quarters).
+    # qs_src 를 늘 적는다 — 지난 회차의 'SEC' 가 남아 야후 5분기에 붙으면 거짓말이다.
+    out["qs"], out["qs_src"] = buildlib.pick_quarters(out["qs"], hist)
     qr, qo, qend, approx = buildlib.ttm_pair(qrev, qop)
     if qr is not None and qo is not None:
         if abs(qr) > MAX_REV_YOY or abs(qo) > MAX_OP_YOY:
@@ -290,6 +295,8 @@ def main(fetch=None, path=None, statements=None, deadline=0, stall=90, fund=True
         order = sorted(members, key=lambda m: ((m.get("f_as_of") or ""),
                                                (m.get("q_end") or "")))
         print(f"[2/3] 실적층 갱신 — 오래된 종목부터 {len(order)}종목")
+        hist = buildlib.load_sec_hist()
+        print(f"   SEC 분기 이력 {len(hist)}종목 — 야후 5분기를 흑자전환 판정용 8분기로 늘린다")
         for i, m in enumerate(order):
             if budget.over(reserve=True):
                 print(f"   ⏳ 시간 예산 소진({budget.spent()/60:.0f}분) — "
@@ -297,7 +304,7 @@ def main(fetch=None, path=None, statements=None, deadline=0, stall=90, fund=True
                 break
             try:
                 with buildlib._stall_guard(stall):
-                    f = yf_fund(m["tk"], statements)
+                    f = yf_fund(m["tk"], statements, hist=hist.get(m["tk"]))
             except buildlib.Stall as exc:
                 print(f"   {m['tk']} 매달림({exc}) — 건너뜁니다")
                 f = None
@@ -314,6 +321,11 @@ def main(fetch=None, path=None, statements=None, deadline=0, stall=90, fund=True
             time.sleep(0.04)
         carried = len(members) - fresh
         print(f"   실적층: 이번 회차 {fresh}종목 · 지난 회차 유지 {carried}종목")
+        src = {}
+        for m in members:
+            k = m.get("qs_src") or ("야후" if m.get("qs") else "없음")
+            src[k] = src.get(k, 0) + 1
+        print("   분기 이력 출처: " + " · ".join(f"{k} {v}" for k, v in sorted(src.items())))
         # 갱신 못 한 종목은 '언제 것인지'를 각자 달고 있어야 한다. 예전 파일에는
         # 그 값이 없으므로 그 파일의 펀더멘털 기준일로 채운다.
         for m in members:
@@ -608,6 +620,20 @@ def selftest():
         t(f5["q_note"] == "정상",
           f"근사 모드를 q_note 이상으로 찍지 않음 — 기저효과 오작동 방지 ({f5['q_note']!r})")
         t(f5["q_end"] is not None, "근사 모드에서도 분기말은 기록한다")
+        t(len(f5["qs"]) == 5 and f5["qs_src"] is None,
+          "SEC 이력이 없으면 야후 5분기 그대로 — 출처는 비운다(흑자전환은 '판정 불가')")
+    # 야후 5분기 + SEC 이력 → 흑자전환 판정용 8분기(buildlib.pick_quarters).
+    # 최신 분기가 이력에 있으면 8분기 전부 SEC 로 — 야후 영업이익은 조정값이라 섞지 않는다.
+    hist = [[e, r, o] for e, r, o in zip(sorted(qcols), [250e6] * 4 + [290e6, 320e6, 320e6, 320e6],
+                                         [-5e6] * 4 + [35e6, 50e6, 55e6, 60e6])]
+    fh = yf_fund("XXX", lambda tk: (A, Q5), hist=hist)
+    t(fh and fh["qs_src"] == "SEC" and len(fh["qs"]) == 8 and fh["qs"][-1][2] == -5e6,
+      f"SEC 이력으로 8분기 — 흑자전환 판정이 가능해진다 ({fh and fh['qs_src']} · {fh and len(fh['qs'])})")
+    t(fh and fh["q_src"] == "yfinance" and fh["q_spread"] == f5["q_spread"],
+      "분기 이력만 늘린다 — 스프레드·출처(q_src)는 야후 그대로(화면은 분기 추이에 출처를 따로 적는다)")
+    bad = [[e, r * 3, o] for e, r, o in hist]
+    fb = yf_fund("XXX", lambda tk: (A, Q5), hist=bad)
+    t(fb and fb["qs_src"] is None and len(fb["qs"]) == 5, "매출이 안 맞는 이력(다른 회사)은 쓰지 않는다")
     # 분모가 너무 작으면 비율이 잡음이다
     tiny = _df(LAB, ["2026-12-31", "2025-12-31"], [[100.0, 10.0], [50.0, 5.0]])
     t(yf_fund("XXX", lambda tk: (tiny, Q)) is None, "분모가 100만 달러 미만이면 버린다")
