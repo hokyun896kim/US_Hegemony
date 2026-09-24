@@ -176,8 +176,11 @@ for (const [file, url] of [['index.html', 'https://x.test/'], ['us.html', 'https
   t(!secs.some(x => /가속 중인데 RS 가 낮은 곳|이익이 좋아졌고 시장이 반응한 곳/.test(x)),
     '옛 산업 두 목록은 주목 산업 한 목록으로 합쳐졌다');
   t(secs[0].includes(E('IND_EVID').tag), `주목 산업 칸에 시장별 근거 표시 (${E('IND_EVID').tag})`);
-  t(file === 'us.html' ? /근거 약함/.test(secs[0]) : /\+4\.0p/.test(secs[0]),
-    '근거 표시가 판정 규칙대로 — 한국 +4.0p · 미국 근거 약함');
+  // 한국은 표본 밖(2017~21)에서 재현되지 않아 근거 약함으로 내렸다(docs/backtest-kr-extended.md 규칙 4)
+  t(/근거 약함/.test(secs[0]) && (file === 'us.html' || /표본 밖에서 재현 안 됨/.test(secs[0])),
+    '근거 표시가 판정 규칙대로 — 한국은 표본 밖 재현 실패 · 미국 근거 약함');
+  t(file === 'us.html' || (/2017~21/.test(E('IND_EVID').note) && /재현되지 않았습니다/.test(E('IND_EVID').note)),
+    '한국 설명이 표본 밖 결과(2017~21 재현 안 됨)를 적는다');
   t(P.querySelectorAll('.ri.lv').length === 0 && /판정 불가 — 실적 반응이 있는 판정 산업이 \d+개/.test(P.textContent),
     '막 감지 판정 산업이 모자라면 "판정 불가" — "해당 없음" 과 구분한다');
   t(/안 깨움/.test(rows[0].querySelector('.ri-nm').textContent), '본후보(indPass) 산업에 안 깨움 태그');

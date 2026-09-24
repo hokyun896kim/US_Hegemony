@@ -116,7 +116,7 @@ const lever = window.eval(`(()=>{
           flip:flipList().map(m=>({...pick(m),flip:flipOf(m)}))};
 })()`);
 
-// 주목 산업 → 주도기업 후보(2026-09-24 재구성). 산업 선택(한국 +4.0p)과 산업 안 순서(미검증)를
+// 주목 산업 → 주도기업 후보(2026-09-24 재구성). 산업 선택(한국 2022~26 +1.9p · 표본 밖 2017~21 −1.5p)과 산업 안 순서(미검증)를
 // 표본 밖에서 다시 재려면 그 주의 판정을 남겨야 한다(docs/backtest-leaders.md).
 const focus = window.eval(`(()=>{
   const F=indFocus();
