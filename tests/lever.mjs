@@ -249,18 +249,18 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
       return FT.has(tk) !== !!tag || (tag && tag.getAttribute('title') !== f2); });
     t(wc.length === L.wake.length && bad.length === 0,
       `① 카드 '주목 산업 안' 표시 = 주목 산업 구성 여부 (${wc.length - bad.length}/${wc.length} · 표시 ${wc.filter(c => c.querySelector('.rc-foc')).length})`);
-    // 최우선 후보 칸 — 주목 산업 ∩ ①. F2 가 통과한 한국에서만 연다(판정 규칙 4)
+    // 최우선 후보 칸 — 주목 산업 ∩ ①. F2 가 통과한 시장에서만 연다. 한국은 표본 밖(2017~21)에서
+    // 재현되지 않아 닫았다(docs/backtest-kr-extended.md 규칙 4) — 이제 두 시장 모두 닫혀 있다
     const PK = P.querySelector('.radar-pick');
     const pkN = L.wake.filter(m => FT.has(m.tk)).length;
     t(!!PK && P.firstElementChild && [...P.children].indexOf(PK) < [...P.children].findIndex(e => e.classList.contains('radar-sec')),
       '최우선 후보 칸이 레이더 맨 위(주목 산업보다 먼저)');
-    t(bench === '코스피'
-        ? !PK.classList.contains('off') && PK.querySelectorAll('.rc').length === pkN && /\+3\.9p/.test(PK.textContent)
-          && (pkN === 0 || PK.textContent.includes(`지금 ${pkN}종목`))
-        : PK.classList.contains('off') && PK.querySelectorAll('.rc').length === 0 && /−2\.3p/.test(PK.textContent),
-      `최우선 후보 칸 — 한국은 교집합 ${pkN}종목을 카드로, 미국은 닫고 이유만`);
-    t(bench === '코스피' ? /\+3\.9p/.test(f2) : /−2\.3p/.test(f2) && !/나았/.test(f2),
-      "표시 근거가 판정 규칙 4 대로 — 한국 +3.9p · 미국은 사실만(과거에 나빴다)");
+    t(PK.classList.contains('off') && PK.querySelectorAll('.rc').length === 0
+        && PK.textContent.includes(w.eval('IND_EVID.pickOff'))
+        && (bench === '코스피' ? /2017~21/.test(PK.textContent) && /0\.0p/.test(PK.textContent) : /−2\.3p/.test(PK.textContent)),
+      `최우선 후보 칸 — 근거가 재현되지 않아 닫고 시장별 이유만 적는다 (교집합 ${pkN}종목은 카드로 올리지 않는다)`);
+    t(/사실 표시일 뿐/.test(f2) && (bench === '코스피' ? /0\.0p/.test(f2) && /2017~21/.test(f2) : /−2\.3p/.test(f2)),
+      "① 카드의 '주목 산업 안' 표시는 사실로만 — 좋다는 뜻의 근거를 달지 않는다");
   }
   const old = P.querySelector('details.radar-old');
   t(!!old && !old.open, '구 레이더는 접힌 채로 남는다(지우지 않는다)');
@@ -321,7 +321,7 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
     '복기 — 목록별 초과수익 중앙값을 그린다');
   t(RV.textContent.includes('통계가 아니라 기록'), '복기 — 겹쳐 세는 관측이라 기록이라고 밝힌다');
   t(!RV.textContent.includes('주목 산업 성적표'), '복기 — 주목 산업이 박제되기 전 파일이면 성적표를 그리지 않는다');
-  // 주목 산업 성적표 — ① 주목 산업 안 − 밖이 표본 밖에서도 나은가(한국 백테스트 +3.9p)
+  // 주목 산업 성적표 — ① 주목 산업 안 − 밖이 실전에서 나은가(과거: 한국 2022~26 +4.7p · 2017~21 0.0p)
   E(`REVIEW.focus={rounds:2,since:'2026-09-30',lists:[
        {key:'fwake',label:'① ∩ 주목 산업',members:4,spans:{'1':{n:4,med:3.5,win:75},'3':{n:0,med:null,win:null},'6':{n:0,med:null,win:null}}},
        {key:'owake',label:'① — 주목 산업 밖',members:20,spans:{'1':{n:20,med:1.25,win:55},'3':{n:0,med:null,win:null},'6':{n:0,med:null,win:null}}},
@@ -335,7 +335,7 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
       '복기 — 주목 산업 성적표(네 목록 + 차이 줄)');
     t(!!gapRow && /\+2\.3p/.test(gapRow.textContent) && (gapRow.textContent.match(/—/g) || []).length === 2,
       `복기 — 차이 줄 = ① 안 − 밖, 아직 안 온 구간은 — (${gapRow && gapRow.textContent.replace(/\s+/g, ' ')})`);
-    t(/한국 \+3\.9p · 미국 −2\.3p/.test(FB.textContent) && /표본 밖/.test(FB.textContent),
+    t(/한국 2022~26 \+4\.7p/.test(FB.textContent) && /2017~21 0\.0p/.test(FB.textContent) && /미국 −2\.3p/.test(FB.textContent),
       '복기 — 과거 기대치와 표본 밖 검증이라는 뜻을 함께 적는다');
   }
   w.close();
