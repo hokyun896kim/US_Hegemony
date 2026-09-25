@@ -276,6 +276,12 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
     const nWake = L.wake.length, nQuiet = L.wake.filter(m => m.rs6 != null && m.rs6 < 10).length;
     t(P.textContent.includes(`지금 ${nWake}종목 중 ${nQuiet}종목이 6개월 ${bench} 대비 +10% 미만`),
       `① 중 6개월 기준 안 오른 종목 수를 사실로 적는다 (${nQuiet}/${nWake})`);
+    // ① 의 근거 — 시장별(docs/backtest-lever-oos.md 판정 규칙 2). 한국은 ② 대비 우위가 표본 밖에서
+    // 재현되지 않아 '평균보다 조금 낫다' 로 낮췄다. 옛 '한국 약 +3p' 가 남으면 거짓말이다.
+    const WK = w.eval('IND_EVID.wake');
+    t(P.textContent.includes(WK.replace(/<[^>]+>/g, '')) && !/한국 약 \+3p/.test(P.textContent)
+        && (bench === '코스피' ? /2017~21/.test(WK) && /재현되지 않았습니다/.test(WK) : /약 \+2p/.test(WK)),
+      '① 칸 근거가 시장별 표본 밖 결과대로 — 한국은 평균 대비 +0.9p · ② 대비 재현 안 됨');
     t(/덜 오른 쪽이 더 나았던 것은 아닙니다/.test(P.textContent) && !/막 깨기 시작/.test(P.textContent)
       && !/이미 오른 종목이 올라오는 게 정상/.test(P.textContent),
       "백테스트대로 '덜 오른 쪽이 낫다' 고 말하지 않는다 — 예전의 '이미 오른 종목이 정상' 문장도 없다");
