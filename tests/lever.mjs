@@ -201,7 +201,8 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
       const sec = [...P3.querySelectorAll(':scope > .radar-sec')].find(e => e.textContent.includes('흑자전환'));
       const note = sec?.nextElementSibling?.textContent || '';
       let body = '', e = sec?.nextElementSibling?.nextElementSibling;
-      while (e && !e.classList.contains('radar-sec')) { body += e.textContent; e = e.nextElementSibling; }
+      // 흑자전환 칸의 끝 — 다음 칸 머리, 또는 그 아래 접힌 묶음(주목 산업 관찰용 · 구 레이더)
+      while (e && !e.classList.contains('radar-sec') && !e.matches('details.radar-ind, details.radar-old')) { body += e.textContent; e = e.nextElementSibling; }
       const r = { depth: w3.eval('flipDepth()'), note, body };
       w3.close();
       return r;
@@ -232,32 +233,39 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
   const P = w.document.getElementById('radarPanel');
   const secs = [...P.querySelectorAll('.radar-sec')].map(e => e.textContent);
   const at = s => secs.findIndex(x => x.includes(s));
-  // 보는 순서는 시장별(IND_EVID.order). 'ind' = 산업 먼저(2026-09-24 재구성), 'lever' = ① 먼저 ·
-  // 주목 산업은 관찰용으로 접는다(2026-09-25 — 한국은 산업 필터가 표본 밖에서 재현 안 됨, docs/live-edge.md 규칙 2).
+  // 보는 순서(IND_EVID.order). 'lever' = ① 먼저 · 주목 산업은 관찰용으로 접는다 — 두 시장 모두 산업 필터 우위가
+  // 확인되지 않아(한국 표본 밖 −1.5p · 미국 +0.2p) 2026-09-25 부터 기본이다. 'ind' = 산업 먼저 — 실전 판정에서
+  // ① 이 재현되지 않으면 되돌아갈 자리라(docs/live-edge.md 규칙 2 · 5) 아래에서 바꿔 그려 함께 확인한다.
   const order = w.eval('IND_EVID.order');
-  t(bench === '코스피' ? order === 'lever' : order === 'ind', `보는 순서 설정 — 한국 ① 먼저 · 미국 산업 먼저 (${order})`);
+  t(order === 'lever', `보는 순서 설정 — ① 먼저 (${order})`);
   const kids = [...P.children];
   const iSec = sel => kids.findIndex(e => e.classList.contains('radar-sec') && e.textContent.includes(sel));
   const IND = P.querySelector(':scope > details.radar-ind');
-  if (order === 'ind') {
-    t(at('주목 산업') === 0 && at('① 깨어나는') === 1 && at('② 안 믿는') === 2 && at('흑자전환') === 3,
-      `순서 — 주목 산업 → ① → ② → 흑자전환 (${secs.map(s => s.slice(0, 8)).join(' / ')})`);
-    const grp = P.querySelector('.radar-grp');
-    t(!!grp && kids.indexOf(grp) > iSec('주목 산업') && kids.indexOf(grp) < iSec('① 깨어나는')
-      && /산업과 별개인 개별 종목/.test(grp.textContent), "①·②·흑자전환은 '산업과 별개인 개별 종목' 머리 아래");
-    t(!IND, '산업 먼저면 주목 산업을 접지 않는다');
-  } else {
-    t(at('① 깨어나는') === 0 && at('② 안 믿는') === 1 && at('흑자전환') === 2 && at('주목 산업') === 3,
-      `순서 — ① → ② → 흑자전환 → 주목 산업 (${secs.map(s => s.slice(0, 8)).join(' / ')})`);
-    t(!!IND && !IND.open && IND.querySelector('.radar-sec')?.textContent.includes('주목 산업')
-      && kids.indexOf(IND) > iSec('흑자전환') && kids.indexOf(IND) < kids.indexOf(P.querySelector('details.radar-old')),
-      '주목 산업은 개별 종목 아래 · 구 레이더 위에 접힌 채(관찰용)');
-    t(/관찰용/.test(IND.querySelector('summary').textContent) && IND.querySelector('summary').textContent.includes(w.eval('IND_EVID.tag')),
-      '접힌 머리에 관찰용 · 근거 태그를 적는다');
-    t(IND.querySelectorAll('.ri').length === P.querySelectorAll('.ri').length && P.querySelectorAll('.ri').length > 0,
-      '산업 줄·주도기업 후보는 지우지 않고 접힌 안에 그대로 있다');
-    t(!P.querySelector('.radar-grp'), "① 이 맨 위면 '산업과 별개인' 머리를 달지 않는다");
-    t(/① 깨어나는 레버리지<\/b>/.test(P.querySelector('.radar-sub').innerHTML), '보는 순서 안내가 ① 먼저로 바뀐다');
+  t(at('① 깨어나는') === 0 && at('② 안 믿는') === 1 && at('흑자전환') === 2 && at('주목 산업') === 3,
+    `순서 — ① → ② → 흑자전환 → 주목 산업 (${secs.map(s => s.slice(0, 8)).join(' / ')})`);
+  t(!!IND && !IND.open && IND.querySelector('.radar-sec')?.textContent.includes('주목 산업')
+    && kids.indexOf(IND) > iSec('흑자전환') && kids.indexOf(IND) < kids.indexOf(P.querySelector('details.radar-old')),
+    '주목 산업은 개별 종목 아래 · 구 레이더 위에 접힌 채(관찰용)');
+  t(/관찰용/.test(IND.querySelector('summary').textContent) && IND.querySelector('summary').textContent.includes(w.eval('IND_EVID.tag')),
+    '접힌 머리에 관찰용 · 근거 태그를 적는다');
+  t(IND.querySelectorAll('.ri').length === P.querySelectorAll('.ri').length && P.querySelectorAll('.ri').length > 0,
+    '산업 줄·주도기업 후보는 지우지 않고 접힌 안에 그대로 있다');
+  t(!P.querySelector('.radar-grp'), "① 이 맨 위면 '산업과 별개인' 머리를 달지 않는다");
+  t(/① 깨어나는 레버리지<\/b>/.test(P.querySelector('.radar-sub').innerHTML), '보는 순서 안내가 ① 먼저');
+  {
+    // 되돌아갈 자리('ind') — 판정 뒤 설정 한 줄로 돌아가도 화면이 온전해야 한다
+    E(`IND_EVID.order='ind'; renderRadar()`);
+    const Q = w.document.getElementById('radarPanel'), qk = [...Q.children];
+    const qs = [...Q.querySelectorAll('.radar-sec')].map(e => e.textContent), qa = x => qs.findIndex(y => y.includes(x));
+    const qi = sel => qk.findIndex(e => e.classList.contains('radar-sec') && e.textContent.includes(sel));
+    const grp = Q.querySelector('.radar-grp'), PK = Q.querySelector('.radar-pick');
+    t(qa('주목 산업') === 0 && qa('① 깨어나는') === 1 && qa('② 안 믿는') === 2 && qa('흑자전환') === 3
+      && !Q.querySelector('details.radar-ind'), `'ind' — 주목 산업 → ① → ② → 흑자전환, 접지 않는다`);
+    t(!!grp && qk.indexOf(grp) > qi('주목 산업') && qk.indexOf(grp) < qi('① 깨어나는') && /산업과 별개인 개별 종목/.test(grp.textContent),
+      "'ind' — ①·②·흑자전환은 '산업과 별개인 개별 종목' 머리 아래");
+    t(!!PK && qk.indexOf(PK) < qi('주목 산업') && /① 주목 산업<\/b>/.test(Q.querySelector('.radar-sub').innerHTML),
+      "'ind' — ⭐ 칸이 주목 산업 앞 · 보는 순서 안내가 산업 먼저");
+    E(`IND_EVID.order='lever'; renderRadar()`);
   }
   {
     // ① 카드의 '주목 산업 안' — 주목 산업 구성 종목인지 사실대로, 근거 문구는 시장별(F2)
@@ -272,7 +280,7 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
     // 재현되지 않아 닫았다(docs/backtest-kr-extended.md 규칙 4) — 이제 두 시장 모두 닫혀 있다
     const PK = P.querySelector('.radar-pick');
     const pkN = L.wake.filter(m => FT.has(m.tk)).length;
-    const host = order === 'ind' ? P : IND, hk = [...host.children];
+    const host = w.document.querySelector('#radarPanel > details.radar-ind'), hk = [...host.children];
     t(!!PK && hk.includes(PK) && hk.indexOf(PK) < hk.findIndex(e => e.classList.contains('radar-sec') && e.textContent.includes('주목 산업')),
       '최우선 후보 칸은 주목 산업 머리 바로 앞(주목 산업 묶음과 함께 움직인다)');
     t(PK.classList.contains('off') && PK.querySelectorAll('.rc').length === 0
