@@ -51,6 +51,16 @@ FOCUS_LISTS = (("fwake", "① ∩ 주목 산업"), ("owake", "① — 주목 산
                ("lead", "주도기업 후보(산업별 상위 3)"), ("fall", "주목 산업 전 종목"))
 # 합산에 넣을 회차 수. 6개월 칸이 차려면 반년이 걸리니 1년치를 본다.
 AGG_LIMIT = 52
+# 남은 근거 채점(docs/live-edge.md, 2026-09-25 사전등록) — 회차마다 '목록 A 수익률 중앙 −
+# 목록 B 수익률 중앙' 한 값. 백테스트가 시점마다 칸 중앙 − 기준 중앙을 낸 것과 같은 모양이다.
+# (키, 이름, A, B, B 쪽 최소 종목) — A 쪽 최소는 EDGE_MIN.
+EDGE = (("E1", "① − 평균(판정 종목 전체)", "wake", "base", 30),
+        ("E2", "① − ②", "wake", "doubt", 3),
+        ("E3", "① 주목 산업 안 − 밖", "fwake", "owake", 3))
+EDGE_MIN = 3
+# 판정 시점 · 판정에 필요한 6개월 회차 수(docs/live-edge.md). 화면이 그대로 적는다.
+EDGE_JUDGE = "2027-09-30"
+EDGE_NEED = 20
 
 
 def yseries(sym, tries=3):
@@ -136,6 +146,7 @@ def tickers_of(snaps, limit, agg=AGG_LIMIT):
     for s in agg_rounds(snaps, agg):
         for key, _ in LISTS:
             out.update(members_of(s, key) or [])
+        out.update(edge_members(s, "base") or [])
     for s in focus_rounds(snaps, agg):
         for key, _ in FOCUS_LISTS:
             out.update(focus_members_of(s, key) or [])
@@ -248,6 +259,77 @@ def summarize(rounds, defs, members_fn, prices, bench, today: str):
     return out
 
 
+def edge_members(s, key):
+    """남은 근거 채점의 한 쪽 목록. 박제에 그 목록이 없던 회차면 None.
+
+    base(판정 종목 전체)는 2026-09-25 부터 박제된다. 그 전 회차를 오늘 트리로 되살려
+    채우지 않는다 — 그날 화면이 판정한 종목이 아니게 된다.
+    """
+    lv = s.get("lever")
+    if not lv:
+        return None
+    if key == "base":
+        return lv.get("base")
+    if key in ("fwake", "owake"):
+        return focus_members_of(s, key)
+    return [p["tk"] for p in lv.get(key) or []]
+
+
+def ret_at(tk, t, n, prices, today: str):
+    """한 종목의 n개월 수익률(%). 아직 안 왔거나 가격이 없으면 None."""
+    d = add_months(t, n)
+    s = prices.get(tk)
+    if d > today or not s:
+        return None
+    p0, p1 = price_at(s, t), price_at(s, d)
+    return (p1 / p0 - 1) * 100 if p0 and p1 else None
+
+
+def edge_summary(snaps, prices, today: str, agg=AGG_LIMIT):
+    """회차마다 (A 중앙 − B 중앙) 한 값 → 회차 값들의 중앙 · 양(+) 비율 · 앞뒤 반쪽.
+
+    판정 규칙은 docs/live-edge.md 에 결과를 보기 전에 적었다. 여기서 문턱을 바꾸면
+    사전등록이 거짓이 된다 — EDGE · EDGE_MIN 은 그 문서와 같이만 고친다.
+    """
+    rounds = sorted(agg_rounds(snaps, agg), key=lambda x: x["date"])
+    out = {"judge": EDGE_JUDGE, "need": EDGE_NEED, "rows": []}
+    for key, label, ka, kb, min_b in EDGE:
+        spans, used = {}, set()
+        for n in SPANS:
+            vals, skipped = [], 0
+            for s in rounds:
+                a, b = edge_members(s, ka), edge_members(s, kb)
+                if a is None or b is None:
+                    continue                     # 그 목록이 박제되기 전 회차
+                if add_months(s["date"], n) > today:
+                    continue                     # 아직 안 온 구간 — 건너뛴 것으로 세지 않는다
+                ra = [r for r in (ret_at(tk, s["date"], n, prices, today) for tk in a) if r is not None]
+                rb = [r for r in (ret_at(tk, s["date"], n, prices, today) for tk in b) if r is not None]
+                if len(ra) < EDGE_MIN or len(rb) < min_b:
+                    skipped += 1
+                    continue
+                vals.append((s["date"], statistics.median(ra) - statistics.median(rb)))
+                used.add(s["date"])
+            v = [x for _, x in vals]
+            h = len(v) // 2
+            med = lambda xs: round(statistics.median(xs), 1) if xs else None
+            spans[str(n)] = {"n": len(v), "skipped": skipped, "med": med(v),
+                             "pos": round(sum(1 for x in v if x > 0) / len(v) * 100) if v else None,
+                             # 앞뒤 반쪽 — 홀수면 가운데 회차는 뒤쪽에 넣는다(백테스트 split 과 같은 쪽)
+                             "first": med(v[:h]) if h else None, "second": med(v[h:]) if h else None}
+        out["rows"].append({"key": key, "label": label, "since": min(used, default=None), "spans": spans})
+    return out
+
+
+def edge_verdict(row, need=EDGE_NEED):
+    """6개월 칸의 판정 — 'pass' · 'fail' · None(회차 부족). docs/live-edge.md 통과 문턱."""
+    c = row["spans"].get("6") or {}
+    if (c.get("n") or 0) < need:
+        return None
+    ok = all(x is not None and x > 0 for x in (c.get("med"), c.get("first"), c.get("second")))
+    return "pass" if ok else "fail"
+
+
 def build(kind, prices, bench, snaps, today: str, limit=8, agg=AGG_LIMIT):
     """최근 회차부터 limit 개. 화면이 그대로 그릴 수 있는 모양."""
     rows = []
@@ -261,7 +343,8 @@ def build(kind, prices, bench, snaps, today: str, limit=8, agg=AGG_LIMIT):
         rows.append({"date": t, "weights": s.get("weights"), "picks": picks})
     return {"kind": kind, "built": today, "spans": list(SPANS), "rows": rows,
             "lists": list_summary(snaps, prices, bench, today, agg),
-            "focus": focus_summary(snaps, prices, bench, today, agg)}
+            "focus": focus_summary(snaps, prices, bench, today, agg),
+            "edge": edge_summary(snaps, prices, today, agg)}
 
 
 def selftest() -> int:
@@ -394,6 +477,44 @@ def selftest() -> int:
     t(tickers_of(fs_, 0) >= {"A", "B", "D", "E"}, "받을 종목에 주목 산업 목록이 들어간다")
     t("focus" in build("kr", {"A": pF}, bF, fs_, "2026-11-01"), "build 산출물에 주목 산업 성적표가 실린다")
 
+    print("\n━━ 남은 근거 채점 — 회차마다 A 중앙 − B 중앙 (docs/live-edge.md) ━━")
+    up = lambda r: {"2026-10-01": 100.0, "2026-11-02": 100.0 + r}
+    base = [f"Z{i}" for i in range(30)]
+    pe = {tk: up(0) for tk in base}                       # 평균 쪽 0%
+    pe.update({"W1": up(10), "W2": up(20), "W3": up(30),  # ① 중앙 +20%
+               "D1": up(-5), "D2": up(5), "D3": up(0)})   # ② 중앙 0%
+    es = [
+        # base 가 박제되기 전 회차 — E1 에 들어가면 안 된다(E2 에는 들어간다)
+        {"date": "2026-09-24", "top5": [], "radar": [],
+         "lever": {"wake": [{"tk": "W1"}, {"tk": "W2"}, {"tk": "W3"}],
+                   "doubt": [{"tk": "D1"}, {"tk": "D2"}, {"tk": "D3"}], "flip": []}},
+        {"date": "2026-10-01", "top5": [], "radar": [],
+         "lever": {"wake": [{"tk": "W1"}, {"tk": "W2"}, {"tk": "W3"}],
+                   "doubt": [{"tk": "D1"}, {"tk": "D2"}, {"tk": "D3"}], "flip": [], "base": base}},
+    ]
+    pe.update({f"W{i}": {"2026-09-24": 100.0, **pe[f"W{i}"]} for i in (1, 2, 3)})
+    E = edge_summary(es, pe, "2026-11-05")
+    by = {r["key"]: r for r in E["rows"]}
+    t([r["key"] for r in E["rows"]] == ["E1", "E2", "E3"], "순서 고정 — 화면이 그대로 그린다")
+    t(by["E1"]["spans"]["1"]["n"] == 1 and by["E1"]["spans"]["1"]["med"] == 20.0,
+      f"E1 = ① 중앙 − 평균 중앙, base 없는 회차는 뺀다 ({by['E1']['spans']['1']})")
+    t(by["E1"]["since"] == "2026-10-01", f"E1 은 base 가 박제된 회차부터 ({by['E1']['since']})")
+    t(by["E2"]["spans"]["1"]["med"] == 20.0, f"E2 = ① 중앙 − ② 중앙 ({by['E2']['spans']['1']})")
+    t(by["E1"]["spans"]["6"]["n"] == 0 and by["E1"]["spans"]["6"]["skipped"] == 0 and by["E1"]["spans"]["6"]["med"] is None,
+      "아직 안 온 6개월은 None · 건너뛴 회차로도 세지 않는다")
+    t(by["E3"]["spans"]["1"]["n"] == 0, "focus 가 없는 회차는 E3 에 없다")
+    small = [dict(es[1], lever=dict(es[1]["lever"], base=base[:29]))]
+    t(edge_summary(small, pe, "2026-11-05")["rows"][0]["spans"]["1"]["skipped"] == 1,
+      "평균 쪽이 30종목 미만인 회차는 빼고 센다")
+    t(E["judge"] == "2027-09-30" and E["need"] == 20, "판정 시점·필요 회차를 화면에 알려준다")
+    mk = lambda n, med, a, b: {"spans": {"6": {"n": n, "med": med, "first": a, "second": b}}}
+    t(edge_verdict(mk(19, 5, 5, 5)) is None, "6개월 회차 20 미만은 판정 안 함")
+    t(edge_verdict(mk(20, 1.0, 0.5, 1.5)) == "pass", "중앙·앞뒤 모두 양(+) → 통과")
+    t(edge_verdict(mk(26, 1.0, -0.2, 2.0)) == "fail", "앞 반쪽이 음(−)이면 실패")
+    t(tickers_of(es, 0) >= set(base), "받을 종목에 평균 쪽(base)이 들어간다")
+    t("edge" in build("kr", pe, {"2026-10-01": 1.0, "2026-11-02": 1.0}, es, "2026-11-05"),
+      "build 산출물에 남은 근거 채점이 실린다")
+
     print("\n✅ 전부 통과" if ok[0] else "\n실패 있음")
     return 0 if ok[0] else 1
 
@@ -461,6 +582,10 @@ def main(argv=None):
               + " · ".join(f"{x['label']} {x['members']}건" for x in F["lists"]))
     else:
         print("  주목 산업 성적표 — focus 가 박제된 회차가 아직 없다")
+    for r in out["edge"]["rows"]:
+        print(f"  남은 근거 {r['key']} {r['label']} · "
+              + " · ".join(f"{n}M {r['spans'][str(n)]['med']}({r['spans'][str(n)]['n']}회차)" for n in SPANS)
+              + (f" · 판정 {edge_verdict(r)}" if edge_verdict(r) else ""))
     return 0
 
 

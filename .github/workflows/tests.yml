@@ -170,7 +170,8 @@ jobs:
                   print(f"  ok   {kind}: 복기할 박제 없음 ({r.stderr.strip()})"); continue
               d = json.loads(out.read_text(encoding="utf-8"))
               # lists = 목록별 성적(구 레이더 vs 재설계 목록) — 빠지면 표본 밖 판정이 불가능하다
-              need = {"kind", "built", "spans", "rows", "lists"}
+              # edge = 남은 근거 채점(docs/live-edge.md) — 빠지면 사전등록한 판정을 할 수 없다
+              need = {"kind", "built", "spans", "rows", "lists", "edge"}
               miss = need - set(d)
               if miss:
                   print(f"  FAIL {kind}: 키 누락 {miss}"); bad += 1; continue

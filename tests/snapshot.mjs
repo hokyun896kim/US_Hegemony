@@ -107,12 +107,13 @@ const radar = window.eval(`(()=>{
 // 문턱값(tSp·tLo·tHi)도 적는다. 상대 기준이라 매주 움직이고, 그걸 모르면 나중에
 // '왜 이 종목이 들어왔나' 를 되짚을 수 없다. med(실적 반응 중앙값)는 그 주 지수가
 // 소수 대형주에 끌려갔는지를 남긴다 — 2026-09-23 한국은 +22%p 였다.
+// base 는 판정 종목 전체(티커)다 — 실전 채점 E1(① − 평균)의 '평균' 쪽(docs/live-edge.md).
 const lever = window.eval(`(()=>{
   const L=leverLists();
   const pick=m=>({tk:m.tk,nm:m.nm,sec:m.sec,q_spread:m.q_spread,ear:earOf(m),ear_to:m.ear_to??null,
                   spread:m.spread,rs3:m.rs3,rs6:m.rs6,from_high:m.from_high,pe:m.pe,q_end:m.q_end});
   return {n:L.n,noEar:L.noEar,dropped:L.dropped,tSp:L.tSp,tLo:L.tLo,tHi:L.tHi,med:L.med,top:L.top,
-          wake:L.wake.map(pick),doubt:L.doubt.map(pick),
+          wake:L.wake.map(pick),doubt:L.doubt.map(pick),base:L.base,
           flip:flipList().map(m=>({...pick(m),flip:flipOf(m)}))};
 })()`);
 

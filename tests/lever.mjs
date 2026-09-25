@@ -232,15 +232,34 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
   const P = w.document.getElementById('radarPanel');
   const secs = [...P.querySelectorAll('.radar-sec')].map(e => e.textContent);
   const at = s => secs.findIndex(x => x.includes(s));
-  // 2026-09-24 '산업 → 주도기업' 재구성: 주목 산업이 맨 위, 종목 목록은 '산업과 별개인
-  // 개별 종목' 머리 아래로 내려간다(docs/backtest-leaders.md 판정 규칙 3 — 순서는 결과와 무관).
-  t(at('주목 산업') === 0 && at('① 깨어나는') === 1 && at('② 안 믿는') === 2 && at('흑자전환') === 3,
-    `순서 — 주목 산업 → ① → ② → 흑자전환 (${secs.map(s => s.slice(0, 8)).join(' / ')})`);
-  {
-    const grp = P.querySelector('.radar-grp'), kids = [...P.children];
-    const iSec = sel => kids.findIndex(e => e.classList.contains('radar-sec') && e.textContent.includes(sel));
+  // 보는 순서는 시장별(IND_EVID.order). 'ind' = 산업 먼저(2026-09-24 재구성), 'lever' = ① 먼저 ·
+  // 주목 산업은 관찰용으로 접는다(2026-09-25 — 한국은 산업 필터가 표본 밖에서 재현 안 됨, docs/live-edge.md 규칙 2).
+  const order = w.eval('IND_EVID.order');
+  t(bench === '코스피' ? order === 'lever' : order === 'ind', `보는 순서 설정 — 한국 ① 먼저 · 미국 산업 먼저 (${order})`);
+  const kids = [...P.children];
+  const iSec = sel => kids.findIndex(e => e.classList.contains('radar-sec') && e.textContent.includes(sel));
+  const IND = P.querySelector(':scope > details.radar-ind');
+  if (order === 'ind') {
+    t(at('주목 산업') === 0 && at('① 깨어나는') === 1 && at('② 안 믿는') === 2 && at('흑자전환') === 3,
+      `순서 — 주목 산업 → ① → ② → 흑자전환 (${secs.map(s => s.slice(0, 8)).join(' / ')})`);
+    const grp = P.querySelector('.radar-grp');
     t(!!grp && kids.indexOf(grp) > iSec('주목 산업') && kids.indexOf(grp) < iSec('① 깨어나는')
       && /산업과 별개인 개별 종목/.test(grp.textContent), "①·②·흑자전환은 '산업과 별개인 개별 종목' 머리 아래");
+    t(!IND, '산업 먼저면 주목 산업을 접지 않는다');
+  } else {
+    t(at('① 깨어나는') === 0 && at('② 안 믿는') === 1 && at('흑자전환') === 2 && at('주목 산업') === 3,
+      `순서 — ① → ② → 흑자전환 → 주목 산업 (${secs.map(s => s.slice(0, 8)).join(' / ')})`);
+    t(!!IND && !IND.open && IND.querySelector('.radar-sec')?.textContent.includes('주목 산업')
+      && kids.indexOf(IND) > iSec('흑자전환') && kids.indexOf(IND) < kids.indexOf(P.querySelector('details.radar-old')),
+      '주목 산업은 개별 종목 아래 · 구 레이더 위에 접힌 채(관찰용)');
+    t(/관찰용/.test(IND.querySelector('summary').textContent) && IND.querySelector('summary').textContent.includes(w.eval('IND_EVID.tag')),
+      '접힌 머리에 관찰용 · 근거 태그를 적는다');
+    t(IND.querySelectorAll('.ri').length === P.querySelectorAll('.ri').length && P.querySelectorAll('.ri').length > 0,
+      '산업 줄·주도기업 후보는 지우지 않고 접힌 안에 그대로 있다');
+    t(!P.querySelector('.radar-grp'), "① 이 맨 위면 '산업과 별개인' 머리를 달지 않는다");
+    t(/① 깨어나는 레버리지<\/b>/.test(P.querySelector('.radar-sub').innerHTML), '보는 순서 안내가 ① 먼저로 바뀐다');
+  }
+  {
     // ① 카드의 '주목 산업 안' — 주목 산업 구성 종목인지 사실대로, 근거 문구는 시장별(F2)
     const FT = new Set(w.eval('[...FOCUS_TK]')), f2 = w.eval('IND_EVID.f2');
     const wc = [...P.querySelectorAll(':scope > .rc:not(.warn), :scope > details.radar-more > .rc:not(.warn)')]
@@ -253,8 +272,9 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
     // 재현되지 않아 닫았다(docs/backtest-kr-extended.md 규칙 4) — 이제 두 시장 모두 닫혀 있다
     const PK = P.querySelector('.radar-pick');
     const pkN = L.wake.filter(m => FT.has(m.tk)).length;
-    t(!!PK && P.firstElementChild && [...P.children].indexOf(PK) < [...P.children].findIndex(e => e.classList.contains('radar-sec')),
-      '최우선 후보 칸이 레이더 맨 위(주목 산업보다 먼저)');
+    const host = order === 'ind' ? P : IND, hk = [...host.children];
+    t(!!PK && hk.includes(PK) && hk.indexOf(PK) < hk.findIndex(e => e.classList.contains('radar-sec') && e.textContent.includes('주목 산업')),
+      '최우선 후보 칸은 주목 산업 머리 바로 앞(주목 산업 묶음과 함께 움직인다)');
     t(PK.classList.contains('off') && PK.querySelectorAll('.rc').length === 0
         && PK.textContent.includes(w.eval('IND_EVID.pickOff'))
         && (bench === '코스피' ? /2017~21/.test(PK.textContent) && /0\.0p/.test(PK.textContent) : /−2\.3p/.test(PK.textContent)),
@@ -344,6 +364,29 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
     t(/한국 2022~26 \+4\.7p/.test(FB.textContent) && /2017~21 0\.0p/.test(FB.textContent) && /미국 −2\.3p/.test(FB.textContent),
       '복기 — 과거 기대치와 표본 밖 검증이라는 뜻을 함께 적는다');
   }
+  // 남은 근거 채점(docs/live-edge.md) — 회차 값 중앙 · 판정 시점 · 이 시장이 판정하는 줄 표시
+  t(!w.document.querySelector('#reviewPanel .rv-edge'), '복기 — edge 가 없는 옛 파일이면 남은 근거 표를 그리지 않는다');
+  E(`const sp=(o)=>({'1':o,'3':{n:0,skipped:0,med:null},'6':{n:0,skipped:0,med:null}});
+     REVIEW.edge={judge:'2027-09-30',need:20,rows:[
+       {key:'E1',label:'① − 평균(판정 종목 전체)',since:'2026-10-01',spans:sp({n:3,skipped:1,med:1.25,pos:67})},
+       {key:'E2',label:'① − ②',since:'2026-09-24',spans:sp({n:4,skipped:0,med:-0.5,pos:25})},
+       {key:'E3',label:'① 주목 산업 안 − 밖',since:null,spans:sp({n:0,skipped:2,med:null})}]};
+     renderReview()`);
+  {
+    const EB = w.document.querySelector('#reviewPanel .rv-edge');
+    const tx = EB ? EB.textContent.replace(/\s+/g, ' ') : '';
+    const main = w.eval('IND_EVID.edgeMain');
+    t(!!EB && EB.querySelectorAll('tbody tr').length === 3 && /판정 2027-09-30 이후/.test(tx),
+      '복기 — 남은 근거 표(E1·E2·E3)와 판정 시점');
+    t(/\+1\.3p/.test(tx) && /3회차 · 양\(\+\) 67% · 뺀 1/.test(tx) && /-0\.5p/.test(tx),
+      `복기 — 회차 값 중앙 · 회차 수 · 양(+) 비율 · 뺀 회차 (${tx.slice(0, 80)})`);
+    t(/목록 작아 뺀 회차 2/.test(tx), '복기 — 값이 없어도 뺀 회차 수는 밝힌다');
+    const marked = [...EB.querySelectorAll('tbody tr.rv-main')].map(r => r.textContent.trim().slice(0, 2));
+    t(JSON.stringify(marked) === JSON.stringify(main), `복기 — 이 시장이 판정하는 줄 표시 (${marked})`);
+    t(/안전장치/.test(tx) && /docs\/live-edge\.md/.test(tx), '복기 — 증명이 아니라 안전장치라고 적는다');
+    t(EB.compareDocumentPosition(w.document.querySelector('#reviewPanel .rv-focus')) & 4,
+      '복기 — 남은 근거 표가 맨 위');
+  }
   w.close();
 }
 
@@ -365,6 +408,10 @@ console.log('\n━━━━ 박제 → 주간 변화 파이프라인 ━━━�
   t(s2.lever && s2.lever.tHi != null && Array.isArray(s2.lever.wake) && Array.isArray(s2.lever.flip),
     '박제에 새 목록과 그 주의 문턱이 남는다');
   t(Array.isArray(s2.radar), '구 레이더도 계속 박제한다(비교용)');
+  // 실전 채점 E1(① − 평균)의 평균 쪽 — 판정 종목 전체(docs/live-edge.md)
+  t(Array.isArray(s2.lever.base) && s2.lever.base.length === s2.lever.n
+      && s2.lever.wake.every(p => s2.lever.base.includes(p.tk)) && s2.lever.doubt.every(p => s2.lever.base.includes(p.tk)),
+    `박제에 판정 종목 전체(base)가 남는다 (${s2.lever.base && s2.lever.base.length}/${s2.lever.n})`);
   const out = path.join(dir, 'changes.json');
   run(['changes.mjs', 'kr', '--data', f2, '--snapshots', snaps, '--out', out]);
   const c = JSON.parse(fs.readFileSync(out, 'utf8'));
