@@ -344,6 +344,29 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
     t(/한국 2022~26 \+4\.7p/.test(FB.textContent) && /2017~21 0\.0p/.test(FB.textContent) && /미국 −2\.3p/.test(FB.textContent),
       '복기 — 과거 기대치와 표본 밖 검증이라는 뜻을 함께 적는다');
   }
+  // 남은 근거 채점(docs/live-edge.md) — 회차 값 중앙 · 판정 시점 · 이 시장이 판정하는 줄 표시
+  t(!w.document.querySelector('#reviewPanel .rv-edge'), '복기 — edge 가 없는 옛 파일이면 남은 근거 표를 그리지 않는다');
+  E(`const sp=(o)=>({'1':o,'3':{n:0,skipped:0,med:null},'6':{n:0,skipped:0,med:null}});
+     REVIEW.edge={judge:'2027-09-30',need:20,rows:[
+       {key:'E1',label:'① − 평균(판정 종목 전체)',since:'2026-10-01',spans:sp({n:3,skipped:1,med:1.25,pos:67})},
+       {key:'E2',label:'① − ②',since:'2026-09-24',spans:sp({n:4,skipped:0,med:-0.5,pos:25})},
+       {key:'E3',label:'① 주목 산업 안 − 밖',since:null,spans:sp({n:0,skipped:2,med:null})}]};
+     renderReview()`);
+  {
+    const EB = w.document.querySelector('#reviewPanel .rv-edge');
+    const tx = EB ? EB.textContent.replace(/\s+/g, ' ') : '';
+    const main = w.eval('IND_EVID.edgeMain');
+    t(!!EB && EB.querySelectorAll('tbody tr').length === 3 && /판정 2027-09-30 이후/.test(tx),
+      '복기 — 남은 근거 표(E1·E2·E3)와 판정 시점');
+    t(/\+1\.3p/.test(tx) && /3회차 · 양\(\+\) 67% · 뺀 1/.test(tx) && /-0\.5p/.test(tx),
+      `복기 — 회차 값 중앙 · 회차 수 · 양(+) 비율 · 뺀 회차 (${tx.slice(0, 80)})`);
+    t(/목록 작아 뺀 회차 2/.test(tx), '복기 — 값이 없어도 뺀 회차 수는 밝힌다');
+    const marked = [...EB.querySelectorAll('tbody tr.rv-main')].map(r => r.textContent.trim().slice(0, 2));
+    t(JSON.stringify(marked) === JSON.stringify(main), `복기 — 이 시장이 판정하는 줄 표시 (${marked})`);
+    t(/안전장치/.test(tx) && /docs\/live-edge\.md/.test(tx), '복기 — 증명이 아니라 안전장치라고 적는다');
+    t(EB.compareDocumentPosition(w.document.querySelector('#reviewPanel .rv-focus')) & 4,
+      '복기 — 남은 근거 표가 맨 위');
+  }
   w.close();
 }
 
@@ -365,6 +388,10 @@ console.log('\n━━━━ 박제 → 주간 변화 파이프라인 ━━━�
   t(s2.lever && s2.lever.tHi != null && Array.isArray(s2.lever.wake) && Array.isArray(s2.lever.flip),
     '박제에 새 목록과 그 주의 문턱이 남는다');
   t(Array.isArray(s2.radar), '구 레이더도 계속 박제한다(비교용)');
+  // 실전 채점 E1(① − 평균)의 평균 쪽 — 판정 종목 전체(docs/live-edge.md)
+  t(Array.isArray(s2.lever.base) && s2.lever.base.length === s2.lever.n
+      && s2.lever.wake.every(p => s2.lever.base.includes(p.tk)) && s2.lever.doubt.every(p => s2.lever.base.includes(p.tk)),
+    `박제에 판정 종목 전체(base)가 남는다 (${s2.lever.base && s2.lever.base.length}/${s2.lever.n})`);
   const out = path.join(dir, 'changes.json');
   run(['changes.mjs', 'kr', '--data', f2, '--snapshots', snaps, '--out', out]);
   const c = JSON.parse(fs.readFileSync(out, 'utf8'));
