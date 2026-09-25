@@ -170,9 +170,12 @@ for (const [file, url] of [['index.html', 'https://x.test/'], ['us.html', 'https
   //    막 감지(indLever)는 판정 산업이 15개 미만이면 분위가 의미 없어 판정하지 않는다. 이
   //    픽스처는 판정 산업이 4개라 '판정 불가' 여야 하고, '없다' 라고 적으면 거짓말이다.
   const P = d.getElementById('radarPanel');
-  const secs = [...P.querySelectorAll(':scope > .radar-sec')].map(e => e.textContent);
+  // 주목 산업 묶음이 놓이는 자리 — 산업 먼저('ind')면 레이더 바로 아래, ① 먼저('lever')면 접힌
+  // details.radar-ind 안(docs/live-edge.md 규칙 2). 묶음 안의 모양은 두 경우가 같다.
+  const HOST = () => E('IND_EVID').order === 'lever' ? P.querySelector(':scope > details.radar-ind') : P;
+  const secs = [...HOST().querySelectorAll(':scope > .radar-sec')].map(e => e.textContent);
   t(/주목 산업 — 시장이 안 깨웠거나 이제 막 감지한 곳/.test(secs[0] || ''),
-    `주목 산업이 레이더 맨 위 칸이다 (${(secs[0] || '').slice(0, 20)})`);
+    `주목 산업 묶음의 첫 칸이다 (${(secs[0] || '').slice(0, 20)})`);
   t(!secs.some(x => /가속 중인데 RS 가 낮은 곳|이익이 좋아졌고 시장이 반응한 곳/.test(x)),
     '옛 산업 두 목록은 주목 산업 한 목록으로 합쳐졌다');
   t(secs[0].includes(E('IND_EVID').tag), `주목 산업 칸에 시장별 근거 표시 (${E('IND_EVID').tag})`);
@@ -220,7 +223,7 @@ for (const [file, url] of [['index.html', 'https://x.test/'], ['us.html', 'https
       && /산업 평균과 같았습니다/.test(E('IND_EVID').lead) && /검증된 순서가 아닙니다/.test(P.textContent),
     '후보 정렬이 수익률로 검증된 순서가 아니라고 밝힌다(판정 규칙 1 — 세 규칙 모두 탈락)');
   t(E('LEAD').rule === 'sp', '판정 규칙 1 결과대로 정렬 규칙 = 스프레드');
-  t(P.querySelectorAll(':scope > .ri').length === E('IND_FOCUS_CAP') && !!P.querySelector('details.radar-more .ri'),
+  t(HOST().querySelectorAll(':scope > .ri').length === E('IND_FOCUS_CAP') && !!P.querySelector('details.radar-more .ri'),
     `주목 산업은 ${E('IND_FOCUS_CAP')}개까지 펼치고 나머지는 접는다`);
   t(E('LAST_INDS').length === FO.length && E('LAST_INDS')[0].s.desc === 'Ind17',
     '스냅샷 복사 목록 = 화면 순서(접힌 것까지)');

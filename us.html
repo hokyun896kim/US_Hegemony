@@ -263,6 +263,9 @@ h1{font-size:clamp(24px,5.6vw,42px);font-weight:800;line-height:1.05;margin:8px 
 .radar-old{margin:16px 0 4px;border:1px dashed var(--rule);border-radius:10px;padding:6px 10px}
 .radar-old>summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--mut);padding:4px 0;list-style-position:inside}
 .radar-old[open]>summary{margin-bottom:8px}
+.radar-ind{margin:18px 0 4px;border:1px solid var(--line);border-radius:10px;padding:6px 10px}
+.radar-ind>summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--gold2);padding:4px 0;list-style-position:inside;line-height:1.5}
+.radar-ind[open]>summary{margin-bottom:8px}
 .radar-more>summary{cursor:pointer;font-size:12.5px;color:var(--mut);padding:4px 2px 8px}
 .tc-ai{background:linear-gradient(135deg,var(--panel3),var(--panel3));border:1px solid var(--line);border-radius:12px;padding:14px;margin:14px 0 0}
 .tc-ai h4{font-size:14px;color:var(--gold2);margin:0 0 4px;letter-spacing:.04em}
@@ -1476,6 +1479,8 @@ const IND_EVID={
  pick:false,
  pickOff:'과거 데이터에서 주목 산업 안의 ① 이 ① 밖보다 나았던 것이 아니라서(6개월 −2.3p) 교집합을 \'최우선\' 으로 올리지 않습니다. 아래 ① 을 산업과 별개로 보세요.',
  // 실전 채점(docs/live-edge.md 사전등록) — 이 시장에서 판정하는 줄(E3 은 두 시장 모두). 미국 근거는 ① 이 ② 보다 약 +2p 나았다는 것이라 그 줄로 가른다.
+ // 레이더 보는 순서 — 'lever' 면 ① 먼저 · 주목 산업은 관찰용으로 접는다, 'ind' 면 산업 먼저(docs/live-edge.md 규칙 2).
+ order:'ind',
  edgeMain:['E2','E3'],
 };
 const BENCH_NM='S&P500';  // 실적 반응의 기준 — 문구에만 쓴다(계산은 빌더가 했다)  // ★ v1.2: 박제용 현재 TOP5
@@ -2915,19 +2920,33 @@ function renderRadar(){
         :`<div class="radar-empty">${L.n<LEVER.MIN?'① 을 판정할 수 없어(실적 반응 데이터 부족) 교집합도 낼 수 없습니다.':'이번 회차에는 주목 산업 안의 ① 종목이 없습니다.'}</div>`}</div>`;
  const indEmpty=`<div class="radar-empty">지금은 <b>주목 산업이 없습니다</b> — 안 깨움(가속·분기 중앙 &gt; 0 · RS6M 중앙 &lt; +10% · 후보 1+)도, 막 감지(분기 중앙 상위 40% × 반응 중앙 상위⅓)도 해당 산업이 없습니다. 산업 전체가 움직이는 국면이 아니라 종목별로 갈리는 장이라는 뜻이니, 아래 개별 종목을 보세요.</div>`;
 
- panel.innerHTML=`
-  <div class="radar-head">🎯 선취매 레이더<i class="help-i" onclick="tip('radar')">i</i></div>
-  <div class="radar-sub">보는 순서 — <b>① 주목 산업</b>(시장이 아직 안 깨웠거나 이제 막 감지한 산업) → <b>② 그 안의 주도기업 후보</b> → <b>③ 산업과 별개인 개별 종목</b>(깨어나는·안 믿는 레버리지 · 흑자전환). 이익 레버리지(스프레드)에 <b>시장의 반응</b>(실적이 나오는 동안의 주가)을 겹쳐 봅니다. 예전 목록은 맨 아래 <b>구 레이더</b>에 비교용으로 남겨 둡니다.</div>
-
-  ${pickHtml}
+ // 보는 순서 — 시장별(IND_EVID.order). 한국은 산업 필터가 표본 밖(2017~21)에서 재현되지 않았고 남은 근거가
+ // ① 하나라(docs/backtest-lever-oos.md), ① 을 위에 두고 주목 산업은 관찰용으로 접는다. 순서를 되돌리는
+ // 조건은 docs/live-edge.md 판정 규칙 2. 미국은 산업 먼저('ind') — 원래 흐름을 유지한다.
+ const indBody=`  ${pickHtml}
 
   <div class="radar-sec">주목 산업 — 시장이 안 깨웠거나 이제 막 감지한 곳 <span class="radar-tag">${IND_EVID.tag}</span></div>
   <div class="radar-note">${IND_EVID.note}${ilev.judged?'':` <b>막 감지</b>는 지금 판정 불가 — 실적 반응이 있는 판정 산업이 ${ilev.n}개입니다(${IND_LEVER.MIN}개 필요). 해당 산업이 없다는 뜻이 아닙니다.`} 줄의 📋 버튼으로 산업 스냅샷을 복사해 프로젝트룸 GPT 에서 <b>산업 판정 → 주도기업 검증</b> 순서로 확인하세요. <button class="ind-guide-btn" onclick="event.stopPropagation();copyIndGuide(this)">🏭 산업 검증 GPT 지침 복사 — 프로젝트룸에 최초 1회</button></div>
   ${inds.length ? inds.map(indRow).join('') : indEmpty}
-  ${indsMore.length?`<details class="radar-more"><summary>주목 산업 ${indsMore.length}개 더 보기</summary>${indsMore.map((x,j)=>indRow(x,inds.length+j)).join('')}</details>`:''}
+  ${indsMore.length?`<details class="radar-more"><summary>주목 산업 ${indsMore.length}개 더 보기</summary>${indsMore.map((x,j)=>indRow(x,inds.length+j)).join('')}</details>`:''}`;
+ let indOpen=false; try{indOpen=localStorage.getItem('radarIndOpen')==='1';}catch(e){}
+ const indFirst=`${indBody}
 
   <div class="radar-grp">산업과 별개인 개별 종목 — 산업 판정과 상관없이 종목 단위로 고른 목록</div>
-  ${leverHtml}
+  ${leverHtml}`;
+ const leverFirst=`${leverHtml}
+  <details class="radar-ind"${indOpen?' open':''} ontoggle="try{localStorage.setItem('radarIndOpen',this.open?'1':'')}catch(e){}">
+   <summary>🏭 주목 산업 ${FOC.list.length?FOC.list.length+'개':'— 지금은 없음'} — <b>관찰용</b> · 펼쳐 보기 <span class="radar-tag">${IND_EVID.tag}</span></summary>
+   ${indBody}
+  </details>`;
+ const radarSub=IND_EVID.order==='lever'
+   ? `보는 순서 — <b>① 깨어나는 레버리지</b>(과거 데이터로 우위가 남은 유일한 목록 · 우위는 작습니다) → ② 안 믿는 레버리지 · 흑자전환(관찰) → 맨 아래 <b>주목 산업</b>(접혀 있음 · 관찰용). 이익 레버리지(스프레드)에 <b>시장의 반응</b>(실적이 나오는 동안의 주가)을 겹쳐 봅니다. 산업은 GPT 검증으로 논제를 세울 때 펼쳐 보세요. 예전 목록은 맨 아래 <b>구 레이더</b>에 비교용으로 남겨 둡니다.`
+   : `보는 순서 — <b>① 주목 산업</b>(시장이 아직 안 깨웠거나 이제 막 감지한 산업) → <b>② 그 안의 주도기업 후보</b> → <b>③ 산업과 별개인 개별 종목</b>(깨어나는·안 믿는 레버리지 · 흑자전환). 이익 레버리지(스프레드)에 <b>시장의 반응</b>(실적이 나오는 동안의 주가)을 겹쳐 봅니다. 예전 목록은 맨 아래 <b>구 레이더</b>에 비교용으로 남겨 둡니다.`;
+ panel.innerHTML=`
+  <div class="radar-head">🎯 선취매 레이더<i class="help-i" onclick="tip('radar')">i</i></div>
+  <div class="radar-sub">${radarSub}</div>
+
+  ${IND_EVID.order==='lever'?leverFirst:indFirst}
 
   <details class="radar-old">
    <summary>📦 구 레이더(비교용) — 스프레드 좋고 주가는 아직 안 움직인 종목 <b>${picksAll.length}</b>개</summary>
