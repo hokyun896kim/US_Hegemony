@@ -2956,9 +2956,9 @@ function renderRadar(){
         :`<div class="radar-empty">${L.n<LEVER.MIN?'① 을 판정할 수 없어(실적 반응 데이터 부족) 교집합도 낼 수 없습니다.':'이번 회차에는 주목 산업 안의 ① 종목이 없습니다.'}</div>`}</div>`;
  const indEmpty=`<div class="radar-empty">지금은 <b>주목 산업이 없습니다</b> — 안 깨움(가속·분기 중앙 &gt; 0 · RS6M 중앙 &lt; +10% · 후보 1+)도, 막 감지(분기 중앙 상위 40% × 반응 중앙 상위⅓)도 해당 산업이 없습니다. 산업 전체가 움직이는 국면이 아니라 종목별로 갈리는 장이라는 뜻이니, 아래 개별 종목을 보세요.</div>`;
 
- // 보는 순서 — 시장별(IND_EVID.order). 한국은 산업 필터가 표본 밖(2017~21)에서 재현되지 않았고 남은 근거가
- // ① 하나라(docs/backtest-lever-oos.md), ① 을 위에 두고 주목 산업은 관찰용으로 접는다. 순서를 되돌리는
- // 조건은 docs/live-edge.md 판정 규칙 2. 미국은 산업 먼저('ind') — 원래 흐름을 유지한다.
+ // 보는 순서 — 시장별(IND_EVID.order). 두 시장 모두 산업 필터 우위가 확인되지 않았고(한국 표본 밖 −1.5p ·
+ // 미국 +0.2p) 남은 근거가 ① 이라, ① 을 위에 두고 주목 산업은 관찰용으로 접는다('lever'). 산업 먼저('ind')로
+ // 되돌리는 조건은 docs/live-edge.md 판정 규칙 2(한국) · 5(미국).
  const indBody=`  ${pickHtml}
 
   <div class="radar-sec">주목 산업 — 시장이 안 깨웠거나 이제 막 감지한 곳 <span class="radar-tag">${IND_EVID.tag}</span></div>
