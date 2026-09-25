@@ -121,7 +121,7 @@ def margin_block(known):
             sum(q["rev"] for q in prv), sum(q["op"] for q in prv))
 
 
-def collect(market, log=print):
+def collect(market, log=print, start=None):
     cfg = BR.MARKETS[market]
     R.set_market(market)
     cache = json.loads(Path(cfg["quarters"]).read_text(encoding="utf-8"))["stocks"]
@@ -130,7 +130,8 @@ def collect(market, log=print):
     bdict = dict(bench)
     pdict = {tk: dict(s) for tk, s in ser.items()}
     evs = {tk: events_of(s, ser.get(tk, []), bench) for tk, s in cache.items() if ser.get(tk)}
-    start, end = WINDOWS[market]
+    lo, end = WINDOWS[market]
+    start = start or lo
     rows = []
     dates = R.month_ends(start, end)
     for i, t in enumerate(dates, 1):
@@ -407,14 +408,99 @@ HEADER = """# 실적 반응 × 헤게모니 스프레드 — 선취매 레이더
 """
 
 
+# ── 표본 밖 검증(docs/backtest-lever-oos.md) ─────────────────────
+OOS_MIN_T = 30          # 판정 규칙 4 — 표본 밖에서 M1 이 잡힌 시점이 이만큼은 있어야 판정한다
+
+
+def window_rows(rows, lo=None, hi=None):
+    """[lo, hi) 의 시점만."""
+    return [r for r in rows if (lo is None or r["t"] >= lo) and (hi is None or r["t"] < hi)]
+
+
+def lever_tests(rows):
+    """M1(① − ②) · M2(① 칸 − 기준) · M3(스프레드 하위 60% 의 반응 상위⅓ − 하위⅓), 3·6개월 요약."""
+    TS = ts_of(rows)
+    if not TS:
+        return {}
+    cut = TS[len(TS) // 2]
+    out = {}
+    for h in ("ex3", "ex6"):
+        c = cells(rows, h)
+        out[("M1", h)] = summ(cell_gap(c, "hi"), cut)
+        out[("M2", h)] = summ(c.get(("hi", "+"), {}), cut)
+        out[("M3", h)] = summ(cell_gap(c, "lo"), cut)
+    return out
+
+
+def passes(s):
+    return bool(s and s["med"] > 0 and (s["a"] or 0) > 0 and (s["b"] or 0) > 0)
+
+
+def oos_rule(t):
+    """판정 규칙 1~4 — 표본 밖 구간의 lever_tests → 규칙 번호."""
+    m1 = t.get(("M1", "ex6"))
+    if not m1 or m1["n"] < OOS_MIN_T:
+        return 4
+    if passes(m1):
+        return 1
+    return 2 if passes(t.get(("M2", "ex6"))) else 3
+
+
+LEVER_LABEL = {"M1": "M1 ① − ② (스프레드 상위 40% 안에서 반응 상위⅓ − 하위⅓)",
+               "M2": "M2 ① 칸 − 기준(스프레드·반응이 둘 다 있는 종목)",
+               "M3": "M3 (참고) 스프레드 하위 60% 안에서 반응 상위⅓ − 하위⅓"}
+
+
+def oos_block(name, rows):
+    TS = ts_of(rows)
+    t = lever_tests(rows)
+    L = [f"### {name} — {TS[0] if TS else '?'} ~ {TS[-1] if TS else '?'} · 월말 {len(TS)}시점", "",
+         "| 가설 | 3개월 | 6개월 | 통과(6개월) |", "|---|---|---|---|"]
+    for k, lab in LEVER_LABEL.items():
+        L.append(f"| {lab} | {fmt(t.get((k, 'ex3')))} | {fmt(t.get((k, 'ex6')))} | "
+                 f"{'✅' if passes(t.get((k, 'ex6'))) else '—'} |")
+    return "\n".join(L), t
+
+
+def main_oos(a):
+    MARK = "<!-- RESULTS -->"
+    print(f"[{a.market}] 수집 · {a.start}~ · 경계 {a.split}")
+    rows = collect(a.market, start=a.start)
+    parts, oos = [], None
+    for name, lo, hi in (("표본 밖(가설을 세울 때 안 본 구간) — 판정", None, a.split),
+                         ("민감도 — 분기 8개가 온전한 달만(판정 외)", "2018-04-01", a.split),
+                         ("원래 구간 — 12년치 데이터로 다시(판정 외)", a.split, None),
+                         ("전 기간", None, None)):
+        txt, t = oos_block(name, window_rows(rows, lo, hi))
+        if oos is None:
+            oos = t
+        parts.append(txt)
+    rule = oos_rule(oos)
+    head = Path(a.out).read_text(encoding="utf-8").split(MARK)[0].rstrip()
+    m1 = oos.get(("M1", "ex6"))
+    tail = ["", MARK, "", "# 결과", "",
+            f"**판정 규칙 {rule} 적용** — 표본 밖 M1 {'✅' if passes(m1) else '—'} · "
+            f"M2 {'✅' if passes(oos.get(('M2', 'ex6'))) else '—'} (M1 시점 {m1['n'] if m1 else 0})", ""]
+    Path(a.out).write_text(head + "\n" + "\n".join(tail) + "\n" + "\n\n".join(parts) + "\n", encoding="utf-8")
+    print("\n\n".join(parts))
+    print(f"판정 규칙 {rule} · 보고서 {a.out}")
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--market", choices=["kr", "us", "both"], default="both")
     ap.add_argument("--out", default=OUT)
+    ap.add_argument("--start", default=None, help="평가 창 시작(기본은 WINDOWS)")
+    ap.add_argument("--split", default=None, help="이 날짜 앞을 표본 밖 구간으로 따로 판정한다")
     ap.add_argument("--selftest", action="store_true")
     a = ap.parse_args(argv)
     if a.selftest:
         return selftest()
+    if a.split:
+        if a.market == "both" or a.out == OUT:
+            ap.error("--split 은 시장 하나에, 기존 보고서가 아닌 --out 으로 쓴다")
+        return main_oos(a)
     parts = [HEADER]
     for m in (("kr", "us") if a.market == "both" else (a.market,)):
         print(f"[{m}] 수집")
@@ -489,6 +575,20 @@ def selftest() -> int:
     s = summ({"2025-01-31": 1.0, "2025-02-28": -1.0, "2026-01-31": 3.0}, "2026-01-01")
     t(s["med"] == 1.0 and s["pos"] == 67 and s["a"] == 0.0 and s["b"] == 3.0,
       f"요약 — 중앙·양의 비율·앞뒤 반쪽 ({s})")
+
+    print("\n── 표본 밖 검증(docs/backtest-lever-oos.md) ──")
+    rr = [{"t": d} for d in ("2018-01-31", "2021-12-31", "2022-01-31", "2023-05-31")]
+    t([r["t"] for r in window_rows(rr, None, "2022-01-01")] == ["2018-01-31", "2021-12-31"]
+      and [r["t"] for r in window_rows(rr, "2022-01-01", None)] == ["2022-01-31", "2023-05-31"],
+      "경계 앞/뒤로 시점을 가른다(경계 당일은 뒤)")
+    P = {"n": 40, "med": 1.0, "pos": 60, "a": 0.5, "b": 0.2}
+    F_ = {"n": 40, "med": 1.0, "pos": 60, "a": -0.5, "b": 2.0}
+    t(passes(P) and not passes(F_) and not passes(None), "통과 = 중앙 양(+) · 앞뒤 반쪽 모두 양(+)")
+    t(oos_rule({("M1", "ex6"): P}) == 1, "M1 통과 → 규칙 1")
+    t(oos_rule({("M1", "ex6"): F_, ("M2", "ex6"): P}) == 2, "M1 실패·M2 통과 → 규칙 2")
+    t(oos_rule({("M1", "ex6"): F_, ("M2", "ex6"): F_}) == 3, "둘 다 실패 → 규칙 3")
+    t(oos_rule({("M1", "ex6"): dict(P, n=OOS_MIN_T - 1)}) == 4 and oos_rule({}) == 4,
+      f"M1 시점 {OOS_MIN_T} 미만이면 판정 불가(규칙 4)")
 
     print("\n" + ("✅ 전부 통과" if ok[0] else "❌ 실패"))
     return 0 if ok[0] else 1
