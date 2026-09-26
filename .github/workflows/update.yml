@@ -7,17 +7,30 @@ on:
     # (다른 크롤러들이 달궈놓은 IP 를 뽑는 복권). 12시간 뒤 백업 슬롯이
     # 새 출구를 뽑아 재시도한다. 성공 회차가 이미 커밋했으면 백업은 무해하다.
     - cron: '0 10 * * 0'   # 일요일 10:00 UTC = 한국 일요일 19:00 (백업)
+    # 평일 매일 — 미국 장 마감(16:00 ET = 20:00/21:00 UTC) 뒤, 야후 스로틀이 센 장중을
+    # 피한다. 주가·상대강도·52주 고점比와 실적 시즌의 새 실적 반응(①·②)을 매일 싣는다.
+    # 박제·주간 변화·복기는 여기서 돌지 않는다(채점은 주 1회 회차 — docs/live-edge.md).
+    - cron: '7 22 * * 1-5'  # 월~금 22:07 UTC = 한국 화~토 07:07
   workflow_dispatch:
     inputs:
       commit:
         description: '결과를 커밋할지 여부'
         type: boolean
         default: true
+      snapshot:
+        description: '주간 박제·주간 변화·복기까지 돌릴지 (기본: 데이터만 갱신 — 주중 수동 박제는 채점 회차를 바꾼다)'
+        type: boolean
+        default: false
 
 # 이게 없어서 2026-05-31 이후 주간 실행 10회가 전부 push 403 으로 죽었다.
 # 빌드는 매번 성공했고 커밋까지 만들어 놓고 밀어 넣지를 못했다.
 permissions:
   contents: write
+
+# 같은 워크플로가 겹쳐 돌면 push 경쟁을 한다 — 줄을 세운다(취소하지 않는다).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   update:
@@ -30,6 +43,21 @@ jobs:
       - run: echo "JOB_T0=$(date -u +%s)" >> "$GITHUB_ENV"
 
       - uses: actions/checkout@v4
+
+      # 주간 회차 = 주간 스케줄(정규·백업) 또는 snapshot 을 켠 수동 실행. 평일 회차는
+      # 데이터만 갱신한다 — 박제가 매일 찍히면 '주에 첫 회차만 센다' 는 채점 규칙에서
+      # 어느 날 박제가 채점되는지가 바뀐다(docs/live-edge.md).
+      - name: 주간 회차인가
+        id: wk
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" != "7 22 * * 1-5" ]; then
+            echo "on=true" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.snapshot }}" = "true" ]; then
+            echo "on=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "on=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::평일(또는 수동) 회차 — 데이터만 갱신합니다. 박제·주간 변화·복기는 주간 회차에서만 돕니다."
+          fi
 
       - uses: actions/setup-python@v5
         with:
@@ -132,7 +160,7 @@ jobs:
       # 박제는 화면(us.html)을 jsdom 에 띄워 화면의 스코어러를 그대로
       # 부른다. 파이썬으로 다시 짜면 두 구현이 갈라지는 순간 박제가 거짓이 된다.
       - name: Setup Node (박제용)
-        if: github.event.inputs.commit != 'false'
+        if: github.event.inputs.commit != 'false' && steps.wk.outputs.on == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -140,7 +168,7 @@ jobs:
           cache-dependency-path: tests/package.json
 
       - name: 주간 박제
-        if: github.event.inputs.commit != 'false'
+        if: github.event.inputs.commit != 'false' && steps.wk.outputs.on == 'true'
         # 박제에 실패해도 회차를 잃지 않는다 — 데이터 커밋이 본체다.
         continue-on-error: true
         run: |
@@ -152,7 +180,7 @@ jobs:
       # 적는다. 박제 바로 뒤여야 이번 회차가 비교 대상에 들어간다.
       # 사유는 화면의 accelCheck·priceIn 을 그대로 불러 받아 적는다.
       - name: 주간 변화
-        if: github.event.inputs.commit != 'false'
+        if: github.event.inputs.commit != 'false' && steps.wk.outputs.on == 'true'
         continue-on-error: true
         run: |
           if out=$(node tests/changes.mjs us 2>&1); then
@@ -171,7 +199,7 @@ jobs:
       # 쓰면 기준일이 고정돼 회차가 쌓여도 경과 칸이 영원히 안 찬다.
       # TOP5 에 든 종목만 받으므로 회차당 수십 건이다.
       - name: 박제 복기
-        if: github.event.inputs.commit != 'false'
+        if: github.event.inputs.commit != 'false' && steps.wk.outputs.on == 'true'
         # 복기에 실패해도 회차를 잃지 않는다 — 데이터 커밋이 본체다.
         continue-on-error: true
         # continue-on-error 라 실패해도 회차를 잃지 않는데, 그래서 조용히
@@ -219,7 +247,8 @@ jobs:
               print("update")
           PY
           )
-          git commit -m "auto: $MSG $(date +%Y-%m-%d)"
+          KIND=$([ "${{ steps.wk.outputs.on }}" = "true" ] && echo "" || echo "(일간) ")
+          git commit -m "auto: ${KIND}$MSG $(date +%Y-%m-%d)"
           # 두 빌더가 같은 브랜치에 민다. 동시에 돌면 뒤늦은 쪽이 거부당하는데,
           # 그때 빌드 결과를 통째로 버리면 안 된다(실측: KR #22 가 데이터를
           # 다 만들고도 push 거부로 실패했다). 남의 커밋 위로 rebase 하고

@@ -11,10 +11,15 @@ let ok = true;
 const t = (c, m) => { console.log((c ? '  ok   ' : '  FAIL ') + m); ok = ok && !!c; };
 
 // cron '분 시 일 월 요일' 에서 (요일, 시, 분) 을 뽑는다. 요일은 0=일.
+// 요일 칸의 범위·목록('1-5' · '1,3')은 하루씩 펼친다 — 평일 회차가 이 모양이다.
 function cronsOf(file) {
   const y = fs.readFileSync(path.join(ROOT, file), 'utf8');
-  return [...y.matchAll(/-\s*cron:\s*'(\d+)\s+(\d+)\s+\*\s+\*\s+(\d+)'/g)]
-    .map(m => ({ d: +m[3], h: +m[2], m: +m[1] }))
+  const days = f => f.split(',').flatMap(x => {
+    const [a, b] = x.split('-').map(Number);
+    return b == null ? [a] : Array.from({ length: b - a + 1 }, (_, i) => a + i);
+  });
+  return [...y.matchAll(/-\s*cron:\s*'(\d+)\s+(\d+)\s+\*\s+\*\s+([\d,-]+)'/g)]
+    .flatMap(m => days(m[3]).map(d => ({ d, h: +m[2], m: +m[1] })))
     .sort((a, b) => a.d - b.d || a.h - b.h);
 }
 
@@ -41,7 +46,8 @@ for (const [label, page, data, wf] of [
   const d = w.document;
 
   // 1) 화면의 일정이 워크플로 cron 과 같은가 — 여기가 어긋나면 거짓 안내가 나간다
-  const sched = [...w.eval('SCHED')].map(s => ({ d: s.d, h: s.h, m: s.m || 0 }))
+  const SC = [...w.eval('SCHED')];
+  const sched = SC.map(s => ({ d: s.d, h: s.h, m: s.m || 0 }))
     .sort((a, b) => a.d - b.d || a.h - b.h);
   const cron = cronsOf(wf);
   t(JSON.stringify(sched) === JSON.stringify(cron),
@@ -51,8 +57,28 @@ for (const [label, page, data, wf] of [
   // 2) 다음 갱신이 '미래'이고, 예정 요일·시각과 맞는가
   const nxt = w.eval('nextRun')(new Date());
   t(nxt > new Date(), `다음 갱신이 미래 (${nxt.toISOString()})`);
-  t(cron.some(c => c.d === nxt.getUTCDay() && c.h === nxt.getUTCHours()),
+  t(cron.some(c => c.d === nxt.getUTCDay() && c.h === nxt.getUTCHours() && c.m === nxt.getUTCMinutes()),
     '다음 갱신이 예정 요일·시각과 일치');
+  // 평일 회차 — 월~금 모두 있어야 한다(2026-09-26 주 1회 → 평일 매일)
+  t([1, 2, 3, 4, 5].every(d => cron.some(c => c.d === d)), '평일(월~금) 매일 회차가 있다');
+  // 백업 슬롯은 '다음 갱신' 으로 안내하지 않는다 — 정규가 실패했을 때만 실제로 돈다.
+  // 백업 직전 시각에서 다음 갱신을 물으면 백업을 건너뛰고 그다음 회차가 나와야 한다.
+  {
+    const bk = SC.filter(s => s.b);
+    t(bk.length === 1, `백업 슬롯 하나 표시(b) (${bk.length})`);
+    const before = new Date(Date.UTC(2026, 8, 27, 0, 0));          // 2026-09-27(일) 00:00 UTC
+    before.setUTCDate(before.getUTCDate() + ((bk[0].d - before.getUTCDay() + 7) % 7));
+    before.setUTCHours(bk[0].h, (bk[0].m || 0) - 1);
+    const n2 = w.eval('nextRun')(before);
+    t(!(n2.getUTCDay() === bk[0].d && n2.getUTCHours() === bk[0].h), `백업 슬롯을 건너뛴다 (${n2.toISOString()})`);
+    // 평일 회차가 있으니 다음 갱신은 이틀 안이다(토 정규 → 월 평일이 가장 길다)
+    let worst = 0;
+    for (let k = 0; k < 7 * 24; k++) {
+      const at = new Date(Date.UTC(2026, 8, 27) + k * 36e5);
+      worst = Math.max(worst, (w.eval('nextRun')(at) - at) / 36e5);
+    }
+    t(worst <= 60, `다음 갱신까지 최장 ${worst.toFixed(0)}시간(≤ 60)`);
+  }
 
   // 3) 머리글에 실제로 찍히는가
   t(/다음 갱신/.test(d.getElementById('hdNext').textContent), '머리글에 다음 갱신 표시');
@@ -73,6 +99,10 @@ for (const [label, page, data, wf] of [
   const wOk = await load({ updated: iso(3), fund_updated: iso(3) });
   t(!/예정일이 지났는데/.test(wOk.document.getElementById('hdNext').textContent),
     '3일 지난 데이터에는 지연 경고 없음(정상 주기 안)');
+  // 평일 매일 회차라 정상이면 이틀(주말)을 넘지 않는다 — 나흘이면 회차가 연달아 실패한 것
+  const w4 = await load({ updated: iso(4), fund_updated: iso(4) });
+  t(/예정일이 지났는데/.test(w4.document.getElementById('hdNext').textContent),
+    '4일 지난 데이터에 지연 경고(평일 매일 회차 기준)');
 
   // 6) 실적층 이월 배너 — 두 날짜를 한 날짜인 척 보여주지 않는다.
   //    실측(2026-08-16): 야후 스로틀로 종목당 59초가 걸려 300종목을 한 회차에
