@@ -7,6 +7,12 @@ on:
     # 통째로 놓친다(실측: 8/15 회차가 잘리면서 반기보고서 법정기한 8/14 직후의
     # 2분기 확정 실적을 못 받았다). 이 회차는 데이터가 이미 최신이면 스스로 빠진다.
     - cron: '0 21 * * 0'    # 일 21:00 UTC = 한국 월요일 06:00
+    # 평일 매일 — 장 마감(15:30 KST) 뒤. 주가·상대강도·52주 고점比와, 실적 시즌에는
+    # 새로 나온 실적 반응(①·②)이 며칠씩 늦게 뜨지 않게 한다. 새 공시가 없으면 DART 를
+    # 다시 받지 않아 30분 안팎이다(2026-09-23 실측 28분). 박제·주간 변화·복기는
+    # 여기서 돌지 않는다 — 채점 규칙이 '주 1회 회차' 로 고정돼 있다(docs/live-edge.md).
+    # 분을 7 로 둔 건 정각에 몰리는 스케줄 지연을 피하려는 것이다.
+    - cron: '7 9 * * 1-5'   # 월~금 09:07 UTC = 한국 18:07
   workflow_dispatch:
     inputs:
       limit:
@@ -19,6 +25,10 @@ on:
       probe:
         description: '데이터 소스 응답 구조만 확인하고 끝낼 종목코드 (예: 005930). 비우면 평소대로 빌드'
         default: ''
+      snapshot:
+        description: '주간 박제·주간 변화·복기까지 돌릴지 (기본: 데이터만 갱신 — 주중 수동 박제는 채점 회차를 바꾼다)'
+        type: boolean
+        default: false
   push:
     # 개발 브랜치에서 빌더를 고치면 커밋 없이 소규모 스모크 빌드로 검증만 한다
     branches: ['claude/**']
@@ -31,6 +41,12 @@ on:
 
 permissions:
   contents: write
+
+# 같은 워크플로가 겹쳐 돌면 뒤늦은 쪽이 앞 결과를 덮거나 push 경쟁을 한다.
+# 실적 시즌에는 평일 회차가 길어질 수 있어 줄을 세운다(취소하지 않는다).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -60,22 +76,39 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 백업 회차(월 06:00 KST)는 정규 회차가 실패했을 때만 의미가 있다.
-      # 데이터가 이미 이번 주 것이면 러너 시간을 태울 이유가 없다.
-      - name: 백업 회차는 데이터가 낡았을 때만
+      # 백업 회차(월 06:00 KST)는 정규(주간) 회차가 실패했을 때만 의미가 있다.
+      # 평일 회차가 생긴 뒤로 데이터 날짜는 늘 최신이라 '주간 박제가 이번 주에
+      # 찍혔나' 로 판단한다. 찍혔으면 러너 시간을 태울 이유가 없다.
+      - name: 백업 회차는 이번 주 박제가 없을 때만
         id: need
         run: |
           if [ "${{ github.event.schedule }}" != "0 21 * * 0" ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
           fi
-          UPD=$(python3 -c "import json;print(json.load(open('data/tree_kr.json'))['updated'])" 2>/dev/null || echo 1970-01-01)
-          AGE=$(( ( $(date -u +%s) - $(date -u -d "$UPD" +%s) ) / 86400 ))
+          LAST=$(ls data/snapshots/kr-*.json 2>/dev/null | sort | tail -1 | sed -E 's/.*kr-([0-9-]+)\.json/\1/')
+          LAST=${LAST:-1970-01-01}
+          AGE=$(( ( $(date -u +%s) - $(date -u -d "$LAST" +%s) ) / 86400 ))
           if [ "$AGE" -ge 3 ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::백업 회차 — 데이터가 ${AGE}일 낡았습니다($UPD). 정규 회차가 실패했군요. 빌드합니다."
+            echo "::notice::백업 회차 — 마지막 주간 박제가 ${AGE}일 전($LAST)입니다. 정규 회차가 실패했군요. 빌드합니다."
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::백업 회차 — 데이터가 ${AGE}일 전($UPD)로 최신입니다. 건너뜁니다."
+            echo "::notice::백업 회차 — 이번 주 박제($LAST)가 있습니다. 건너뜁니다."
+          fi
+
+      # 주간 회차 = 주간 스케줄(정규·백업) 또는 snapshot 을 켠 수동 실행. 평일 회차는
+      # 데이터만 갱신한다 — 박제가 매일 찍히면 '주에 첫 회차만 센다' 는 채점 규칙에서
+      # 어느 날 박제가 채점되는지가 바뀐다(docs/live-edge.md).
+      - name: 주간 회차인가
+        id: wk
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" != "7 9 * * 1-5" ]; then
+            echo "on=true" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.snapshot }}" = "true" ]; then
+            echo "on=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "on=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::평일(또는 수동) 회차 — 데이터만 갱신합니다. 박제·주간 변화·복기는 주간 회차에서만 돕니다."
           fi
 
       # 셋업·자체검증은 30초짜리라 백업 회차에서도 그냥 돌린다(공짜 검증이다).
@@ -251,7 +284,7 @@ jobs:
       # 박제는 화면(index.html)을 jsdom 에 띄워 화면의 스코어러를 그대로
       # 부른다. 파이썬으로 다시 짜면 두 구현이 갈라지는 순간 박제가 거짓이 된다.
       - name: Setup Node (박제용)
-        if: steps.mode.outputs.commit == 'true' && inputs.probe == '' && steps.need.outputs.run == 'true'
+        if: steps.mode.outputs.commit == 'true' && inputs.probe == '' && steps.need.outputs.run == 'true' && steps.wk.outputs.on == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -259,7 +292,7 @@ jobs:
           cache-dependency-path: tests/package.json
 
       - name: 주간 박제
-        if: steps.mode.outputs.commit == 'true' && inputs.probe == '' && steps.need.outputs.run == 'true'
+        if: steps.mode.outputs.commit == 'true' && inputs.probe == '' && steps.need.outputs.run == 'true' && steps.wk.outputs.on == 'true'
         # 박제에 실패해도 회차를 잃지 않는다 — 데이터 커밋이 본체다.
         continue-on-error: true
         run: |
@@ -271,7 +304,7 @@ jobs:
       # 적는다. 박제 바로 뒤여야 이번 회차가 비교 대상에 들어간다.
       # 사유는 화면의 accelCheck·priceIn 을 그대로 불러 받아 적는다.
       - name: 주간 변화
-        if: steps.mode.outputs.commit == 'true' && inputs.probe == '' && steps.need.outputs.run == 'true'
+        if: steps.mode.outputs.commit == 'true' && inputs.probe == '' && steps.need.outputs.run == 'true' && steps.wk.outputs.on == 'true'
         continue-on-error: true
         run: |
           if out=$(node tests/changes.mjs kr 2>&1); then
@@ -290,7 +323,7 @@ jobs:
       # 쓰면 기준일이 고정돼 회차가 쌓여도 경과 칸이 영원히 안 찬다.
       # TOP5 에 든 종목만 받으므로 회차당 수십 건이다.
       - name: 박제 복기
-        if: steps.mode.outputs.commit == 'true' && inputs.probe == '' && steps.need.outputs.run == 'true'
+        if: steps.mode.outputs.commit == 'true' && inputs.probe == '' && steps.need.outputs.run == 'true' && steps.wk.outputs.on == 'true'
         # 복기에 실패해도 회차를 잃지 않는다 — 데이터 커밋이 본체다.
         continue-on-error: true
         # continue-on-error 라 실패해도 회차를 잃지 않는데, 그래서 조용히
@@ -324,7 +357,8 @@ jobs:
           # 받는다(빌드 4시간의 97% 가 분기 재무 재수집이었다). 없으면 전부 받는다.
           [ -f data/dart_memo_kr.json ] && git add data/dart_memo_kr.json || true
           git diff --staged --quiet && echo "변경 없음" && exit 0
-          git commit -m "auto(kr): update $(date +%Y-%m-%d)"
+          KIND=$([ "${{ steps.wk.outputs.on }}" = "true" ] && echo "update" || echo "daily")
+          git commit -m "auto(kr): $KIND $(date +%Y-%m-%d)"
           # 두 빌더가 같은 브랜치에 민다. 동시에 돌면 뒤늦은 쪽이 거부당하는데,
           # 그때 빌드 결과를 통째로 버리면 안 된다(실측: KR #22 가 데이터를
           # 다 만들고도 push 거부로 실패했다). 남의 커밋 위로 rebase 하고
