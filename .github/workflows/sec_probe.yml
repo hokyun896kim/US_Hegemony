@@ -1,0 +1,37 @@
+name: SEC probe (실험)
+
+# 실험용 — PR #78 과 함께 닫는다. Netlify 함수(다른 출구 IP)에서 SEC 가 열리는지를
+# deploy preview 로 확인하고, 같은 주소를 러너에서 직접 불러 나란히 적는다.
+on:
+  push:
+    branches: ['claude/**']
+    paths:
+      - 'netlify/functions/**'
+      - '.github/workflows/sec_probe.yml'
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: 러너에서 직접 (비교용)
+        run: |
+          UA='US-Hegemony-Tree hokyun896kim@users.noreply.github.com'
+          echo "러너 출구 IP: $(curl -s -m 10 https://api.ipify.org)"
+          for u in https://data.sec.gov/api/xbrl/frames/us-gaap/Revenues/USD/CY2025Q2.json https://www.sec.gov/files/company_tickers.json; do
+            echo "$(curl -s -m 20 -o /dev/null -w '%{http_code} %{size_download}B' -A "$UA" "$u")  $u"
+          done | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Netlify 함수 경유 (deploy preview 가 뜰 때까지 기다린다)
+        run: |
+          URL="https://deploy-preview-78--us-hegemony-kinghokyun.netlify.app/.netlify/functions/sec-probe"
+          for i in $(seq 1 20); do
+            code=$(curl -s -m 30 -o /tmp/p.json -w '%{http_code}' "$URL")
+            if [ "$code" = "200" ] && grep -q '"results"' /tmp/p.json; then
+              { echo '```json'; cat /tmp/p.json; echo; echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "아직 ($code) — 30초 뒤 다시 ($i/20)"; sleep 30
+          done
+          echo "::error::deploy preview 의 함수가 응답하지 않았습니다"; exit 1
