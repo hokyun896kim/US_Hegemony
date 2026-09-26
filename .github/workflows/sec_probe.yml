@@ -23,6 +23,14 @@ jobs:
             echo "$(curl -s -m 20 -o /dev/null -w '%{http_code} %{size_download}B' -A "$UA" "$u")  $u"
           done | tee -a "$GITHUB_STEP_SUMMARY"
 
+      - name: XBRL US API (SEC 공시 XBRL 을 그대로 싣는 비영리 DB) — 러너에서 닿는가
+        run: |
+          # 인증 없이 부르면 401/400 이 정상이다. 403(차단 페이지)·000(연결 실패)이면 이 길도 막힌 것이다.
+          for u in "https://api.xbrl.us/api/v1/fact/search?concept.local-name=Revenues&entity.cik=0000320193&fields=fact.value" \
+                   "https://api.xbrl.us/oauth2/token"; do
+            echo "$(curl -s -m 20 -o /tmp/x.txt -w '%{http_code} %{size_download}B' "$u")  $u  | $(head -c 160 /tmp/x.txt | tr '\n' ' ')"
+          done | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Netlify 함수 경유 (deploy preview 가 뜰 때까지 기다린다)
         run: |
           URL="https://deploy-preview-78--us-hegemony-kinghokyun.netlify.app/.netlify/functions/sec-probe"
