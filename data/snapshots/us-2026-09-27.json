@@ -252,14 +252,14 @@
   }
  ],
  "lever": {
-  "n": 214,
-  "noEar": 92,
-  "dropped": 35,
-  "tSp": 3.1,
-  "tLo": -3,
+  "n": 219,
+  "noEar": 89,
+  "dropped": 33,
+  "tSp": 3.3,
+  "tLo": -2.8,
   "tHi": 6.6,
   "med": 2.1,
-  "top": 86,
+  "top": 88,
   "wake": [
    {
     "tk": "LYB",
@@ -570,6 +570,20 @@
     "q_end": "2026-06-30"
    },
    {
+    "tk": "BSX",
+    "nm": "BOSTON SCIENTIFIC CORP",
+    "sec": "의료기기",
+    "q_spread": 8,
+    "ear": 9.5,
+    "ear_to": "2026-07-31",
+    "spread": 12.4,
+    "rs3": -6.8,
+    "rs6": -57.6,
+    "from_high": -58.2,
+    "pe": 22.64,
+    "q_end": "2026-06-30"
+   },
+   {
     "tk": "CACI",
     "nm": "CACI INTERNATIONAL INC /DE/",
     "sec": "컴퓨터 통합시스템",
@@ -793,6 +807,20 @@
     "rs6": -35.5,
     "from_high": -30.3,
     "pe": 40.43,
+    "q_end": "2026-06-30"
+   },
+   {
+    "tk": "EW",
+    "nm": "Edwards Lifesciences Corp",
+    "sec": "Orthopedic, Prosthetic & Surgical Appliances & Supplies",
+    "q_spread": 21.5,
+    "ear": -7.2,
+    "ear_to": "2026-07-27",
+    "spread": -1,
+    "rs3": -11,
+    "rs6": -15.1,
+    "from_high": -9.3,
+    "pe": 47.16,
     "q_end": "2026-06-30"
    },
    {
@@ -1063,6 +1091,7 @@
    "SOLV",
    "DXCM",
    "SYK",
+   "BSX",
    "RSMDF",
    "MMM",
    "GVA",
@@ -1152,6 +1181,7 @@
    "AAPL",
    "SMCIP",
    "EIX",
+   "D",
    "PPLC",
    "PNW",
    "CNP",
@@ -1228,11 +1258,13 @@
    "AVTR",
    "STE",
    "ISRG",
+   "EW",
    "LUV",
    "DAL",
    "UAL",
    "AAL",
    "ALK",
+   "BEN",
    "TROW",
    "EQPT",
    "URI",
@@ -1245,6 +1277,7 @@
    "IR",
    "IMKTA",
    "ACI",
+   "EOG",
    "PR",
    "OVV",
    "CHRD",
@@ -1364,7 +1397,7 @@
  },
  "focus": {
   "lever_judged": true,
-  "lever_n": 51,
+  "lever_n": 52,
   "rule": "sp",
   "list": [
    {
@@ -1544,6 +1577,31 @@
     ]
    },
    {
+    "sic": "3841",
+    "nm": "의료기기",
+    "quiet": false,
+    "lever": true,
+    "acc": -4.4,
+    "qsp": 0.2,
+    "rs": -1.9,
+    "ear": 6.9,
+    "members": [
+     "SOLV",
+     "DXCM",
+     "SYK",
+     "BSX",
+     "RSMDF",
+     "BDX",
+     "MMM",
+     "MDLN"
+    ],
+    "lead": [
+     "MMM",
+     "BSX",
+     "DXCM"
+    ]
+   },
+   {
     "sic": "2080",
     "nm": "Beverages",
     "quiet": true,
@@ -1562,6 +1620,27 @@
      "KO",
      "PRMB",
      "PEP"
+    ]
+   },
+   {
+    "sic": "3842",
+    "nm": "Orthopedic, Prosthetic & Surgical Appliances & Supplies",
+    "quiet": true,
+    "lever": false,
+    "acc": 12.4,
+    "qsp": 14.3,
+    "rs": -21.8,
+    "ear": 0.7,
+    "members": [
+     "STE",
+     "ISRG",
+     "EW",
+     "ZBH"
+    ],
+    "lead": [
+     "EW",
+     "ISRG",
+     "STE"
     ]
    },
    {
@@ -1585,26 +1664,6 @@
     ],
     "lead": [
      "PSMT"
-    ]
-   },
-   {
-    "sic": "3842",
-    "nm": "Orthopedic, Prosthetic & Surgical Appliances & Supplies",
-    "quiet": true,
-    "lever": false,
-    "acc": 1.4,
-    "qsp": 7.1,
-    "rs": -21.8,
-    "ear": -0.8,
-    "members": [
-     "STE",
-     "ISRG",
-     "EW",
-     "ZBH"
-    ],
-    "lead": [
-     "ISRG",
-     "STE"
     ]
    }
   ]
