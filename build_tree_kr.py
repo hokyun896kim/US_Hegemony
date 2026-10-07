@@ -41,7 +41,7 @@ BENCH = "^KS11"  # 코스피 종합
 from buildlib import (          # noqa: F401  (자체검증이 직접 부른다)
     CARRY, OP_ROWS, REV_ROWS, Budget, Stall, _stall_guard, align_quarters,
     coverage_line, earn_reaction, pick_row, qnote_share, series_values, too_thin,
-    atr, last_price, targets,
+    atr, last_price, price_line, targets,
 )
 from buildlib import load_prev as _load_prev
 
@@ -2205,6 +2205,7 @@ def main():
                   "화면 후보가 0종목이 될 수 있습니다")
         else:
             print(f"  분기 비고 이상 {bad}/{total}종목")
+        print(price_line([m for r in data["subs"] for m in r["members"]], data["updated"]))
     except Exception as exc:  # noqa: BLE001
         print(f"⚠️ 요약 출력 실패({exc!r}) — 데이터 파일은 정상 저장됐습니다: {out}")
     return 0

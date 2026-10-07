@@ -173,6 +173,26 @@ def coverage_line(cov: dict) -> str:
             f"{cov['carried']}종목 / 전체 {cov['total']}종목 — {cov['why']}")
 
 
+def price_line(members, today=None) -> str:
+    """화면의 목표가·손절가 재료(현재가·변동폭·증권사 목표가)가 몇 종목에 들어왔나.
+
+    증권사 목표가는 실적층과 같은 호출에서 받으므로, 실적을 이번 회차에 받은
+    종목(f_as_of == today) 중 몇 개에 목표가가 있는지도 따로 적는다 — 이월된
+    종목 수에 묻혀 '야후가 목표가를 얼마나 주는지' 가 안 보이지 않게.
+    """
+    ms = list(members)
+    n = len(ms)
+
+    def has(k, xs=ms):
+        return sum(1 for m in xs if m.get(k) is not None)
+    s = (f"  목표가·손절가 재료: 현재가 {has('px')}/{n} · 하루 변동폭 {has('atr')}/{n} · "
+         f"증권사 목표가 {has('tgt')}/{n}")
+    fr = [m for m in ms if today and m.get("f_as_of") == today]
+    if fr and len(fr) < n:
+        s += f" (이번 회차에 실적을 받은 {len(fr)}종목 중 {has('tgt', fr)})"
+    return s
+
+
 def too_thin(new_n: int, prev_n: int, floor: float) -> bool:
     """이번 수집이 직전 파일을 덮어쓰기에는 너무 얇은가.
 
@@ -820,6 +840,13 @@ def selftest() -> int:
     check(targets({"targetMeanPrice": 10.5})["tgt_n"] is None, "의견 수를 모르면 None(평균은 남긴다)")
     for k in ("tgt", "tgt_hi", "tgt_lo", "tgt_n"):
         check(k in CARRY, f"{k} 는 실적층과 같이 이월한다")
+    pl = price_line([{"px": 1, "atr": 1, "tgt": 5, "f_as_of": "2026-10-07"},
+                     {"px": 2, "atr": None, "f_as_of": "2026-10-07"},
+                     {"px": 3, "atr": 1, "tgt": None, "f_as_of": "2026-09-01"}], "2026-10-07")
+    check(pl == "  목표가·손절가 재료: 현재가 3/3 · 하루 변동폭 2/3 · 증권사 목표가 1/3 "
+                "(이번 회차에 실적을 받은 2종목 중 1)", f"재료 집계 한 줄 ({pl.strip()})")
+    check("이번 회차" not in price_line([{"px": 1, "f_as_of": "2026-10-07"}], "2026-10-07"),
+          "전부 이번 회차면 괄호를 붙이지 않는다")
 
     print("\n── 다음 실적일 추정 ──")
     from datetime import date as _d

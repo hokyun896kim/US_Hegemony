@@ -446,6 +446,7 @@ def main(fetch=None, path=None, statements=None, deadline=0, stall=90, fund=True
                   "화면의 기저효과 판정이 전부에게 걸려 후보가 0종목이 될 수 있습니다")
         else:
             print(f"  분기 비고 이상 {bad}/{total}종목")
+        print(buildlib.price_line(members, today))
     except Exception as e:                                   # noqa: BLE001
         print(f"  (분기 비고 집계 실패: {e})")
     return 0
