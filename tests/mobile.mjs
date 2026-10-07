@@ -3,6 +3,7 @@ import path from 'node:path';
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { maybeInject } from './fake_prices.mjs';
 // 모바일 폭에서 화면이 실제로 안 깨지는지 '재서' 확인한다.
 //
 // 왜 jsdom 이 아니라 진짜 브라우저인가 — jsdom 은 레이아웃을 계산하지 않는다.
@@ -28,7 +29,7 @@ const srv = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type':
       ext === '.html' ? 'text/html; charset=utf-8' :
       ext === '.json' ? 'application/json; charset=utf-8' : 'text/plain' });
-    res.end(b);
+    res.end(maybeInject(f, b));
   });
 });
 await new Promise(r => srv.listen(0, r));
@@ -58,13 +59,17 @@ const CHROME = (() => {
 if (!CHROME) { console.log('SKIP: 크로미움을 찾지 못했습니다'); process.exit(0); }
 const browser = await chromium.launch({ executablePath: CHROME });
 
-for (const page_file of ['index.html', 'us.html']) {
-  console.log(`\n━━━━ ${page_file} ━━━━`);
-  for (const s of SIZES) {
+// 보기 방식마다 따로 잰다. 간단히(기본)는 결론 카드만 보이고 나머지는 숨는다 —
+// 그 상태로 재면 숨은 표를 '안 넘쳤다' 로 세는 거짓 통과가 난다(display:none 은 폭이 0).
+for (const page_file of ['index.html', 'us.html']) for (const VIEW of ['detail', 'simple']) {
+  console.log(`\n━━━━ ${page_file} · ${VIEW === 'simple' ? '간단히' : '자세히'} ━━━━`);
+  for (const s0 of SIZES) {
+    const s = { ...s0, n: `${s0.n}·${VIEW === 'simple' ? '간단히' : '자세히'}` };
     const ctx = await browser.newContext({
       viewport: { width: s.w, height: s.h },
       deviceScaleFactor: 2, isMobile: true, hasTouch: true,
     });
+    await ctx.addInitScript(v => { try { localStorage.setItem('viewMode', v); } catch (e) {} }, VIEW);
     const pg = await ctx.newPage();
     await pg.goto(`http://127.0.0.1:${PORT}/${page_file}`, { waitUntil: 'networkidle' });
     await pg.waitForTimeout(600);
@@ -127,7 +132,7 @@ for (const page_file of ['index.html', 'us.html']) {
         // 넘치지 않아도 글자가 잘리면 못 쓰는 화면이다
         narrow: (() => {
           const bad = [];
-          document.querySelectorAll('.tr > *, .bar > *').forEach(el => {
+          document.querySelectorAll('.tr > *, .bar > *, .vc-px b, .tp-row .v').forEach(el => {
             const r = el.getBoundingClientRect();
             if (r.width > 0 && el.scrollWidth > el.clientWidth + 2) {
               const id = typeof el.className === 'string' && el.className.trim()
@@ -141,6 +146,17 @@ for (const page_file of ['index.html', 'us.html']) {
       };
     });
 
+    const clipped = sel => pg.evaluate(q => [...document.querySelectorAll(q)]
+      .filter(e => e.getBoundingClientRect().width > 0 && e.scrollWidth > e.clientWidth + 2)
+      .map(e => `${e.textContent.trim()}(${e.clientWidth}px, 내용 ${e.scrollWidth}px)`).slice(0, 4), sel);
+    // 간단히 보기는 결론 카드가 실제로 그려졌는지부터 — 0개면 아무것도 안 잰 것이다
+    if (VIEW === 'simple') {
+      const vc = await pg.evaluate(() => ({ n: document.querySelectorAll('#valuePanel .vc').length,
+        hidden: getComputedStyle(document.getElementById('radarPanel')).display === 'none' }));
+      t(vc.n > 0 && vc.hidden, `${s.n} · 결론 카드 ${vc.n}장이 보이고, 자세한 패널은 숨는다`);
+      const c = await clipped('.vc-px b');
+      t(c.length === 0, `${s.n} · 결론 카드의 가격 숫자가 잘리지 않는다${c.length ? ' → ' + c.join(', ') : ''}`);
+    }
     const hs = r.scrollW - r.vw;
     t(hs <= 1, `${s.n} · 가로 스크롤 없음 (scrollW ${r.scrollW} vs 화면 ${r.vw}${hs > 1 ? ` → ${hs}px 넘침` : ''})`);
     if (r.over.length) {
@@ -187,6 +203,11 @@ for (const page_file of ['index.html', 'us.html']) {
       // 폭 0 은 '안 넘쳤다' 가 아니라 '안 열렸다' 다. 그걸 통과로 세면
       // 아무것도 확인하지 않은 테스트가 초록으로 남는다.
       t(mr && mr.w > 100, `${s.n} · ${nm} 팝업이 실제로 열렸다 (폭 ${mr ? mr.w : 0}px)`);
+      if (id === 'tradeModal') {
+        const c = await clipped('#tradeModal .tp-row .v');
+        const n = await pg.evaluate(() => document.querySelectorAll('#tradeModal .tp-row').length);
+        t(n >= 4 && c.length === 0, `${s.n} · 트레이드 카드 목표가·손절가 ${n}줄, 숫자가 잘리지 않는다${c.length ? ' → ' + c.join(', ') : ''}`);
+      }
       if (mr && mr.w > 100) {
         t(mr.right <= mr.vw + 2 && mr.scrollW <= mr.clientW + 2,
           `${s.n} · ${nm} 팝업이 화면 안에 (좌 ${mr.left} 우 ${mr.right} / 화면 ${mr.vw})`);
