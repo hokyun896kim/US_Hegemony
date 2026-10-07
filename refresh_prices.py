@@ -35,6 +35,8 @@ PATH = "data/tree.json"
 # 잡음이다(build_data.py 의 SEC 경로도 같은 1e6 을 쓴다).
 MIN_BASE_USD = 1e6
 MAX_REV_YOY, MAX_OP_YOY = 300.0, 500.0
+# 시세층 — 매 회차 새로 받는다. 못 받으면 비운다(지난 값을 최신인 척 두지 않는다).
+PRICE_KEYS = ("rs3", "rs6", "gap", "gaplvl", "from_high", "pe", "px", "atr")
 # 실적층에서 새로 받을 값. 시세층은 위에서 매 회차 전부 새로 받으므로 제외한다.
 FUND_KEYS = ("rev", "op", "spread", "q_rev", "q_op", "q_spread", "accel",
              "q_note", "q_approx", "q_end", "q_src", "lq_rev", "lq_op")
@@ -114,10 +116,17 @@ def yf_fund(tk, statements=None, hist=None):
     # 매기는데, 값이 없으니 전 종목이 중립 4점으로 고정돼 있었다.
     # 한국판은 같은 값이 85% 들어온다. 주간 경로에도 달아 그 차이를 없앤다.
     est = est_trend.fetch(t) if t is not None else {"est30": None, "est90": None}
+    # 증권사 평균 목표가 — 화면의 목표가. 못 받으면 None(지어내지 않는다).
+    tg = buildlib.targets(None)
+    if t is not None:
+        try:
+            tg = buildlib.targets(t.get_info())
+        except Exception:      # noqa: BLE001 — 목표가 하나 때문에 실적층을 잃지 않는다
+            pass
 
     out = {"rev": round(rev, 1), "op": round(op, 1),
            "spread": round(op - rev, 1), "q_src": "yfinance",
-           "est30": est.get("est30"), "est90": est.get("est90"),
+           "est30": est.get("est30"), "est90": est.get("est90"), **tg,
            "q_rev": None, "q_op": None, "q_spread": None, "q_end": None,
            "lq_rev": None, "lq_op": None, "q_approx": False,
            "q_note": buildlib.qnote("야후 분기 없음"), "accel": None}
@@ -161,7 +170,8 @@ def get(url, tries=3):
 
 
 def yseries(sym):
-    """(날짜, 종가, 시가, 수정종가) 목록. 수익률·고점比는 수정종가로 낸다."""
+    """(날짜, 종가, 시가, 수정종가, 고가, 저가) 목록. 수익률·고점比는 수정종가로,
+    현재가·변동폭(목표가·손절가)은 수정 전 종가·고가·저가로 낸다."""
     raw = get(f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}"
               f"?range=1y&interval=1d")
     if not raw:
@@ -173,13 +183,15 @@ def yseries(sym):
             adj = res["indicators"]["adjclose"][0]["adjclose"]
         except Exception:
             adj = q["close"]
+        hi, lo = q.get("high") or [], q.get("low") or []
         out = []
         for i in range(len(ts)):
             if not q["close"][i]:
                 continue
             a = adj[i] if (i < len(adj) and adj[i]) else q["close"][i]
             out.append((date.fromtimestamp(ts[i]).isoformat(),
-                        q["close"][i], q["open"][i], a))
+                        q["close"][i], q["open"][i], a,
+                        hi[i] if i < len(hi) else None, lo[i] if i < len(lo) else None))
         return out or None
     except Exception:
         return None
@@ -250,7 +262,7 @@ def main(fetch=None, path=None, statements=None, deadline=0, stall=90, fund=True
             print(f"   ⏳ 시간 예산 소진({budget.spent()/60:.0f}분) — 남은 {cut}종목은 "
                   f"가격 지표를 비웁니다")
             for mm in members[i:]:
-                for k in ("rs3", "rs6", "gap", "gaplvl", "from_high", "pe"):
+                for k in PRICE_KEYS:
                     mm[k] = None
             break
         s = fetch(m["tk"])
@@ -259,7 +271,7 @@ def main(fetch=None, path=None, statements=None, deadline=0, stall=90, fund=True
             m["miss_streak"] = int(m.get("miss_streak") or 0) + 1
             # 못 받은 종목은 옛 가격 지표를 지운다. 낡은 RS 를 최신인 척 두면
             # 선취매 판정이 지난주 가격으로 내려진다.
-            for k in ("rs3", "rs6", "gap", "gaplvl", "from_high", "pe"):
+            for k in PRICE_KEYS:
                 m[k] = None
             continue
         m["miss_streak"] = 0
@@ -274,6 +286,11 @@ def main(fetch=None, path=None, statements=None, deadline=0, stall=90, fund=True
         m["gaplvl"] = "H" if (g and g > 8) else ("M" if (g and g > 4) else "L")
         hi = max(cl)
         m["from_high"] = round((cl[-1] / hi - 1) * 100, 1) if hi > 0 else None
+        # 현재가·변동폭 — 화면의 목표가·손절가(buildlib.atr 주석). 수정 전 값이다.
+        m["px"] = buildlib.last_price([r[1] for r in s])
+        m["atr"] = buildlib.atr([r[4] if len(r) > 4 else None for r in s],
+                                [r[5] if len(r) > 5 else None for r in s],
+                                [r[1] for r in s])
         e = eps_of(m, s, fund_day)
         m["eps"] = round(e, 4) if e else None
         pe = round(cl[-1] / e, 2) if (e and e > 0) else None
@@ -537,6 +554,9 @@ def selftest():
     t(M["BBB"]["from_high"] == 0.0, f"마지막이 최고가면 고점比 0 (실제 {M['BBB']['from_high']})")
     t(M["CCC"]["from_high"] < -30, f"하락 종목은 고점比 크게 마이너스 (실제 {M['CCC']['from_high']})")
     t(M["AAA"]["rs6"] != -99.0 and M["CCC"]["from_high"] != -99.0, "옛 값이 남지 않음")
+    # 가짜 시세에는 고가·저가가 없다 — 종가 차이(0.1)로 변동폭을 낸다
+    t(M["AAA"]["px"] == round(SERIES["AAA"][-1][1], 4) and M["AAA"]["atr"] == 0.1,
+      f"현재가·변동폭 (현재가 {M['AAA']['px']} · ATR {M['AAA']['atr']})")
 
     print("\n── PER 재계산 ──")
     # AAA: eps 10 이 저장돼 있으므로 그대로 쓴다 → 마지막 종가 ÷ 10
@@ -556,8 +576,8 @@ def selftest():
     t(M["CCC"]["pe"] is None, "eps 도 pe 도 없으면 PER 은 비움(지어내지 않음)")
 
     print("\n── 시세를 못 받은 종목 ──")
-    t(all(M["DDD"][k] is None for k in ("rs3", "rs6", "gap", "gaplvl", "from_high", "pe")),
-      "낡은 가격 지표를 남기지 않고 전부 비움")
+    t(all(M["DDD"][k] is None for k in PRICE_KEYS),
+      "낡은 가격 지표(현재가·변동폭 포함)를 남기지 않고 전부 비움")
     t(M["DDD"]["spread"] == 4.0, "그래도 펀더멘털은 유지")
 
     print("\n── 다음 실적일은 오늘 기준으로 다시 센다 ──")
