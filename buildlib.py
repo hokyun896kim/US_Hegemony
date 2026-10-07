@@ -394,6 +394,32 @@ def earn_reaction(series, bench, q_end, rel, after=EAR_AFTER, max_lag=EAR_MAX_LA
     return round(v, 1), ds[i1], None
 
 
+# ── 다음 실적일 추정 (미국) ───────────────────────────────────────────
+# 마지막 실적 공시일(8-K)에 91일씩 더해 다음 실적일을 추정한다. D-day 는 '오늘'
+# 기준이라 회차마다 다시 세야 한다 — 예전엔 SEC 전체 빌드(build_data.py) 때만
+# 셌는데, SEC 가 막힌 두 달 동안 매일 도는 부분 갱신(refresh_prices.py)은 이 값을
+# 그대로 넘겼다. 그래서 D-day 가 빌드한 날 기준으로 굳었다(실측 2026-10-07:
+# 364종목 전부 실제보다 약 60일 늦음 — 실적 임박 알림이 한 번도 안 떴다).
+EARN_CYCLE = 91      # 분기 실적 주기(일)
+EARN_GRACE = 7       # 추정일이 이만큼 넘게 지났으면 다음 주기로 넘긴다
+
+
+def next_earn(last, today=None):
+    """마지막 실적 공시일 → (다음 실적 추정일 'YYYY-MM-DD', 오늘부터 남은 날).
+
+    날짜를 모르거나 읽을 수 없으면 (None, None) — 지어내지 않는다.
+    """
+    from datetime import date, timedelta
+    today = today or date.today()
+    try:
+        nxt = date.fromisoformat(str(last)[:10]) + timedelta(days=EARN_CYCLE)
+    except (TypeError, ValueError):
+        return None, None
+    while (nxt - today).days < -EARN_GRACE:
+        nxt += timedelta(days=EARN_CYCLE)
+    return str(nxt), (nxt - today).days
+
+
 def quarter_rows(qrev, qop, n=8):
     """[[분기말, 매출, 영업이익], ...] 최신이 앞. 4분기 미만이면 None.
 
@@ -693,6 +719,17 @@ def selftest() -> int:
         check(len(load_sec_hist(hp)["A"]) == 12, "종목당 최근 12분기만 남긴다")
         Path(hp).write_text("{깨짐", encoding="utf-8")
         check(load_sec_hist(hp) == {}, "깨진 파일은 빈 dict")
+
+    print("\n── 다음 실적일 추정 ──")
+    from datetime import date as _d
+    T0 = _d(2026, 10, 7)
+    check(next_earn("2026-07-29", T0) == ("2026-10-28", 21), f"공시일 + 91일 ({next_earn('2026-07-29', T0)})")
+    check(next_earn("2026-07-03", T0) == ("2026-10-02", -5),
+          "추정일이 7일 안쪽으로 지났으면 그대로 둔다 — '지남' 으로 보여 준다")
+    check(next_earn("2026-06-20", T0) == ("2026-12-19", 73), "7일 넘게 지났으면 다음 주기로 넘긴다")
+    check(next_earn("2026-07-29T16:05:00", T0) == ("2026-10-28", 21), "시각이 붙어 있어도 날짜만 본다")
+    check(next_earn(None, T0) == (None, None) and next_earn("미상", T0) == (None, None),
+          "날짜가 없거나 못 읽으면 지어내지 않는다")
 
     print("\n" + ("✅ 전부 통과" if ok else "❌ 실패"))
     return 0 if ok else 1
