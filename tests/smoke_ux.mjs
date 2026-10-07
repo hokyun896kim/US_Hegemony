@@ -32,13 +32,13 @@ for (const [file,dataFile,mk,otherHref] of [
   const gi=d.getElementById('giBox');
   t(gi && gi.open, '인라인 설명이 기본 펼침');
   t(gi && gi.textContent.includes('헤게모니 스프레드'), '인라인 설명에 핵심 지표 설명 있음');
-  t(gi && gi.textContent.includes('매수·매도 신호가 아닙니다'), '인라인 설명에 면책 있음');
+  t(gi && gi.textContent.includes('매수·매도 신호가 아니에요'), '인라인 설명에 면책 있음');
   // 검증 결과는 GPT 지침에만 있었고 화면에는 없었다 — 사용자는 88점을 보면서
   // 아무 경고도 못 받았다. 이 블록이 빠지면 그 상태로 돌아간다.
   {
     const v = d.querySelector('.gi-verify');
     t(!!v, '화면에 검증 상태 블록이 있다');
-    t(v && v.textContent.includes('우위가 확인되지 않았습니다'), '우위 없음을 명시');
+    t(v && v.textContent.includes('우위는 아직 확인되지 않았어요'), '우위 없음을 명시');
     // 시장마다 자기 실측을 적어야 한다. 예전엔 미국판에도 한국 숫자가 박혀
     // 있었는데, 그때는 미국을 따로 재본 적이 없어서였다. 지금은 둘 다 있다.
     // 여기서 시장별 숫자를 박아두지 않으면 한쪽 화면이 남의 시장 결과를
@@ -48,7 +48,7 @@ for (const [file,dataFile,mk,otherHref] of [
       : {main: '+0.12p', lo: '−3.81p',  hi: '+9.29p'};
     t(v && v.textContent.includes(NUMS.main),
       `실측 숫자를 적는다 (말로만 얼버무리지 않음 · ${NUMS.main})`);
-    t(v && v.textContent.includes('증거가 아닙니다'), '점수는 필터일 뿐임을 명시');
+    t(v && v.textContent.includes('증거가 아니에요'), '점수는 필터일 뿐임을 명시');
     t(v && v.textContent.includes('52주 고점比'), '부호가 거꾸로인 축을 밝힌다');
     // 전체 평균만 적으면 '안정적으로 그렇다' 로 읽힌다. 실제로는 구간에 따라
     // 부호가 뒤집히는 것을 평균한 값이다 — 양쪽 끝 숫자를 다 보여줘야 한다.
@@ -67,7 +67,7 @@ for (const [file,dataFile,mk,otherHref] of [
       .filter(x => x.length === 2).map(([k, n]) => [k, Number(n)]));
     // 품질 = qsp + 가속12 + 매출동반12 + 추정치8 · 미반영 = fromHigh + rs6 · 타이밍10 · 밸류10
     const MAX = W.qsp + 12 + 12 + 8 + W.fromHigh + W.rs6 + 10 + 10;
-    t(v && /내렸습니다|깎았습니다/.test(v.textContent) && v.textContent.includes(String(MAX)),
+    t(v && /내렸어요|깎았어요/.test(v.textContent) && v.textContent.includes(String(MAX)),
       `배점을 내린 사실과 새 만점을 밝힌다 (만점 ${MAX})`);
     t(v && v.textContent.includes('선취매 레이더'),
       '안 고친 곳(레이더의 고점比 사용)을 밝힌다');
