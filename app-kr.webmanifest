@@ -7,8 +7,8 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#faf8f3",
-  "theme_color": "#faf8f3",
+  "background_color": "#F2F4F6",
+  "theme_color": "#F2F4F6",
   "icons": [
     {
       "src": "./icons/icon-kr-192.png",
