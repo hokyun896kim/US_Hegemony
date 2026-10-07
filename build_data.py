@@ -414,19 +414,11 @@ for i,t in enumerate(allt):
 
 print("   실적 반응 "+" · ".join(f"{k} {v}" for k,v in sorted(ear_why.items())))
 
-# 다음 실적일 추정 (IR date + 91일 주기)
-from datetime import timedelta as _td
-_today=date.today()
+# 다음 실적일 추정 (IR date + 91일 주기) — 규칙은 buildlib.next_earn 한 곳에 둔다.
+# 매일 도는 부분 갱신(refresh_prices.py)도 같은 함수로 D-day 를 다시 센다.
 for _r in rows:
     for _m in _r["members"]:
-        _ir=_m.get("ir")
-        if _ir and _ir.get("date"):
-            try:
-                _last=date.fromisoformat(_ir["date"]); _nxt=_last+_td(days=91)
-                while (_nxt-_today).days < -7: _nxt=_nxt+_td(days=91)
-                _m["next_earn"]=str(_nxt); _m["d_until"]=(_nxt-_today).days
-            except: _m["next_earn"]=None; _m["d_until"]=None
-        else: _m["next_earn"]=None; _m["d_until"]=None
+        _m["next_earn"], _m["d_until"] = buildlib.next_earn((_m.get("ir") or {}).get("date"))
 
 print("[7/7] 저장")
 # SEC 가 열린 회차에 받은 분기를 이력으로 남긴다. SEC 는 Actions 공유 출구 IP 에서

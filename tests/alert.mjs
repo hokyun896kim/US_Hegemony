@@ -68,7 +68,7 @@ for (const [label, page] of [['한국', 'index.html'], ['미국', 'us.html']]) {
   t(kinds.length > 0, `급소가 뜬다 (${kinds.join(',')})`);
   t(kinds.includes('conv'), '선취매+점수 겹침을 급소로 올린다');
   t(!kinds.includes('new'), '첫 로드엔 새 진입을 안 띄운다(비교할 지난주 없음)');
-  t(/최우선 검증/.test(d.getElementById('alertPanel').textContent), '왜 봐야 하는지 이유를 적는다');
+  t(/가장 먼저 확인/.test(d.getElementById('alertPanel').textContent), '왜 봐야 하는지 이유를 적는다');
   const st1 = JSON.parse(store.alertState);
   t(st1.cur.date === AS && st1.cur.tks.length >= 3, '이번 주 선취매 집합을 저장한다');
   dom.window.close();

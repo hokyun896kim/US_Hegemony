@@ -53,9 +53,15 @@ console.log('\n━━ 한국 · 충분하면 안 붙는다 ━━');
 
 console.log('\n━━ 한국 · 저유동이면 붙는다 (합성) ━━');
 {
-  const J = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/tree_kr.json'), 'utf8'));
-  // 이번 회차 TOP5·레이더에 실제로 드는 종목을 저유동으로 바꾼다
-  const mark = { '004370.KS': [4.2e8, 20], '195940.KQ': [18e8, 20], '010130.KS': [9e8, 3] };
+  const raw = fs.readFileSync(path.join(ROOT, 'data/tree_kr.json'), 'utf8');
+  const J = JSON.parse(raw);
+  // 이번 회차 TOP5 에 실제로 드는 종목을 저유동으로 바꾼다. 종목코드를 박아 두면
+  // 데이터가 매일 바뀌는 동안 그 종목이 TOP5 에서 빠져 거짓 실패한다(실제로 그랬다).
+  // 거래대금은 점수에 안 들어가므로 바꿔도 TOP5 구성은 그대로다.
+  const d0 = await boot('index.html', raw);
+  const top = [...d0.window.document.querySelectorAll('#top5Panel .t5-tk')].map(e => e.textContent.trim());
+  d0.window.close();
+  const mark = Object.fromEntries(top.slice(0, 3).map((tk, i) => [tk, [[4.2e8, 20], [18e8, 20], [9e8, 3]][i]]));
   let n = 0;
   for (const s of J.subs) for (const m of s.members)
     if (mark[m.tk]) { [m.trdval_avg, m.trdval_days] = mark[m.tk]; n++; }
@@ -72,7 +78,8 @@ console.log('\n━━ 한국 · 저유동이면 붙는다 (합성) ━━');
   // 등급이 실제로 갈리는가 — 전부 같은 색이면 경고의 세기가 사라진다
   const cls = new Set([...badge].map(e => e.className));
   t(cls.size >= 2, `경고 세기가 갈린다 (${[...cls].join(' / ')})`);
-  t(liq(TK['095340.KQ']) === '', '같은 화면에서 충분한 종목에는 여전히 안 붙는다');
+  const fine = Object.keys(TK).find(tk => !mark[tk] && w.eval('trdvalLvl')(TK[tk]).c === 'g');
+  t(!!fine && liq(TK[fine]) === '', `같은 화면에서 충분한 종목에는 여전히 안 붙는다 (${fine})`);
   dom.window.close();
 }
 

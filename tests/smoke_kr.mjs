@@ -111,7 +111,7 @@ t(doc.getElementById('tradeModal').classList.contains('show'),
   window.openTrade(ap.tk);
   const body = doc.getElementById('tcBody').textContent;
   t(body.includes('근사치'), `q_approx 종목에 근사 안내 노출 (${ap.tk})`);
-  t(!body.includes('숫자 신뢰도 낮음'), 'q_approx 를 데이터 한계로 격상하지 않음');
+  t(!body.includes('분기 데이터에 한계'), 'q_approx 를 데이터 한계로 격상하지 않음');
 }
 
 // 6) 포지션 계산기

@@ -384,6 +384,15 @@ def main(fetch=None, path=None, statements=None, deadline=0, stall=90, fund=True
                   + (" …" if len(old) > 10 else ""))
         members = [m for m in members if id(m) not in gone]
 
+    # ── 다음 실적일 ───────────────────────────────────────────────────
+    # D-day 는 '오늘' 기준이라 회차마다 다시 센다. 예전엔 SEC 전체 빌드 때만
+    # 셌기 때문에, SEC 가 막힌 동안 빌드한 날 기준 값이 그대로 넘어왔다
+    # (실측: 364종목 전부 실제보다 약 60일 늦음 → 실적 임박 알림이 안 떴다).
+    for m in members:
+        m["next_earn"], m["d_until"] = buildlib.next_earn((m.get("ir") or {}).get("date"))
+    soon = sum(1 for m in members if m["d_until"] is not None and 0 <= m["d_until"] <= 7)
+    print(f"   다음 실적일: 추정 {sum(1 for m in members if m['d_until'] is not None)}종목 · 7일 안 {soon}종목")
+
     print("[3/3] 저장")
     if vix:
         v = round(vix[-1][1], 1)
@@ -472,7 +481,11 @@ def selftest():
                       # eps 가 이미 있는 종목 — 그대로 써야 한다
                       {"tk": "AAA", "nm": "A", "spread": 10.0, "rev": 5.0, "op": 15.0,
                        "q_spread": 3.0, "accel": 1.0, "q_note": "정상",
-                       "pe": 99.0, "eps": 10.0, "rs6": -99.0, "from_high": -99.0},
+                       "pe": 99.0, "eps": 10.0, "rs6": -99.0, "from_high": -99.0,
+                       # 80일 전에 실적을 냈다 → 다음 실적은 오늘부터 11일 뒤. 빌드한
+                       # 날 기준으로 굳은 옛 D-day(81)가 남으면 안 된다
+                       "ir": {"date": date.fromordinal(date.today().toordinal() - 80).isoformat()},
+                       "next_earn": "2026-01-01", "d_until": 81},
                       # eps 없음 + pe 있음 → 기준일 종가로 되풀어야 한다
                       {"tk": "BBB", "nm": "B", "spread": 8.0, "rev": 4.0, "op": 12.0,
                        "q_spread": 2.0, "accel": 0.5, "q_note": "정상",
@@ -480,7 +493,9 @@ def selftest():
                       # eps 도 pe 도 없음 → PER 은 비어야 한다
                       {"tk": "CCC", "nm": "C", "spread": 6.0, "rev": 3.0, "op": 9.0,
                        "q_spread": 1.0, "accel": 0.2, "q_note": "정상",
-                       "rs6": -99.0, "from_high": -99.0},
+                       "rs6": -99.0, "from_high": -99.0,
+                       # 공시일을 모르는데 옛 D-day 만 남아 있다 → 비워야 한다
+                       "next_earn": "2026-01-01", "d_until": 81},
                       # 시세를 못 받는 종목 → 옛 가격 지표가 남으면 안 된다
                       {"tk": "DDD", "nm": "D", "spread": 4.0, "rev": 2.0, "op": 6.0,
                        "q_spread": 0.5, "accel": 0.1, "q_note": "정상",
@@ -544,6 +559,13 @@ def selftest():
     t(all(M["DDD"][k] is None for k in ("rs3", "rs6", "gap", "gaplvl", "from_high", "pe")),
       "낡은 가격 지표를 남기지 않고 전부 비움")
     t(M["DDD"]["spread"] == 4.0, "그래도 펀더멘털은 유지")
+
+    print("\n── 다음 실적일은 오늘 기준으로 다시 센다 ──")
+    exp_ne = date.fromordinal(date.today().toordinal() + 11).isoformat()
+    t(M["AAA"]["d_until"] == 11 and M["AAA"]["next_earn"] == exp_ne,
+      f"빌드한 날 기준 D-81 이 남지 않고 오늘 기준 D-11 ({M['AAA']['next_earn']} · D-{M['AAA']['d_until']})")
+    t(M["CCC"]["d_until"] is None and M["CCC"]["next_earn"] is None,
+      "공시일을 모르면 옛 D-day 를 남기지 않고 비운다")
 
     os.unlink(tmp)
 

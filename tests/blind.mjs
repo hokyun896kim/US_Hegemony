@@ -66,8 +66,8 @@ for (const [label, page, data] of [['한국', 'index.html', 'data/tree_kr.json']
 
   // 4) 화면이 후보 목록인 척하지 않는다 — 이 패널의 존재 이유다
   const html = d.getElementById('blindPanel').innerHTML;
-  t(/매수 후보 목록이 아닙니다/.test(html), '"매수 후보 목록이 아니다"를 명시한다');
-  t(/양쪽 다 검증된 적이 없습니다/.test(html), '"시장이 옳다"는 뜻도 아님을 밝힌다');
+  t(/매수 후보 목록이 아니에요/.test(html), '"매수 후보 목록이 아니다"를 명시한다');
+  t(/어느 쪽도 검증된 적이 없어요/.test(html), '"시장이 옳다"는 뜻도 아님을 밝힌다');
   t(new RegExp(`유니버스 ${D.subs.reduce((a, s) => a + s.members.length, 0)}개`).test(html),
     '분모(유니버스 종목 수)를 함께 적는다');
 

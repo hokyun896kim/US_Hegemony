@@ -105,7 +105,7 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
   E('renderRadar()');
   const pan = () => w.document.getElementById('radarPanel');
   t(/종목끼리의 순위/.test(pan().textContent), '중앙값이 멀리 가 있으면 "순위로 가른다" 는 안내를 띄운다');
-  t(/대비로는 앞섰지만 다른 종목들보다 반응이 약했다/.test(pan().textContent), `② 근거에 "${bench} 대비로는 앞섰지만 … 약했다" 라고 적는다`);
+  t(/대비로는 앞섰지만 다른 종목들보다 반응이 약했어요/.test(pan().textContent), `② 근거에 "${bench} 대비로는 앞섰지만 … 약했다" 라고 적는다`);
   t(!/시장이 반응하지 않았다/.test(pan().textContent), '"시장이 반응하지 않았다" 는 더 이상 쓰지 않는다');
   const subs = [...pan().querySelectorAll('.rc-m sub')].map(x => x.textContent).filter(x => /위 \d+%$/.test(x));
   t(subs.some(x => x.startsWith('하위')) && subs.some(x => x.startsWith('상위')), `카드마다 순위 꼬리표 (${subs.slice(0, 3).join(', ')} …)`);
@@ -122,11 +122,11 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
   const Lthin = E('leverLists()');
   t(Lthin.wake.length === 0 && Lthin.doubt.length === 0 && Lthin.tSp === null, `판정 가능 ${Lthin.n}종목(<30)이면 목록을 내지 않는다`);
   E('renderRadar()');
-  t(/분위를 나눌 수 없습니다/.test(w.document.getElementById('radarPanel').textContent), '표본 부족을 화면에 밝힌다');
+  t(/분위를 나눌 수 없어요/.test(w.document.getElementById('radarPanel').textContent), '표본 부족을 화면에 밝힌다');
   // 실적 반응이 전혀 없으면(빌더가 ear 를 내기 전의 데이터). 커밋된 데이터는
   // 2026-09-23 빌드부터 ear 를 갖고 있으므로 직접 지워서 그 상태를 만든다.
   E(`D=${JSON.stringify(synth(REAL, ms => ms.map(m => ({ ...m, ear: null, ear_to: null }))))}; renderRadar()`);
-  t(/실적 반응 데이터가 아직 없습니다/.test(w.document.getElementById('radarPanel').textContent), '실적 반응이 없으면 첫 갱신부터 찬다고 안내');
+  t(/실적 반응 데이터가 아직 없어요/.test(w.document.getElementById('radarPanel').textContent), '실적 반응이 없으면 첫 갱신부터 찬다고 안내');
   E('D=window.__D; renderRadar()');
   // 숫자를 못 믿는 종목은 뺀다(백테스트에는 이런 종목이 없었다)
   E(`window.__st=staleness; staleness=m=>m.tk==='M59'?{s:'stale',t:''}:window.__st(m)`);
@@ -208,24 +208,27 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
       return r;
     };
     const real = await flipSec(REAL);
-    if (page === 'us.html') {
-      t(real.depth < 8 && /판정할 수 없습니다/.test(real.note) && /판정 불가/.test(real.body) && !/종목이 없습니다/.test(real.body),
-        `미국 실데이터: 분기 ${real.depth}개라 "판정 불가" 라고 말한다 — "종목이 없다" 가 아니다`);
+    if (real.depth < 8) {
+      t(/판정할 수 없어요/.test(real.note) && /판정 불가/.test(real.body) && !/종목이 없어요/.test(real.body),
+        `${page} 실데이터: 분기 ${real.depth}개라 "판정 불가" 라고 말한다 — "종목이 없다" 가 아니다`);
+    } else if (Array.isArray(REAL.flips)) {
+      t(/빌더가 따로 실어/.test(real.note) && !/판정할 수 없어요/.test(real.note),
+        `${page} 실데이터: 분기 ${real.depth}개 · 트리 밖 종목까지 싣는다고 말한다`);
     } else {
-      t(real.depth >= 8 && /빌더가 따로 실어/.test(real.note) && !/판정할 수 없습니다/.test(real.note),
-        `한국 실데이터: 분기 ${real.depth}개 · 트리 밖 종목까지 싣는다고 말한다`);
+      t(/일부만 보여요/.test(real.note) && !/빌더가 따로 실어/.test(real.note) && !/판정할 수 없어요/.test(real.note),
+        `${page} 실데이터: 분기 ${real.depth}개 · 트리 밖 종목이 없어 "일부만" 이라고 말한다`);
     }
     const cut = JSON.parse(JSON.stringify(REAL));
     cut.subs.forEach(s => s.members.forEach(m => { if (m.qs) m.qs = m.qs.slice(0, 5); }));
     (cut.flips || []).forEach(m => { if (m.qs) m.qs = m.qs.slice(0, 5); });
     const c5 = await flipSec(cut);
-    t(c5.depth === 5 && /판정할 수 없습니다/.test(c5.note) && /판정 불가 — 분기 이력이 종목당 최대 5개/.test(c5.body),
+    t(c5.depth === 5 && /판정할 수 없어요/.test(c5.note) && /판정 불가 — 분기 이력이 종목당 최대 5개/.test(c5.body),
       '분기가 5개뿐인 데이터면 시장과 무관하게 판정 불가로 적는다');
     const noFl = JSON.parse(JSON.stringify(REAL));
     delete noFl.flips;
     noFl.subs.forEach(s => s.members.forEach(m => { m.qs = q([5, 5, 5, 5, 1, 1, 1, 1]); }));
     const nf = await flipSec(noFl);
-    t(/일부만 보입니다/.test(nf.note) && !/빌더가 따로 실어/.test(nf.note) && /종목이 없습니다/.test(nf.body),
+    t(/일부만 보여요/.test(nf.note) && !/빌더가 따로 실어/.test(nf.note) && /종목이 없어요/.test(nf.body),
       '8분기가 있어도 빌더가 트리 밖 종목을 안 실었으면 "일부만" — 없는 걸 있다고 말하지 않는다');
   }
 
@@ -308,9 +311,9 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
     // 재현되지 않아 '평균보다 조금 낫다' 로 낮췄다. 옛 '한국 약 +3p' 가 남으면 거짓말이다.
     const WK = w.eval('IND_EVID.wake');
     t(P.textContent.includes(WK.replace(/<[^>]+>/g, '')) && !/한국 약 \+3p/.test(P.textContent)
-        && (bench === '코스피' ? /2017~21/.test(WK) && /재현되지 않았습니다/.test(WK) : /약 \+2p/.test(WK)),
+        && (bench === '코스피' ? /2017~21/.test(WK) && /재현되지 않았어요/.test(WK) : /약 \+2p/.test(WK)),
       '① 칸 근거가 시장별 표본 밖 결과대로 — 한국은 평균 대비 +0.9p · ② 대비 재현 안 됨');
-    t(/덜 오른 쪽이 더 나았던 것은 아닙니다/.test(P.textContent) && !/막 깨기 시작/.test(P.textContent)
+    t(/덜 오른 쪽이 더 나았던 건 아니에요/.test(P.textContent) && !/막 깨기 시작/.test(P.textContent)
       && !/이미 오른 종목이 올라오는 게 정상/.test(P.textContent),
       "백테스트대로 '덜 오른 쪽이 낫다' 고 말하지 않는다 — 예전의 '이미 오른 종목이 정상' 문장도 없다");
   }
@@ -337,10 +340,10 @@ for (const [page, REAL, bench] of [['index.html', REAL_KR, '코스피'], ['us.ht
   // 주간 변화 — 지난 회차에 새 목록이 없었으면 '비교 불가'
   E(`CHANGES={kind:'x',from:'2026-09-15',to:'2026-09-22',top5:{in:[],out:[]},radar:{in:[],out:[]},wake:null}; renderChanges()`);
   const C = w.document.getElementById('changePanel').textContent;
-  t(C.includes('① 깨어나는 레버리지') && C.includes('비교할 수 없습니다'), '주간 변화 — 지난 회차에 목록이 없으면 비교 불가');
+  t(C.includes('① 깨어나는 레버리지') && C.includes('비교할 수 없어요'), '주간 변화 — 지난 회차에 목록이 없으면 비교 불가');
   t(C.includes('구 레이더(비교용)') && !C.includes('🎯 선취매 레이더'), '주간 변화의 옛 목록 이름은 "구 레이더"');
   t(!C.includes('늦습니다'), "'시장이 깨어남 = 늦었다' 는 옛 해석이 남지 않는다");
-  E(`CHANGES.wake={in:[{tk:'M40',nm:'x',ear:22}],out:[{tk:'M59',nm:'y',was:33,now:5,u:'%p',why:'react_own',t:'새 분기 발표 때 시장 반응이 약했다',kind:'broken'}]}; renderChanges()`);
+  E(`CHANGES.wake={in:[{tk:'M40',nm:'x',ear:22}],out:[{tk:'M59',nm:'y',was:33,now:5,u:'%p',why:'react_own',t:'새 분기 발표 때 시장 반응이 약했어요',kind:'broken'}]}; renderChanges()`);
   const C2 = w.document.getElementById('changePanel').textContent;
   t(C2.includes('반응 +22%p') && C2.includes('33 → 5%p'), '주간 변화 — 반응 값을 %p 로 적는다(점수가 아니다)');
 
