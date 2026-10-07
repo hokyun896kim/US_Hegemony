@@ -47,7 +47,7 @@ for (const [label, page, data] of [['한국', 'index.html', 'data/tree_kr.json']
   const sum = d.getElementById('bandSum').innerHTML;
   t(new RegExp(`강함 ${hi ? `<b>${hi}개` : '<span class="none">0개'}`).test(sum),
     `강함 개수를 그대로 적는다 (${hi}개)`);
-  t(hi > 0 || /\+20p 이상인 대섹터가 없습니다/.test(sum),
+  t(hi > 0 || /\+20p 이상인 대섹터가 없어요/.test(sum),
     hi ? '(강함이 있어 안내문 불필요)' : '강함이 0개면 그렇다고 말한다');
 
   // 4) 국면이 전 종목을 빠짐없이 덮는다 — "그것도 이것도 아닌" 종목이 실제로

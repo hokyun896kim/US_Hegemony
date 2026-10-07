@@ -57,7 +57,7 @@ for (const [label, page, data] of [
   const b = await run(page, path.relative(ROOT, tmp));
   fs.unlinkSync(tmp);
 
-  t(!/데이터 로드 실패/.test(b.secList), '시장지표가 없어도 첫 렌더가 끝까지 간다');
+  t(!/데이터를 불러오지 못했어요/.test(b.secList), '시장지표가 없어도 첫 렌더가 끝까지 간다');
   t(b.top5 === a.top5,
     `후보 수가 시장지표 유무에 안 흔들린다 (있을 때 ${a.top5} · 없을 때 ${b.top5})`);
 }

@@ -154,10 +154,10 @@ for (const [page_file, MODE] of [['index.html','dark'],['index.html','light'],['
     t(r.bright.length === 0,
       `어두운 배경 위에 남은 밝은 면 없음${r.bright.length ? ` → ${r.bright.join(', ')}` : ''}`);
   } else {
-    // 신문 지면 톤 — 순백이 아니라 따뜻한 종이색이어야 한다. 다만 너무
-    // 어두워지면 '종이' 가 아니라 '바랜 종이' 가 되므로 위아래를 다 본다.
+    // 토스 톤 — 페이지 바탕은 순백이 아니라 옅은 회색(grey100)이어야 흰 카드가
+    // 바탕에서 떠 보인다. 다만 너무 어두워지면 칙칙해지므로 위아래를 다 본다.
     t(r.bodyLum > .70 && r.bodyLum < .99,
-      `배경이 종이색이다 (밝기 ${r.bodyLum.toFixed(3)} · 순백 1.0 아님)`);
+      `배경이 옅은 회색이다 — 흰 카드가 떠 보인다 (밝기 ${r.bodyLum.toFixed(3)} · 순백 1.0 아님)`);
   }
   t(r.low.length === 0, `글자 대비가 WCAG AA 를 넘는다 (미달 ${r.low.length}종)`);
   r.low.slice(0, 10).forEach(l =>

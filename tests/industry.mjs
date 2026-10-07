@@ -182,7 +182,7 @@ for (const [file, url] of [['index.html', 'https://x.test/'], ['us.html', 'https
   // 한국은 표본 밖(2017~21)에서 재현되지 않아 근거 약함으로 내렸다(docs/backtest-kr-extended.md 규칙 4)
   t(/근거 약함/.test(secs[0]) && (file === 'us.html' || /표본 밖에서 재현 안 됨/.test(secs[0])),
     '근거 표시가 판정 규칙대로 — 한국은 표본 밖 재현 실패 · 미국 근거 약함');
-  t(file === 'us.html' || (/2017~21/.test(E('IND_EVID').note) && /재현되지 않았습니다/.test(E('IND_EVID').note)),
+  t(file === 'us.html' || (/2017~21/.test(E('IND_EVID').note) && /재현되지 않았어요/.test(E('IND_EVID').note)),
     '한국 설명이 표본 밖 결과(2017~21 재현 안 됨)를 적는다');
   t(P.querySelectorAll('.ri.lv').length === 0 && /판정 불가 — 실적 반응이 있는 판정 산업이 \d+개/.test(P.textContent),
     '막 감지 판정 산업이 모자라면 "판정 불가" — "해당 없음" 과 구분한다');
@@ -220,7 +220,7 @@ for (const [file, url] of [['index.html', 'https://x.test/'], ['us.html', 'https
     `주도기업 후보 — 스프레드 순, 같으면 종목코드 순 · 4분기 매출 표시 (${(lds[0] || '').slice(0, 50)})`);
   t(/순서 미검증/.test(r0.querySelector('.ld-h').textContent)
       && r0.querySelector('.ld-nv').getAttribute('title') === E('IND_EVID').lead
-      && /산업 평균과 같았습니다/.test(E('IND_EVID').lead) && /검증된 순서가 아닙니다/.test(P.textContent),
+      && /산업 평균과 같았어요/.test(E('IND_EVID').lead) && /검증된 순서가 아니에요/.test(P.textContent),
     '후보 정렬이 수익률로 검증된 순서가 아니라고 밝힌다(판정 규칙 1 — 세 규칙 모두 탈락)');
   t(E('LEAD').rule === 'sp', '판정 규칙 1 결과대로 정렬 규칙 = 스프레드');
   t(HOST().querySelectorAll(':scope > .ri').length === E('IND_FOCUS_CAP') && !!P.querySelector('details.radar-more .ri'),
