@@ -1,0 +1,240 @@
+{
+ "date": "2026-10-11",
+ "kind": "kr",
+ "n_members": 237,
+ "n_subs": 68,
+ "coverage": {
+  "fresh": 222,
+  "carried": 15,
+  "total": 237,
+  "asked": 300,
+  "skipped": 0,
+  "why": "이번 회차에 못 받음"
+ },
+ "market": {
+  "spy3": -13.5,
+  "spy6": 23.2,
+  "vol_moves": [
+   4.61,
+   3.99,
+   3.26,
+   3.12,
+   2.66
+  ],
+  "vol_days": 30,
+  "vix": 29.8,
+  "vix_state": "높음"
+ },
+ "weights": {
+  "qsp": 18,
+  "fromHigh": 0,
+  "rs6": 5
+ },
+ "weights_overridden": false,
+ "top5": [
+  {
+   "rank": 1,
+   "tk": "010130.KS",
+   "nm": "Korea Zinc Company, Ltd.",
+   "sec": "비철금속",
+   "pts": 59.2,
+   "base": 59.2,
+   "bonus": 0,
+   "supply_on": false,
+   "grade": "high",
+   "spread": 32.3,
+   "q_spread": 36.3,
+   "accel": 4,
+   "rs6": -53.1,
+   "rs3": 8.3,
+   "pe": 27.18
+  },
+  {
+   "rank": 2,
+   "tk": "166090.KQ",
+   "nm": "Hana Materials Inc.",
+   "sec": "반도체 장비·소재",
+   "pts": 57.3,
+   "base": 57.3,
+   "bonus": 0,
+   "supply_on": false,
+   "grade": "high",
+   "spread": 6.7,
+   "q_spread": 37.9,
+   "accel": 31.2,
+   "rs6": -6.5,
+   "rs3": 37.6,
+   "pe": 32.27
+  },
+  {
+   "rank": 3,
+   "tk": "081660.KS",
+   "nm": "Misto Holdings Corp.",
+   "sec": "레저",
+   "pts": 53.6,
+   "base": 53.6,
+   "bonus": 0,
+   "supply_on": false,
+   "grade": "high",
+   "spread": 26.9,
+   "q_spread": 24.7,
+   "accel": -2.2,
+   "rs6": -29.1,
+   "rs3": -4,
+   "pe": 8.94
+  },
+  {
+   "rank": 4,
+   "tk": "004800.KS",
+   "nm": "Hyosung Corporation",
+   "sec": "복합기업",
+   "pts": 53.3,
+   "base": 53.3,
+   "bonus": 0,
+   "supply_on": false,
+   "grade": "mid",
+   "spread": 70.7,
+   "q_spread": 32.5,
+   "accel": -38.2,
+   "rs6": -15.9,
+   "rs3": 8,
+   "pe": 7.5
+  },
+  {
+   "rank": 5,
+   "tk": "010140.KS",
+   "nm": "Samsung Heavy Industries Co.",
+   "sec": "항공우주·방산",
+   "pts": 51.1,
+   "base": 51.1,
+   "bonus": 0,
+   "supply_on": false,
+   "grade": "high",
+   "spread": 64,
+   "q_spread": 22.4,
+   "accel": -41.6,
+   "rs6": -55.6,
+   "rs3": -2.5,
+   "pe": 29.53
+  }
+ ],
+ "radar": [
+  {
+   "tk": "010130.KS",
+   "nm": "Korea Zinc Company, Ltd.",
+   "sec": "비철금속",
+   "pts": 59.2,
+   "spread": 32.3,
+   "q_spread": 36.3,
+   "accel": 4,
+   "rs3": 8.3,
+   "rs6": -53.1,
+   "from_high": -50.8,
+   "pe": 27.18,
+   "q_end": "2026-06-30"
+  },
+  {
+   "tk": "195940.KQ",
+   "nm": "HK inno.N Corporation",
+   "sec": "제약(제네릭·특수)",
+   "pts": 51.1,
+   "spread": 7.2,
+   "q_spread": 15,
+   "accel": 7.9,
+   "rs3": 9.5,
+   "rs6": -39.8,
+   "from_high": -30.5,
+   "pe": 14.86,
+   "q_end": "2026-06-30"
+  },
+  {
+   "tk": "079550.KS",
+   "nm": "LIG Defense&Aerospace Co., L",
+   "sec": "항공우주·방산",
+   "pts": 37.5,
+   "spread": 11.5,
+   "q_spread": 16.9,
+   "accel": 5.4,
+   "rs3": -9.4,
+   "rs6": -51.6,
+   "from_high": -39.6,
+   "pe": 53.11,
+   "q_end": "2026-06-30"
+  },
+  {
+   "tk": "007070.KS",
+   "nm": "GS Retail Co., Ltd.",
+   "sec": "백화점",
+   "pts": 30.4,
+   "spread": 10.8,
+   "q_spread": 11.2,
+   "accel": 0.4,
+   "rs3": -2.6,
+   "rs6": -22.3,
+   "from_high": -26.5,
+   "pe": 41.65,
+   "q_end": "2026-06-30"
+  }
+ ],
+ "lever": {
+  "n": 3,
+  "noEar": 215,
+  "dropped": 2,
+  "tSp": null,
+  "tLo": null,
+  "tHi": null,
+  "med": null,
+  "top": 0,
+  "wake": [],
+  "doubt": [],
+  "base": [
+   "451800.KS",
+   "006340.KS",
+   "100790.KQ"
+  ],
+  "flip": []
+ },
+ "focus": {
+  "lever_judged": false,
+  "lever_n": 0,
+  "rule": "sp",
+  "list": [
+   {
+    "sic": "department_stores",
+    "nm": "백화점",
+    "quiet": true,
+    "lever": false,
+    "acc": 4.6,
+    "qsp": 18.7,
+    "rs": -22.4,
+    "ear": null,
+    "members": [
+     "069960.KS",
+     "023530.KS",
+     "007070.KS",
+     "004170.KS"
+    ],
+    "lead": []
+   },
+   {
+    "sic": "packaged_foods",
+    "nm": "가공식품",
+    "quiet": true,
+    "lever": false,
+    "acc": 1.3,
+    "qsp": 1.5,
+    "rs": -32.3,
+    "ear": null,
+    "members": [
+     "003230.KS",
+     "004370.KS",
+     "003380.KQ",
+     "006040.KS",
+     "097950.KS",
+     "007310.KS"
+    ],
+    "lead": []
+   }
+  ]
+ }
+}
