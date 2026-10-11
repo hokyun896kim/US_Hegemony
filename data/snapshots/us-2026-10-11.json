@@ -252,10 +252,10 @@
   }
  ],
  "lever": {
-  "n": 204,
-  "noEar": 92,
+  "n": 203,
+  "noEar": 93,
   "dropped": 45,
-  "tSp": 3.5,
+  "tSp": 3.3,
   "tLo": -3,
   "tHi": 6.6,
   "med": 2,
@@ -1037,7 +1037,6 @@
   "base": [
    "CVI",
    "MPC",
-   "SUN",
    "PINS",
    "APP",
    "GOOGN",
