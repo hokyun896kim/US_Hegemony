@@ -1,1 +1,1 @@
-{"kind":"us","to":"2026-10-17","from":"2026-10-11","weights":{"qsp":18,"fromHigh":0,"rs6":5},"top5":{"in":[],"out":[]},"radar":{"in":[{"tk":"AMAT","nm":"APPLIED MATERIALS INC /DE","sec":"반도체","pts":36.4}],"out":[]},"wake":{"in":[{"tk":"BSX","nm":"BOSTON SCIENTIFIC CORP","sec":"의료기기","ear":9.5,"q_spread":8}],"out":[]}}
+{"kind":"us","to":"2026-10-18","from":"2026-10-11","weights":{"qsp":18,"fromHigh":0,"rs6":5},"top5":{"in":[],"out":[]},"radar":{"in":[{"tk":"AMAT","nm":"APPLIED MATERIALS INC /DE","sec":"반도체","pts":36.4}],"out":[]},"wake":{"in":[],"out":[]}}
