@@ -3,6 +3,7 @@ import path from 'node:path';
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { maybeInject } from './fake_prices.mjs';
 // 다크모드가 '켜지는지' 가 아니라 '읽히는지' 를 본다.
 //
 // 토큰만 바꾸면 끝일 것 같지만, 토큰을 안 쓰고 박힌 색이 하나라도 남으면
@@ -24,7 +25,7 @@ const srv = http.createServer((req, res) => {
     if (e) { res.writeHead(404); return res.end(); }
     res.writeHead(200, { 'Content-Type': p.endsWith('.json')
       ? 'application/json; charset=utf-8' : 'text/html; charset=utf-8' });
-    res.end(b);
+    res.end(maybeInject(p, b));
   });
 });
 await new Promise(r => srv.listen(0, r));
@@ -41,9 +42,12 @@ const CHROME = (() => {
 if (!CHROME) { console.log('SKIP: 크로미움 없음'); process.exit(0); }
 const browser = await chromium.launch({ executablePath: CHROME });
 
-for (const [page_file, MODE] of [['index.html','dark'],['index.html','light'],['us.html','dark'],['us.html','light']]) {
-  console.log(`\n━━━━ ${page_file} · ${MODE === 'dark' ? '어둡게' : '밝게'} ━━━━`);
+// 보기 방식(간단히·자세히)마다 따로 잰다 — 숨은 패널의 글자는 대비를 잴 수 없다
+for (const [page_file, MODE] of [['index.html','dark'],['index.html','light'],['us.html','dark'],['us.html','light']])
+for (const VIEW of ['detail', 'simple']) {
+  console.log(`\n━━━━ ${page_file} · ${MODE === 'dark' ? '어둡게' : '밝게'} · ${VIEW === 'simple' ? '간단히' : '자세히'} ━━━━`);
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: MODE });
+  await ctx.addInitScript(v => { try { localStorage.setItem('viewMode', v); } catch (e) {} }, VIEW);
   const pg = await ctx.newPage();
   await pg.goto(`http://127.0.0.1:${PORT}/${page_file}`, { waitUntil: 'networkidle' });
   await pg.waitForTimeout(700);
@@ -164,7 +168,7 @@ for (const [page_file, MODE] of [['index.html','dark'],['index.html','light'],['
     console.log(`         ${l.key}  대비 ${l.cr} (필요 ${l.need}, ${l.fs}px)  "${l.t}"`));
   await ctx.close();
 
-  if (MODE !== 'dark') { continue; }
+  if (MODE !== 'dark' || VIEW !== 'detail') { continue; }
   // 토글 — OS 가 라이트인 사람도 다크를 쓸 수 있어야 한다. 없으면 머지해도
   // 그 사람 화면에서는 아무 일도 안 일어난다.
   const c2 = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: 'light' });

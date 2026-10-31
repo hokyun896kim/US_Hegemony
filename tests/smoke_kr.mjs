@@ -114,16 +114,22 @@ t(doc.getElementById('tradeModal').classList.contains('show'),
   t(!body.includes('분기 데이터에 한계'), 'q_approx 를 데이터 한계로 격상하지 않음');
 }
 
-// 6) 포지션 계산기
-doc.getElementById('tcEntry').value = '71000';
-doc.getElementById('tcStop').value = '65000';
-window.calcTrade(allTk[0]);
-const out = doc.getElementById('tcOut').textContent;
-t(/\d+주/.test(out) && out.includes('Kelly'), '포지션 계산기 산출');
-// 손절가 > 진입가 같은 잘못된 입력은 안내만 하고 죽지 않아야 함
-doc.getElementById('tcStop').value = '99000';
-window.calcTrade(allTk[0]);
-t(doc.getElementById('tcOut').textContent.includes('진입가'), '역전 입력은 안내 문구로 방어');
+// 6) 목표가·손절가 — 계산기(Kelly·R배수)를 빼고 숫자 두 개만 남겼다
+{
+  const tk = allTk[0];
+  window.eval(`delete TKINDEX['${tk}'].px`);
+  window.openTrade(tk);
+  let body = doc.getElementById('tcBody').textContent;
+  t(body.includes('목표가') && body.includes('손절가') && !/Kelly|R-multiple|매수 수량/.test(body),
+    '트레이드 카드에 목표가·손절가 블록(계산기 없음)');
+  t(body.includes('아직 현재가를 받지 않았어요'), '현재가가 없으면 지어내지 않고 안내');
+  window.eval(`Object.assign(TKINDEX['${tk}'],{px:10000,atr:250,tgt:13000,tgt_n:6,tgt_lo:11000,tgt_hi:15000})`);
+  window.openTrade(tk);
+  body = doc.getElementById('tcBody').textContent;
+  t(body.includes('9,500원') && body.includes('−5.0%'), '손절가 = 현재가 − 2×ATR (9,500원 · −5.0%)');
+  t(body.includes('13,000원') && body.includes('+30.0%') && body.includes('애널리스트 6명'),
+    '증권사 평균 목표가와 의견 수');
+}
 
 // 7) AI 프롬프트
 const p = window.buildPrompt(allTk[0]);
