@@ -210,14 +210,14 @@
   }
  ],
  "lever": {
-  "n": 126,
-  "noEar": 187,
-  "dropped": 27,
-  "tSp": 5.7,
+  "n": 131,
+  "noEar": 184,
+  "dropped": 25,
+  "tSp": 6.2,
   "tLo": -3.5,
-  "tHi": 6.2,
-  "med": 1.6,
-  "top": 51,
+  "tHi": 6.1,
+  "med": 2.1,
+  "top": 53,
   "wake": [
    {
     "tk": "LYB",
@@ -245,6 +245,20 @@
     "rs6": 4.7,
     "from_high": -0.7,
     "pe": 212.15,
+    "q_end": "2026-06-30"
+   },
+   {
+    "tk": "SUN",
+    "nm": "Sunoco LP",
+    "sec": "정유",
+    "q_spread": 167.7,
+    "ear": 6.1,
+    "ear_to": "2026-08-06",
+    "spread": 0.1,
+    "rs3": -7.2,
+    "rs6": 1.2,
+    "from_high": -11.4,
+    "pe": null,
     "q_end": "2026-06-30"
    },
    {
@@ -413,6 +427,20 @@
     "rs6": 4.5,
     "from_high": -2.6,
     "pe": 29.26,
+    "q_end": "2026-06-30"
+   },
+   {
+    "tk": "BSX",
+    "nm": "BOSTON SCIENTIFIC CORP",
+    "sec": "의료기기",
+    "q_spread": 8,
+    "ear": 9.5,
+    "ear_to": "2026-07-31",
+    "spread": 12.4,
+    "rs3": -13.3,
+    "rs6": -31.1,
+    "from_high": -60,
+    "pe": 21.64,
     "q_end": "2026-06-30"
    },
    {
@@ -586,6 +614,20 @@
     "q_end": "2026-06-30"
    },
    {
+    "tk": "EW",
+    "nm": "Edwards Lifesciences Corp",
+    "sec": "Orthopedic, Prosthetic & Surgical Appliances & Supplies",
+    "q_spread": 21.5,
+    "ear": -7.2,
+    "ear_to": "2026-07-27",
+    "spread": -1,
+    "rs3": 3.6,
+    "rs6": 4.2,
+    "from_high": -3.3,
+    "pe": 50.28,
+    "q_end": "2026-06-30"
+   },
+   {
     "tk": "UPBD",
     "nm": "UPBOUND GROUP, INC.",
     "sec": "Services-Equipment Rental & Leasing, NEC",
@@ -709,6 +751,7 @@
    "EXPD",
    "SOLV",
    "SYK",
+   "BSX",
    "RSMDF",
    "GVA",
    "JLL",
@@ -755,6 +798,7 @@
    "ABNB",
    "AAPL",
    "SMCIP",
+   "D",
    "PPLC",
    "PNW",
    "SOMN",
@@ -800,7 +844,9 @@
    "RUSHB",
    "SCCO",
    "STE",
+   "EW",
    "ALK",
+   "BEN",
    "EQPT",
    "UPBD",
    "SNDR",
@@ -810,6 +856,7 @@
    "ZBRA",
    "IR",
    "IMKTA",
+   "EOG",
    "PR",
    "OVV",
    "CHRD",
@@ -934,8 +981,8 @@
     "nm": "Orthopedic, Prosthetic & Surgical Appliances & Supplies",
     "quiet": true,
     "lever": true,
-    "acc": 3.8,
-    "qsp": 9.4,
+    "acc": 14.7,
+    "qsp": 16.7,
     "rs": 2.7,
     "ear": 8.6,
     "members": [
@@ -945,6 +992,7 @@
      "ZBH"
     ],
     "lead": [
+     "EW",
      "STE"
     ]
    },
@@ -1026,6 +1074,29 @@
     "lead": [
      "GDDY",
      "OTEX"
+    ]
+   },
+   {
+    "sic": "3841",
+    "nm": "의료기기",
+    "quiet": false,
+    "lever": true,
+    "acc": -4.4,
+    "qsp": 3.4,
+    "rs": 16.7,
+    "ear": 6.9,
+    "members": [
+     "SOLV",
+     "DXCM",
+     "SYK",
+     "BSX",
+     "RSMDF",
+     "BDX",
+     "MMM",
+     "MDLN"
+    ],
+    "lead": [
+     "BSX"
     ]
    },
    {
