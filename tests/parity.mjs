@@ -58,6 +58,10 @@ const SHARED = ['priceIn', 'cooling', 'realAccel', 'accelCheck', 'turnaround',
                 'earOf', 'leverAll', 'leverLists', 'flipOf', 'flipList',
                 'leverKind', 'leverWhy', 'leverCard', 'earRank', 'earRankTxt',
                 'flipDepth', 'flipNote',
+                // 지금 가격에 괜찮은 종목 · 목표가 · 손절가 · 보기 방식 — 두 시장이 같은 잣대로 고른다
+                'peerHome', 'peerPE', 'perFair', 'tgtOf', 'stopOf', 'sgnPct', 'priceView', 'valuePicks',
+                'valueWhy', 'valueCard', 'renderValue', 'priceBlock', 'toggleWatch', 'renderWatchSum',
+                'openWatchTab', 'setMode',
                 // 산업 레이더(2026-09-24) — 산업 단위 백테스트 H2 와 같은 규칙
                 'indEar', 'indLever', 'ttmRev', 'indLeadCands', 'leadSort', 'indFocus', 'indLeadSnap', 'indCtx'];
 // 같은 함수를 두 번 정의하면 뒤엣것이 이기므로 화면은 멀쩡히 돈다. 그래서
