@@ -183,8 +183,8 @@
  ],
  "lever": {
   "n": 0,
-  "noEar": 279,
-  "dropped": 58,
+  "noEar": 281,
+  "dropped": 56,
   "tSp": null,
   "tLo": null,
   "tHi": null,
@@ -240,32 +240,6 @@
      "TXRH",
      "RSTRF",
      "QSR"
-    ],
-    "lead": []
-   },
-   {
-    "sic": "4911",
-    "nm": "전력 유틸리티",
-    "quiet": true,
-    "lever": false,
-    "acc": 4,
-    "qsp": 8.9,
-    "rs": 2.6,
-    "ear": -0.3,
-    "members": [
-     "EIX",
-     "D",
-     "PPLC",
-     "ETR",
-     "ES",
-     "PNW",
-     "CNP",
-     "WELPM",
-     "SOMN",
-     "FE",
-     "NRG",
-     "CEG",
-     "VST"
     ],
     "lead": []
    },
