@@ -1,0 +1,210 @@
+{
+ "date": "2026-11-08",
+ "kind": "kr",
+ "n_members": 244,
+ "n_subs": 71,
+ "coverage": {
+  "fresh": 223,
+  "carried": 21,
+  "total": 244,
+  "asked": 300,
+  "skipped": 0,
+  "why": "이번 회차에 못 받음"
+ },
+ "market": {
+  "spy3": -23.3,
+  "spy6": -27.1,
+  "vol_moves": [
+   7.57,
+   6.63,
+   6.02,
+   5.46,
+   5.28
+  ],
+  "vol_days": 30,
+  "vix": 50.4,
+  "vix_state": "극단"
+ },
+ "weights": {
+  "qsp": 18,
+  "fromHigh": 0,
+  "rs6": 5
+ },
+ "weights_overridden": false,
+ "top5": [
+  {
+   "rank": 1,
+   "tk": "251970.KQ",
+   "nm": "Pum-Tech Korea Co., Ltd",
+   "sec": "포장재",
+   "pts": 64.4,
+   "base": 64.4,
+   "bonus": 0,
+   "supply_on": false,
+   "grade": "high",
+   "spread": 6.6,
+   "q_spread": 21.5,
+   "accel": 14.9,
+   "rs6": 92.1,
+   "rs3": 73.7,
+   "pe": 25.31
+  },
+  {
+   "rank": 2,
+   "tk": "128940.KS",
+   "nm": "Hanmi Pharm. Co., Ltd.",
+   "sec": "제약(제네릭·특수)",
+   "pts": 64,
+   "base": 64,
+   "bonus": 0,
+   "supply_on": false,
+   "grade": "high",
+   "spread": 15.8,
+   "q_spread": 46.8,
+   "accel": 31,
+   "rs6": 32,
+   "rs3": 46.2,
+   "pe": 34.95
+  },
+  {
+   "rank": 3,
+   "tk": "195940.KQ",
+   "nm": "HK inno.N Corporation",
+   "sec": "제약(제네릭·특수)",
+   "pts": 63,
+   "base": 63,
+   "bonus": 0,
+   "supply_on": false,
+   "grade": "high",
+   "spread": 7.2,
+   "q_spread": 29.8,
+   "accel": 22.6,
+   "rs6": -4.3,
+   "rs3": 11.5,
+   "pe": 13.36
+  },
+  {
+   "rank": 4,
+   "tk": "004370.KS",
+   "nm": "Nongshim Co., Ltd.",
+   "sec": "가공식품",
+   "pts": 62.3,
+   "base": 62.3,
+   "bonus": 0,
+   "supply_on": false,
+   "grade": "high",
+   "spread": 10.6,
+   "q_spread": 22.9,
+   "accel": 12.3,
+   "rs6": 34,
+   "rs3": 31.6,
+   "pe": 13.97
+  },
+  {
+   "rank": 5,
+   "tk": "081660.KS",
+   "nm": "Misto Holdings Corp.",
+   "sec": "레저",
+   "pts": 60.9,
+   "base": 60.9,
+   "bonus": 0,
+   "supply_on": false,
+   "grade": "high",
+   "spread": 26.9,
+   "q_spread": 35.5,
+   "accel": 8.6,
+   "rs6": 25.2,
+   "rs3": 13.2,
+   "pe": 9
+  }
+ ],
+ "radar": [
+  {
+   "tk": "195940.KQ",
+   "nm": "HK inno.N Corporation",
+   "sec": "제약(제네릭·특수)",
+   "pts": 63,
+   "spread": 7.2,
+   "q_spread": 29.8,
+   "accel": 22.6,
+   "rs3": 11.5,
+   "rs6": -4.3,
+   "from_high": -37.5,
+   "pe": 13.36,
+   "q_end": "2026-09-30"
+  },
+  {
+   "tk": "000990.KS",
+   "nm": "DB HiTek CO., LTD.",
+   "sec": "반도체",
+   "pts": 56.5,
+   "spread": 21.8,
+   "q_spread": 23,
+   "accel": 1.2,
+   "rs3": 15.7,
+   "rs6": -21.5,
+   "from_high": -62.3,
+   "pe": 13.88,
+   "q_end": "2026-09-30"
+  },
+  {
+   "tk": "095340.KQ",
+   "nm": "ISC Co., Ltd.",
+   "sec": "Unknown",
+   "pts": 51.2,
+   "spread": 8,
+   "q_spread": 48.7,
+   "accel": 40.7,
+   "rs3": 9.6,
+   "rs6": -24,
+   "from_high": -55.4,
+   "pe": 45.58,
+   "q_end": "2026-09-30"
+  }
+ ],
+ "lever": {
+  "n": 4,
+  "noEar": 175,
+  "dropped": 52,
+  "tSp": null,
+  "tLo": null,
+  "tHi": null,
+  "med": null,
+  "top": 0,
+  "wake": [],
+  "doubt": [],
+  "base": [
+   "451800.KS",
+   "006340.KS",
+   "417200.KQ",
+   "100790.KQ"
+  ],
+  "flip": []
+ },
+ "focus": {
+  "lever_judged": false,
+  "lever_n": 7,
+  "rule": "sp",
+  "list": [
+   {
+    "sic": "drug_manufacturers_specialty_generic",
+    "nm": "제약(제네릭·특수)",
+    "quiet": true,
+    "lever": false,
+    "acc": 1.2,
+    "qsp": 17.9,
+    "rs": -2.4,
+    "ear": null,
+    "members": [
+     "006280.KS",
+     "000100.KS",
+     "068760.KQ",
+     "069620.KS",
+     "128940.KS",
+     "195940.KQ"
+    ],
+    "lead": []
+   }
+  ]
+ }
+}
