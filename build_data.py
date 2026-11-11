@@ -333,7 +333,10 @@ def yseries(sym):
             a=adj[i] if (i<len(adj) and adj[i]) else q["close"][i]
             # 날짜는 맨 뒤에 붙인다 — 앞 세 칸을 읽는 기존 코드를 그대로 두려고.
             # 실적 반응(buildlib.earn_reaction)이 분기말·발표일로 창을 자를 때 쓴다.
-            out.append((q["close"][i],q["open"][i],a,date.fromtimestamp(ts[i]).isoformat()))
+            # 고가·저가는 맨 뒤 — 현재가·변동폭(화면의 목표가·손절가)이 쓴다(buildlib.atr).
+            _h=q.get("high") or []; _l=q.get("low") or []
+            out.append((q["close"][i],q["open"][i],a,date.fromtimestamp(ts[i]).isoformat(),
+                        _h[i] if i<len(_h) else None,_l[i] if i<len(_l) else None))
         return out
     except: return None
 def ret(cl,n): return (cl[-1]/cl[-1-n]-1)*100 if len(cl)>n else None
@@ -358,9 +361,15 @@ for i,t in enumerate(allt):
     qspread=round(qop-qrev,1) if (qrev is not None and qop is not None) else None
     # 컨센서스 추정치 방향 — 야후 quoteSummary 는 crumb 인증을 타므로
     # 그 처리를 대신해주는 yfinance 로만 이 값을 받는다. 실패는 조용히 None.
-    est=est_trend.fetch(_yf.Ticker(t)) if _yf else {"est30":None,"est90":None}
+    _tk=_yf.Ticker(t) if _yf else None
+    est=est_trend.fetch(_tk) if _tk else {"est30":None,"est90":None}
+    # 증권사 평균 목표가 — 화면의 목표가. 못 받으면 None(지어내지 않는다).
+    tg=buildlib.targets(None)
+    if _tk:
+        try: tg=buildlib.targets(_tk.get_info())
+        except Exception: pass
     # 상대강도
-    s=yseries(t); rs3=rs6=gap=gaplvl=from_high=pe=eps=None; ear=ear_to=None
+    s=yseries(t); rs3=rs6=gap=gaplvl=from_high=pe=eps=None; ear=ear_to=None; px=atr=None
     if s:
         cl=[r[2] for r in s]; r3=ret(cl,63); r6=ret(cl,126)
         rs3=round(r3-spy3,1) if r3 is not None else None
@@ -371,6 +380,9 @@ for i,t in enumerate(allt):
         # 52주 고점 대비 — 가격이 얼마나 반영됐는지 판정하는 재료
         _hi=max(cl)
         if _hi>0: from_high=round((cl[-1]/_hi-1)*100,1)
+        # 현재가·변동폭 — 수정 전 종가·고가·저가로(buildlib.atr 주석)
+        px=buildlib.last_price([r[0] for r in s])
+        atr=buildlib.atr([r[4] for r in s],[r[5] for r in s],[r[0] for r in s])
         # 실적 반응 — 분기말 종가 → 실적 보도자료일+2거래일, S&P500 대비.
         # 발표일은 SEC 8-K(ir) 날짜다. 없거나 분기말보다 앞서면 None.
         ear,ear_to,_w=buildlib.earn_reaction([(r[3],r[2]) for r in s],spy_pairs,
@@ -398,6 +410,8 @@ for i,t in enumerate(allt):
                 m["accel"]=round(qspread-m["spread"],1) if qspread is not None else None
                 m["rs3"]=rs3;m["rs6"]=rs6;m["gap"]=gap;m["gaplvl"]=gaplvl
                 m["from_high"]=from_high
+                m["px"]=px; m["atr"]=atr
+                m.update(tg)
                 m["ear"]=ear; m["ear_to"]=ear_to
                 m["pe"]=pe; m["eps"]=eps; m["fpe"]=None; m["peg"]=None
                 m["est30"]=est.get("est30"); m["est90"]=est.get("est90")
