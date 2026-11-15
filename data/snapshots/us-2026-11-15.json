@@ -274,8 +274,8 @@
     "nm": "전력 유틸리티",
     "quiet": true,
     "lever": false,
-    "acc": 4,
-    "qsp": 8.8,
+    "acc": 2.8,
+    "qsp": 6.5,
     "rs": 1.6,
     "ear": null,
     "members": [
