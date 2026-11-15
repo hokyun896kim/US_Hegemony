@@ -1,0 +1,212 @@
+{
+ "date": "2026-11-15",
+ "kind": "kr",
+ "n_members": 246,
+ "n_subs": 71,
+ "coverage": {
+  "fresh": 222,
+  "carried": 24,
+  "total": 246,
+  "asked": 300,
+  "skipped": 0,
+  "why": "이번 회차에 못 받음"
+ },
+ "market": {
+  "spy3": -19.6,
+  "spy6": -30.8,
+  "vol_moves": [
+   7.57,
+   6.63,
+   6.02,
+   5.46,
+   5.28
+  ],
+  "vol_days": 30,
+  "vix": 52.8,
+  "vix_state": "극단"
+ },
+ "weights": {
+  "qsp": 18,
+  "fromHigh": 0,
+  "rs6": 5
+ },
+ "weights_overridden": false,
+ "top5": [
+  {
+   "rank": 1,
+   "tk": "251970.KQ",
+   "nm": "Pum-Tech Korea Co., Ltd",
+   "sec": "포장재",
+   "pts": 64.4,
+   "base": 64.4,
+   "bonus": 0,
+   "supply_on": false,
+   "grade": "high",
+   "spread": 6.6,
+   "q_spread": 21.5,
+   "accel": 14.9,
+   "rs6": 115.5,
+   "rs3": 45.1,
+   "pe": 26.6
+  },
+  {
+   "rank": 2,
+   "tk": "161890.KS",
+   "nm": "Kolmar Korea Co., Ltd.",
+   "sec": "생활용품·화장품",
+   "pts": 63,
+   "base": 63,
+   "bonus": 0,
+   "supply_on": false,
+   "grade": "high",
+   "spread": 12.7,
+   "q_spread": 29.1,
+   "accel": 16.4,
+   "rs6": 33.6,
+   "rs3": -2.8,
+   "pe": 19.42
+  },
+  {
+   "rank": 3,
+   "tk": "195940.KQ",
+   "nm": "HK inno.N Corporation",
+   "sec": "제약(제네릭·특수)",
+   "pts": 62.4,
+   "base": 62.4,
+   "bonus": 0,
+   "supply_on": false,
+   "grade": "high",
+   "spread": 7.2,
+   "q_spread": 29.8,
+   "accel": 22.6,
+   "rs6": 1.7,
+   "rs3": 5.9,
+   "pe": 13.45
+  },
+  {
+   "rank": 4,
+   "tk": "053800.KQ",
+   "nm": "AhnLab, Inc.",
+   "sec": "인프라 소프트웨어",
+   "pts": 59,
+   "base": 59,
+   "bonus": 0,
+   "supply_on": false,
+   "grade": "high",
+   "spread": 11.9,
+   "q_spread": 30,
+   "accel": 18,
+   "rs6": 104.3,
+   "rs3": 97.8,
+   "pe": 18.53
+  },
+  {
+   "rank": 5,
+   "tk": "010140.KS",
+   "nm": "Samsung Heavy Industries Co.",
+   "sec": "항공우주·방산",
+   "pts": 57.4,
+   "base": 57.4,
+   "bonus": 0,
+   "supply_on": false,
+   "grade": "high",
+   "spread": 64,
+   "q_spread": 51.6,
+   "accel": -12.3,
+   "rs6": -16.3,
+   "rs3": -4,
+   "pe": 26.01
+  }
+ ],
+ "radar": [
+  {
+   "tk": "195940.KQ",
+   "nm": "HK inno.N Corporation",
+   "sec": "제약(제네릭·특수)",
+   "pts": 62.4,
+   "spread": 7.2,
+   "q_spread": 29.8,
+   "accel": 22.6,
+   "rs3": 5.9,
+   "rs6": 1.7,
+   "from_high": -37.1,
+   "pe": 13.45,
+   "q_end": "2026-09-30"
+  }
+ ],
+ "lever": {
+  "n": 8,
+  "noEar": 191,
+  "dropped": 32,
+  "tSp": null,
+  "tLo": null,
+  "tHi": null,
+  "med": null,
+  "top": 0,
+  "wake": [],
+  "doubt": [],
+  "base": [
+   "425420.KQ",
+   "042660.KS",
+   "451800.KS",
+   "103590.KS",
+   "006340.KS",
+   "417200.KQ",
+   "100790.KQ",
+   "028670.KS"
+  ],
+  "flip": [
+   {
+    "tk": "440110.KQ",
+    "nm": "FADU Inc.",
+    "sec": "반도체",
+    "q_spread": null,
+    "ear": -34.2,
+    "ear_to": "2026-11-11",
+    "spread": null,
+    "rs3": -25.3,
+    "rs6": -31.5,
+    "from_high": -72.1,
+    "pe": null,
+    "q_end": "2026-09-30",
+    "flip": {
+     "now": 10.2,
+     "prev": -67.1,
+     "d": 77.3
+    }
+   }
+  ]
+ },
+ "focus": {
+  "lever_judged": false,
+  "lever_n": 5,
+  "rule": "sp",
+  "list": [
+   {
+    "sic": "semiconductor_equipment_materials",
+    "nm": "반도체 장비·소재",
+    "quiet": true,
+    "lever": false,
+    "acc": 2.3,
+    "qsp": 2.6,
+    "rs": 2.5,
+    "ear": null,
+    "members": [
+     "098460.KQ",
+     "039030.KQ",
+     "232140.KQ",
+     "281820.KS",
+     "058470.KQ",
+     "166090.KQ",
+     "403870.KQ",
+     "042700.KS",
+     "319660.KQ",
+     "089030.KQ",
+     "183300.KQ",
+     "195870.KS"
+    ],
+    "lead": []
+   }
+  ]
+ }
+}
