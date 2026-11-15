@@ -41,6 +41,7 @@ BENCH = "^KS11"  # 코스피 종합
 from buildlib import (          # noqa: F401  (자체검증이 직접 부른다)
     CARRY, OP_ROWS, REV_ROWS, Budget, Stall, _stall_guard, align_quarters,
     coverage_line, earn_reaction, pick_row, qnote_share, series_values, too_thin,
+    atr, last_price, price_line, targets,
 )
 from buildlib import load_prev as _load_prev
 
@@ -852,6 +853,8 @@ def fetch_stock(tk, log=print):
         "last_earn": earn[0].isoformat() if earn[0] else None,
         "next_earn": earn[1].isoformat() if earn[1] else None,
     }
+    # 증권사 평균 목표가 — 위에서 이미 받은 info 에 들어 있다(추가 호출 없음)
+    _info.update(targets(info))
     if flip_only:
         # 스프레드 계열은 정의되지 않으므로 비운다(0 으로 채우면 거짓말이다).
         # 화면은 flipOf(qs) 로 다시 판정하고, 이 값들이 null 인 것을 견딘다.
@@ -1042,6 +1045,21 @@ def fetch_prices(tickers, log=print, budget=None, events=None):
         except Exception:  # noqa: BLE001, S110
             pass
 
+        # 현재가·변동폭 — 화면의 목표가·손절가가 쓴다(buildlib.atr 주석).
+        # 현재가는 오프린트를 걷어낸 종가 계열의 마지막 값이다. 수정 계수는
+        # 과거에만 걸리므로 마지막 날의 수정종가는 실제 종가와 같다.
+        px = atr_v = None
+        try:
+            s = closes(sym)
+            px = last_price(s.tolist()) if s is not None else None
+            raw = d.dropna(subset=["Close"])
+            none = [None] * len(raw)
+            atr_v = atr(raw["High"].tolist() if "High" in raw.columns else none,
+                        raw["Low"].tolist() if "Low" in raw.columns else none,
+                        raw["Close"].tolist())
+        except Exception:  # noqa: BLE001, S110
+            pass
+
         ear = ear_to = None
         if events and sym in events:
             q_end, rel = events[sym]
@@ -1049,7 +1067,8 @@ def fetch_prices(tickers, log=print, budget=None, events=None):
             ear_why[why or "ok"] = ear_why.get(why or "ok", 0) + 1
 
         out[sym] = {"rs3": rs3, "rs6": rs6, "gap": gap, "gaplvl": gaplvl,
-                    "from_high": from_high, "ear": ear, "ear_to": ear_to}
+                    "from_high": from_high, "ear": ear, "ear_to": ear_to,
+                    "px": px, "atr": atr_v}
 
     if ear_why:
         # 비어 있는 이유를 남긴다. '발표일 미확인' 이 많으면 데이터 사정인지
@@ -1222,7 +1241,8 @@ def build(limit, min_cap, sleep, log=print, budget=None, stall=0, prev=None,
                 for k in ("pe", "fpe", "peg"):
                     m[k] = info.get(k) if info.get(k) is not None else num(r.get(k))
                 # 컨센서스 추정치 방향 — 없으면 None 그대로(화면이 중립 처리)
-                for k in ("est30", "est90", "last_earn", "next_earn"):
+                for k in ("est30", "est90", "last_earn", "next_earn",
+                          "tgt", "tgt_hi", "tgt_lo", "tgt_n"):
                     m[k] = info.get(k)
                 m["f_as_of"] = today          # 이번 회차에 새로 받은 실적
                 members.append(m)
@@ -1344,6 +1364,8 @@ def build(limit, min_cap, sleep, log=print, budget=None, stall=0, prev=None,
             "from_high": p.get("from_high"),
             # 실적 반응 — 시세층이다. 이월하지 않는다(시세를 못 받으면 None).
             "ear": p.get("ear"), "ear_to": p.get("ear_to"),
+            # 현재가·변동폭 — 시세층이다. 이월하지 않는다(목표가·손절가의 기준).
+            "px": p.get("px"), "atr": p.get("atr"),
             # 투자자별 수급: KRX OpenAPI 카탈로그에 그 API 가 없다(2026-09-18
             # 구독 목록으로 확인). 이름을 여덟 번 찍어 전부 404 였고 원인이
             # 작명이 아니었다. 필요하면 네이버 등 다른 경로여야 한다.
@@ -1776,7 +1798,7 @@ def selftest():
     print("\n── 이월이 시세층까지 물려받지는 않는가 ──")
     # 시세·상대강도는 매 회차 전부 새로 받는다(2초면 된다). 이월 목록에
     # 들어가면 지난주 상대강도가 최신인 척 남는다 — 제일 위험한 실수다.
-    for k in ("rs3", "rs6", "gap", "gaplvl", "from_high", "d_until"):
+    for k in ("rs3", "rs6", "gap", "gaplvl", "from_high", "d_until", "px", "atr"):
         check(k not in CARRY, f"{k} 는 이월하지 않는다(매 회차 새로 받음)")
     for k in ("rev", "op", "spread", "q_spread", "q_end", "lq_op"):
         check(k in CARRY, f"{k} 는 이월한다(분기당 한 번 바뀜)")
@@ -1832,6 +1854,9 @@ def selftest():
         check(got.get("BBB.KS", {}).get("ear") is None,
               "발표일이 없으면 None — 지어내지 않는다")
         check("ear" in a and "ear_to" in a, "산출 키 이름이 화면이 읽는 이름(ear·ear_to)이다")
+        # 가짜 시세는 고가·저가가 없다 — 종가 차이(0.5)로 변동폭을 낸다
+        check(a.get("px") == 189.5 and a.get("atr") == 0.5,
+              f"현재가·변동폭이 시세 경로로 나온다 (현재가 {a.get('px')} · ATR {a.get('atr')})")
 
     print("\n── DART 분기 재사용이 fetch_stock 을 실제로 거치는가 ──")
     # 판정식은 dart 자가진단이 본다. 여기서는 연결부 — 공시 목록을 한 번 받아
@@ -1860,7 +1885,8 @@ def selftest():
 
             def get_info(self):
                 return {"sector": "Technology", "industry": "Semiconductors",
-                        "longName": "합성전자", "marketCap": 3e12}
+                        "longName": "합성전자", "marketCap": 3e12,
+                        "targetMeanPrice": 90000.0, "numberOfAnalystOpinions": 12}
         rows = [{"rcept_no": "R2", "report_nm": "반기보고서 (2026.06)", "rcept_dt": "2026-08-14"},
                 {"rcept_no": "R1", "report_nm": "분기보고서 (2026.03)", "rcept_dt": "2026-05-15"}]
         ends = ["2024-09-30", "2024-12-31", "2025-03-31", "2025-06-30",
@@ -1920,6 +1946,8 @@ def selftest():
             check(f1 and len(f1["qs"]) == 8 and f1["qs"][0][0] == "2026-06-30" and f1["ir"],
                   "화면이 다시 판정할 8분기(최신이 앞)와 공시 링크를 싣는다")
             check(f1 and f1["_info"]["sector"] == "Technology", "분류도 받는다 — 화면이 세부산업으로 묶는다")
+            check(f1 and f1["_info"]["tgt"] == 90000.0 and f1["_info"]["tgt_n"] == 12,
+                  "증권사 평균 목표가도 같은 info 에서 받는다(추가 호출 없음)")
             dart.quarters = lambda code, corp, today=None, log=print, years=3: [
                 (e, 100e9, -1e9) for e in ends]
             DART_MEMO = {}
@@ -2177,6 +2205,7 @@ def main():
                   "화면 후보가 0종목이 될 수 있습니다")
         else:
             print(f"  분기 비고 이상 {bad}/{total}종목")
+        print(price_line([m for r in data["subs"] for m in r["members"]], data["updated"]))
     except Exception as exc:  # noqa: BLE001
         print(f"⚠️ 요약 출력 실패({exc!r}) — 데이터 파일은 정상 저장됐습니다: {out}")
     return 0

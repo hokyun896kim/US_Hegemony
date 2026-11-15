@@ -112,7 +112,10 @@ CARRY = ("rev", "op", "spread", "q_rev", "q_op", "q_spread", "accel",
          # 실적층을 새로 못 받은 종목이 공시일까지 잃어, 화면의 신선도 판정이
          # 오히려 나빠진다. (상대강도는 반대다. 지난주 값이 최신인 척하면
          # 선취매 판정이 지난주 가격으로 내려지므로 이월 금지다.)
-         "ir")
+         "ir",
+         # 증권사 평균 목표가 — 애널리스트 의견이라 실적처럼 천천히 바뀐다.
+         # 실적층과 같은 호출(야후 info)에서 받으므로 실적층과 같이 이월한다.
+         "tgt", "tgt_hi", "tgt_lo", "tgt_n")
 
 
 # ── 분기 비고(q_note) 는 '품질 경고'지 '출처 라벨'이 아니다 ───────────────
@@ -168,6 +171,26 @@ def coverage_line(cov: dict) -> str:
     """
     return (f"  ⚠️ 실적층: 이번 회차 {cov['fresh']}종목 · 지난 회차 이월 "
             f"{cov['carried']}종목 / 전체 {cov['total']}종목 — {cov['why']}")
+
+
+def price_line(members, today=None) -> str:
+    """화면의 목표가·손절가 재료(현재가·변동폭·증권사 목표가)가 몇 종목에 들어왔나.
+
+    증권사 목표가는 실적층과 같은 호출에서 받으므로, 실적을 이번 회차에 받은
+    종목(f_as_of == today) 중 몇 개에 목표가가 있는지도 따로 적는다 — 이월된
+    종목 수에 묻혀 '야후가 목표가를 얼마나 주는지' 가 안 보이지 않게.
+    """
+    ms = list(members)
+    n = len(ms)
+
+    def has(k, xs=ms):
+        return sum(1 for m in xs if m.get(k) is not None)
+    s = (f"  목표가·손절가 재료: 현재가 {has('px')}/{n} · 하루 변동폭 {has('atr')}/{n} · "
+         f"증권사 목표가 {has('tgt')}/{n}")
+    fr = [m for m in ms if today and m.get("f_as_of") == today]
+    if fr and len(fr) < n:
+        s += f" (이번 회차에 실적을 받은 {len(fr)}종목 중 {has('tgt', fr)})"
+    return s
 
 
 def too_thin(new_n: int, prev_n: int, floor: float) -> bool:
@@ -392,6 +415,81 @@ def earn_reaction(series, bench, q_end, rel, after=EAR_AFTER, max_lag=EAR_MAX_LA
     if not math.isfinite(v) or abs(v) > EAR_CAP:
         return None, None, "outlier"
     return round(v, 1), ds[i1], None
+
+
+# ── 현재가 · 변동폭 · 증권사 목표가 (화면의 목표가·손절가) ────────────────
+# 화면은 '지금 가격에 괜찮은 종목' 과 트레이드 카드에서 목표가·손절가를 보여준다.
+#  · 현재가(px)   마지막 거래일의 종가(수정 전) — 사람이 증권 앱에서 보는 그 가격.
+#  · 변동폭(atr)  최근 20거래일 하루 실제 변동폭(ATR)의 평균. 화면의 손절가는
+#                 현재가 − 2×ATR 이다. 고정 비율(−8%)은 많이 흔들리는 종목에선
+#                 평소 출렁임에 털리고, 얌전한 종목에선 너무 멀다.
+#  · 목표가(tgt)  야후 info 의 애널리스트 평균 목표가와 의견 수(tgt_n). 도구가 값을
+#                 지어내지 않는다 — 없으면 None 이고 화면은 '없음' 으로 적는다.
+# 현재가·변동폭은 시세층이라 이월하지 않는다(못 받으면 None). 목표가는 CARRY.
+ATR_N = 20
+
+
+def _posf(v):
+    """양의 유한 실수만 통과(유효숫자 6자리). 그 외는 None.
+
+    4자리로 자르면 $1,234.56 이 $1,235 가 된다 — 화면은 미국 주가를 센트까지
+    찍으므로 증권 앱과 어긋난다. 6자리면 $9,999.99 까지 센트가 남는다.
+    """
+    import math
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return None
+    return float(f"{f:.6g}") if math.isfinite(f) and f > 0 else None
+
+
+def last_price(close):
+    """종가 목록의 마지막 유효값."""
+    for v in reversed(list(close)):
+        f = _posf(v)
+        if f is not None:
+            return f
+    return None
+
+
+def atr(high, low, close, n=ATR_N):
+    """최근 n거래일 평균 실제 변동폭(가격 단위). 낼 수 없으면 None.
+
+    실제 변동폭 = max(고가−저가, |고가−전일 종가|, |저가−전일 종가|).
+    고가·저가가 비어 있으면 종가끼리의 차이로 대신한다. 자릿수가 튄 시세
+    (오프린트)가 평균을 끌어올리지 않게 중앙값의 4배를 넘는 날은 뺀다.
+    """
+    tr, prev = [], None
+    for h, l, c in zip(high, low, close):
+        h, l, c = _posf(h), _posf(l), _posf(c)
+        if c is None:
+            continue
+        if prev is not None:
+            if h is None or l is None or h < l:
+                tr.append(abs(c - prev))
+            else:
+                tr.append(max(h - l, abs(h - prev), abs(l - prev)))
+        prev = c
+    tr = tr[-n:]
+    if len(tr) < max(5, n // 2):
+        return None
+    med = sorted(tr)[len(tr) // 2]
+    keep = [t for t in tr if med <= 0 or t <= med * 4]
+    return _posf(sum(keep) / len(keep)) if keep else None
+
+
+def targets(info):
+    """야후 info → 증권사 목표가 {tgt, tgt_hi, tgt_lo, tgt_n}. 없으면 전부 None."""
+    info = info or {}
+    mean = _posf(info.get("targetMeanPrice"))
+    try:
+        n = int(info.get("numberOfAnalystOpinions") or 0) or None
+    except (TypeError, ValueError):
+        n = None
+    if mean is None:
+        return {"tgt": None, "tgt_hi": None, "tgt_lo": None, "tgt_n": None}
+    return {"tgt": mean, "tgt_hi": _posf(info.get("targetHighPrice")),
+            "tgt_lo": _posf(info.get("targetLowPrice")), "tgt_n": n}
 
 
 # ── 다음 실적일 추정 (미국) ───────────────────────────────────────────
@@ -719,6 +817,36 @@ def selftest() -> int:
         check(len(load_sec_hist(hp)["A"]) == 12, "종목당 최근 12분기만 남긴다")
         Path(hp).write_text("{깨짐", encoding="utf-8")
         check(load_sec_hist(hp) == {}, "깨진 파일은 빈 dict")
+
+    print("\n── 현재가 · 변동폭 · 증권사 목표가 ──")
+    check(last_price([10, 11, None, float("nan")]) == 11.0, "마지막 유효 종가")
+    check(last_price([1234.56]) == 1234.56 and last_price([1234000]) == 1234000.0,
+          "센트·7자리 원화가 잘리지 않는다")
+    C = list(range(10, 21))                    # 매일 1씩 오른다
+    H = [c + 1 for c in C]
+    L = [c - 1 for c in C]
+    # 매일 고가−저가 2, 전일 종가와의 차이 최대 2 → 실제 변동폭 2
+    check(atr(H, L, C, n=10) == 2.0, f"고가·저가로 실제 변동폭 ({atr(H, L, C, n=10)})")
+    check(atr([None] * 11, [None] * 11, C, n=10) == 1.0,
+          f"고가·저가가 없으면 종가 차이로 ({atr([None] * 11, [None] * 11, C, n=10)})")
+    Cg = C[:-1] + [1600]                       # 마지막 날 자릿수가 튄 오프린트
+    check(atr([None] * 11, [None] * 11, Cg, n=10) == 1.0, "튄 시세 하루가 평균을 끌어올리지 않는다")
+    check(atr(H[:4], L[:4], C[:4], n=20) is None, "날이 모자라면 지어내지 않는다")
+    tg = targets({"targetMeanPrice": 52000.0, "targetHighPrice": 60000, "targetLowPrice": 45000,
+                  "numberOfAnalystOpinions": 8})
+    check(tg == {"tgt": 52000.0, "tgt_hi": 60000.0, "tgt_lo": 45000.0, "tgt_n": 8}, f"목표가 ({tg})")
+    check(targets({"numberOfAnalystOpinions": 3})["tgt"] is None and targets(None)["tgt"] is None,
+          "평균 목표가가 없으면 지어내지 않는다")
+    check(targets({"targetMeanPrice": 10.5})["tgt_n"] is None, "의견 수를 모르면 None(평균은 남긴다)")
+    for k in ("tgt", "tgt_hi", "tgt_lo", "tgt_n"):
+        check(k in CARRY, f"{k} 는 실적층과 같이 이월한다")
+    pl = price_line([{"px": 1, "atr": 1, "tgt": 5, "f_as_of": "2026-10-07"},
+                     {"px": 2, "atr": None, "f_as_of": "2026-10-07"},
+                     {"px": 3, "atr": 1, "tgt": None, "f_as_of": "2026-09-01"}], "2026-10-07")
+    check(pl == "  목표가·손절가 재료: 현재가 3/3 · 하루 변동폭 2/3 · 증권사 목표가 1/3 "
+                "(이번 회차에 실적을 받은 2종목 중 1)", f"재료 집계 한 줄 ({pl.strip()})")
+    check("이번 회차" not in price_line([{"px": 1, "f_as_of": "2026-10-07"}], "2026-10-07"),
+          "전부 이번 회차면 괄호를 붙이지 않는다")
 
     print("\n── 다음 실적일 추정 ──")
     from datetime import date as _d
